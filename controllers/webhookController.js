@@ -12,7 +12,7 @@ export const clerkWebhook = async (req, res) => {
     const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
     if (!WEBHOOK_SECRET) {
-      console.error('⚠️  CLERK_WEBHOOK_SECRET no está configurado');
+      console.error('CLERK_WEBHOOK_SECRET not configured');
       return res.status(500).json({
         success: false,
         message: 'Webhook secret not configured'
@@ -48,7 +48,7 @@ export const clerkWebhook = async (req, res) => {
         'svix-signature': svix_signature,
       });
     } catch (err) {
-      console.error('❌ Error verificando webhook:', err.message);
+      console.error('Webhook verification failed:', err.message);
       return res.status(400).json({
         success: false,
         message: 'Webhook verification failed'
@@ -58,8 +58,6 @@ export const clerkWebhook = async (req, res) => {
     // El webhook está verificado, procesar el evento
     const { id, ...attributes } = evt.data;
     const eventType = evt.type;
-
-    console.log(`📬 Webhook recibido: ${eventType}`);
 
     // Manejar diferentes tipos de eventos
     switch (eventType) {
@@ -76,7 +74,8 @@ export const clerkWebhook = async (req, res) => {
         break;
 
       default:
-        console.log(`ℹ️  Evento no manejado: ${eventType}`);
+        // Evento no soportado, ignorar silenciosamente
+        break;
     }
 
     res.status(200).json({
@@ -85,7 +84,7 @@ export const clerkWebhook = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error procesando webhook:', error);
+    console.error('Webhook processing error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
@@ -112,10 +111,9 @@ async function handleUserCreated(clerkId, attributes) {
     };
 
     const user = await User.create(userData);
-    console.log(`✅ Usuario creado en MongoDB:`, user.email);
     return user;
   } catch (error) {
-    console.error('❌ Error creando usuario:', error.message);
+    console.error('Error creating user:', error.message);
     throw error;
   }
 }
@@ -141,16 +139,13 @@ async function handleUserUpdated(clerkId, attributes) {
       { new: true, runValidators: true }
     );
 
-    if (user) {
-      console.log(`✅ Usuario actualizado en MongoDB:`, user.email);
-    } else {
-      console.log(`⚠️  Usuario no encontrado, creando...`);
+    if (!user) {
       await handleUserCreated(clerkId, attributes);
     }
 
     return user;
   } catch (error) {
-    console.error('❌ Error actualizando usuario:', error.message);
+    console.error('Error updating user:', error.message);
     throw error;
   }
 }
@@ -166,15 +161,9 @@ async function handleUserDeleted(clerkId) {
       { new: true }
     );
 
-    if (user) {
-      console.log(`✅ Usuario desactivado en MongoDB:`, user.email);
-    } else {
-      console.log(`⚠️  Usuario no encontrado para eliminar`);
-    }
-
     return user;
   } catch (error) {
-    console.error('❌ Error eliminando usuario:', error.message);
+    console.error('Error deleting user:', error.message);
     throw error;
   }
 }

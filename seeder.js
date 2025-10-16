@@ -117,20 +117,14 @@ const importData = async () => {
 
     // Limpiar colección existente
     await Servicio.deleteMany();
-    console.log('🗑️  Datos anteriores eliminados');
 
     // Insertar nuevos datos
     const servicios = await Servicio.insertMany(serviciosData);
-    console.log(`✅ ${servicios.length} servicios importados exitosamente`);
-    
-    console.log('\n📋 Servicios creados:');
-    servicios.forEach(servicio => {
-      console.log(`   - ${servicio.titulo} (${servicio.categoria})`);
-    });
+    console.log(`${servicios.length} services imported successfully`);
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error al importar datos:', error);
+    console.error('Error importing data:', error);
     process.exit(1);
   }
 };
@@ -140,10 +134,10 @@ const deleteData = async () => {
   try {
     await connectDB();
     await Servicio.deleteMany();
-    console.log('🗑️  Todos los datos eliminados');
+    console.log('All data deleted successfully');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error al eliminar datos:', error);
+    console.error('Error deleting data:', error);
     process.exit(1);
   }
 };

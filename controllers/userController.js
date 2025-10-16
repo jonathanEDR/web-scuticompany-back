@@ -7,9 +7,6 @@ import User from '../models/User.js';
  */
 export const syncUser = async (req, res) => {
   try {
-    console.log('🔄 Sincronizando usuario...');
-    console.log('📦 Datos recibidos:', req.body);
-
     const {
       clerkId,
       email,
@@ -45,8 +42,6 @@ export const syncUser = async (req, res) => {
         { new: true }
       );
 
-      console.log('✅ Usuario actualizado:', updated.email);
-      
       return res.status(200).json({
         success: true,
         message: 'Usuario actualizado correctamente',
@@ -74,7 +69,6 @@ export const syncUser = async (req, res) => {
       });
 
       await newUser.save();
-      console.log('✅ Nuevo usuario creado:', newUser.email);
 
       return res.status(201).json({
         success: true,

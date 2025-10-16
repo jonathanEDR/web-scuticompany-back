@@ -1,5 +1,37 @@
 import Page from '../models/Page.js';
 
+// Helper: Convertir estructura de botones simplificada (nuevo formato)
+const convertButtonsToBackend = (buttons) => {
+  if (!buttons) return buttons;
+  
+  const converted = {};
+  for (const [key, button] of Object.entries(buttons)) {
+    // Nuevo formato simplificado: background, textColor, borderColor
+    converted[key] = {
+      background: button.background || button.bg || 'transparent',
+      textColor: button.textColor || button.text || '#8B5CF6',
+      borderColor: button.borderColor || button.border || 'transparent'
+    };
+  }
+  return converted;
+};
+
+// Helper: Convertir estructura de botones de backend a frontend
+const convertButtonsToFrontend = (buttons) => {
+  if (!buttons) return buttons;
+  
+  const converted = {};
+  for (const [key, button] of Object.entries(buttons)) {
+    // Nuevo formato simplificado
+    converted[key] = {
+      background: button.background || 'transparent',
+      textColor: button.textColor || '#8B5CF6',
+      borderColor: button.borderColor || 'transparent'
+    };
+  }
+  return converted;
+};
+
 // @desc    Obtener todas las páginas
 // @route   GET /api/cms/pages
 // @access  Public (para mostrar en el frontend)
@@ -9,10 +41,24 @@ export const getAllPages = async (req, res) => {
       .select('-__v')
       .sort({ pageSlug: 1 });
     
+    // Convertir estructura de botones para el frontend
+    const pagesWithConvertedButtons = pages.map(page => {
+      const pageObj = page.toObject();
+      if (pageObj.theme) {
+        if (pageObj.theme.lightMode?.buttons) {
+          pageObj.theme.lightMode.buttons = convertButtonsToFrontend(pageObj.theme.lightMode.buttons);
+        }
+        if (pageObj.theme.darkMode?.buttons) {
+          pageObj.theme.darkMode.buttons = convertButtonsToFrontend(pageObj.theme.darkMode.buttons);
+        }
+      }
+      return pageObj;
+    });
+    
     res.json({
       success: true,
-      count: pages.length,
-      data: pages
+      count: pagesWithConvertedButtons.length,
+      data: pagesWithConvertedButtons
     });
   } catch (error) {
     console.error('Error al obtener páginas:', error);
@@ -43,9 +89,20 @@ export const getPageBySlug = async (req, res) => {
       });
     }
     
+    // Convertir estructura de botones para el frontend
+    const pageObj = page.toObject();
+    if (pageObj.theme) {
+      if (pageObj.theme.lightMode?.buttons) {
+        pageObj.theme.lightMode.buttons = convertButtonsToFrontend(pageObj.theme.lightMode.buttons);
+      }
+      if (pageObj.theme.darkMode?.buttons) {
+        pageObj.theme.darkMode.buttons = convertButtonsToFrontend(pageObj.theme.darkMode.buttons);
+      }
+    }
+    
     res.json({
       success: true,
-      data: page
+      data: pageObj
     });
   } catch (error) {
     console.error('Error al obtener página:', error);
@@ -64,6 +121,16 @@ export const updatePage = async (req, res) => {
   try {
     const { slug } = req.params;
     const updateData = req.body;
+    
+    // Convertir estructura de botones de frontend a backend antes de guardar
+    if (updateData.theme) {
+      if (updateData.theme.lightMode?.buttons) {
+        updateData.theme.lightMode.buttons = convertButtonsToBackend(updateData.theme.lightMode.buttons);
+      }
+      if (updateData.theme.darkMode?.buttons) {
+        updateData.theme.darkMode.buttons = convertButtonsToBackend(updateData.theme.darkMode.buttons);
+      }
+    }
     
     // Agregar información de actualización
     updateData.lastUpdated = Date.now();
@@ -85,10 +152,23 @@ export const updatePage = async (req, res) => {
       });
     }
     
+    console.log('💾 Página guardada en base de datos');
+    
+    // Convertir de vuelta a formato frontend antes de enviar respuesta
+    const pageObj = page.toObject();
+    if (pageObj.theme) {
+      if (pageObj.theme.lightMode?.buttons) {
+        pageObj.theme.lightMode.buttons = convertButtonsToFrontend(pageObj.theme.lightMode.buttons);
+      }
+      if (pageObj.theme.darkMode?.buttons) {
+        pageObj.theme.darkMode.buttons = convertButtonsToFrontend(pageObj.theme.darkMode.buttons);
+      }
+    }
+    
     res.json({
       success: true,
       message: 'Página actualizada correctamente',
-      data: page
+      data: pageObj
     });
   } catch (error) {
     console.error('Error al actualizar página:', error);

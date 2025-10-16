@@ -22,6 +22,7 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-fileupload": "^1.5.2",
+    "express-rate-limit": "^8.1.0",
     "mongoose": "^8.19.1",
     "node-fetch": "^3.3.2",
     "svix": "^1.77.0"

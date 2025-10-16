@@ -87,23 +87,21 @@ const seedHomePage = async () => {
     
     if (existingPage) {
       // Actualizar la página existente
-      const updatedPage = await Page.findOneAndUpdate(
+      await Page.findOneAndUpdate(
         { pageSlug: 'home' },
         homePageData,
         { new: true, runValidators: true }
       );
-      console.log('✅ Página home actualizada exitosamente');
-      console.log('📄 Datos:', JSON.stringify(updatedPage, null, 2));
+      console.log('Home page updated successfully');
     } else {
       // Crear nueva página
-      const newPage = await Page.create(homePageData);
-      console.log('✅ Página home creada exitosamente');
-      console.log('📄 Datos:', JSON.stringify(newPage, null, 2));
+      await Page.create(homePageData);
+      console.log('Home page created successfully');
     }
-    
+
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error al crear/actualizar página home:', error);
+    console.error('Error creating/updating home page:', error);
     process.exit(1);
   }
 };

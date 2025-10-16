@@ -6,6 +6,7 @@ import {
   createPage,
   initHomePage
 } from '../controllers/cmsController.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -14,9 +15,8 @@ router.get('/pages', getAllPages);
 router.get('/pages/:slug', getPageBySlug);
 
 // Rutas protegidas (requieren autenticación)
-// TODO: Agregar middleware de autenticación cuando esté listo
-router.put('/pages/:slug', updatePage);
-router.post('/pages', createPage);
-router.post('/pages/init-home', initHomePage);
+router.put('/pages/:slug', requireAuth, updatePage);
+router.post('/pages', requireAuth, createPage);
+router.post('/pages/init-home', requireAuth, initHomePage);
 
 export default router;

@@ -23,17 +23,41 @@ const PageSchema = new mongoose.Schema({
         light: { type: String, default: '' }, // Imagen para tema claro
         dark: { type: String, default: '' }   // Imagen para tema oscuro
       },
-      backgroundImageAlt: { type: String, default: 'Hero background' }
+      backgroundImageAlt: { type: String, default: 'Hero background' },
+      // Estilos de texto por tema
+      styles: {
+        light: {
+          titleColor: { type: String, default: '' },
+          subtitleColor: { type: String, default: '' },
+          descriptionColor: { type: String, default: '' }
+        },
+        dark: {
+          titleColor: { type: String, default: '' },
+          subtitleColor: { type: String, default: '' },
+          descriptionColor: { type: String, default: '' }
+        }
+      }
     },
     solutions: {
       title: { type: String, default: 'Soluciones' },
       description: { type: String, default: '' },
-      // Imágenes por tema  
+      // Imágenes por tema
       backgroundImage: {
         light: { type: String, default: '' }, // Imagen para tema claro
         dark: { type: String, default: '' }   // Imagen para tema oscuro
       },
       backgroundImageAlt: { type: String, default: 'Solutions background' },
+      // Estilos de texto por tema
+      styles: {
+        light: {
+          titleColor: { type: String, default: '' },
+          descriptionColor: { type: String, default: '' }
+        },
+        dark: {
+          titleColor: { type: String, default: '' },
+          descriptionColor: { type: String, default: '' }
+        }
+      },
       items: [{
         icon: String,
         title: String,
@@ -78,29 +102,25 @@ const PageSchema = new mongoose.Schema({
       cardBg: { type: String, default: '#F9FAFB' },
       border: { type: String, default: '#E5E7EB' },
       
-      // Botones específicos
+      // Botones específicos - Formato simplificado (background, textColor, borderColor)
       buttons: {
         // Botón "Conoce nuestros servicios"
         ctaPrimary: {
           background: { type: String, default: 'linear-gradient(90deg, #8B5CF6, #06B6D4, #8B5CF6)' },
-          text: { type: String, default: '#FFFFFF' },
-          border: { type: String, default: 'transparent' },
-          hoverBackground: { type: String, default: 'linear-gradient(90deg, #7C3AED, #0891B2, #7C3AED)' }
+          textColor: { type: String, default: '#FFFFFF' },
+          borderColor: { type: String, default: 'transparent' }
         },
         // Botón "CONTÁCTANOS"
         contact: {
           background: { type: String, default: 'transparent' },
-          text: { type: String, default: '#06B6D4' },
-          border: { type: String, default: '#06B6D4' },
-          hoverBackground: { type: String, default: '#06B6D4' },
-          hoverText: { type: String, default: '#FFFFFF' }
+          textColor: { type: String, default: '#8B5CF6' },
+          borderColor: { type: String, default: 'linear-gradient(90deg, #8B5CF6, #06B6D4)' }
         },
         // Botón "Ir al Dashboard"
         dashboard: {
           background: { type: String, default: 'linear-gradient(90deg, #8B5CF6, #06B6D4)' },
-          text: { type: String, default: '#FFFFFF' },
-          border: { type: String, default: 'transparent' },
-          hoverBackground: { type: String, default: 'linear-gradient(90deg, #7C3AED, #0891B2)' }
+          textColor: { type: String, default: '#FFFFFF' },
+          borderColor: { type: String, default: 'transparent' }
         }
       }
     },
@@ -114,29 +134,25 @@ const PageSchema = new mongoose.Schema({
       cardBg: { type: String, default: '#1F2937' },
       border: { type: String, default: '#374151' },
       
-      // Botones específicos
+      // Botones específicos - Formato simplificado (background, textColor, borderColor)
       buttons: {
         // Botón "Conoce nuestros servicios"
         ctaPrimary: {
           background: { type: String, default: 'linear-gradient(90deg, #A78BFA, #22D3EE, #A78BFA)' },
-          text: { type: String, default: '#111827' },
-          border: { type: String, default: 'transparent' },
-          hoverBackground: { type: String, default: 'linear-gradient(90deg, #8B5CF6, #06B6D4, #8B5CF6)' }
+          textColor: { type: String, default: '#111827' },
+          borderColor: { type: String, default: 'transparent' }
         },
         // Botón "CONTÁCTANOS"
         contact: {
           background: { type: String, default: 'transparent' },
-          text: { type: String, default: '#22D3EE' },
-          border: { type: String, default: '#22D3EE' },
-          hoverBackground: { type: String, default: '#22D3EE' },
-          hoverText: { type: String, default: '#111827' }
+          textColor: { type: String, default: '#A78BFA' },
+          borderColor: { type: String, default: 'linear-gradient(90deg, #A78BFA, #22D3EE)' }
         },
         // Botón "Ir al Dashboard"
         dashboard: {
           background: { type: String, default: 'linear-gradient(90deg, #A78BFA, #22D3EE)' },
-          text: { type: String, default: '#111827' },
-          border: { type: String, default: 'transparent' },
-          hoverBackground: { type: String, default: 'linear-gradient(90deg, #8B5CF6, #06B6D4)' }
+          textColor: { type: String, default: '#111827' },
+          borderColor: { type: String, default: 'transparent' }
         }
       }
     }
