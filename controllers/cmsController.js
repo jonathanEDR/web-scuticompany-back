@@ -1,4 +1,5 @@
 import Page from '../models/Page.js';
+import { transformImageUrls } from '../utils/urlTransformer.js';
 
 // Helper: Convertir estructura de botones simplificada (nuevo formato)
 const convertButtonsToBackend = (buttons) => {
@@ -55,10 +56,13 @@ export const getAllPages = async (req, res) => {
       return pageObj;
     });
     
+    // Transformar URLs relativas a absolutas
+    const pagesWithAbsoluteUrls = transformImageUrls(pagesWithConvertedButtons);
+    
     res.json({
       success: true,
-      count: pagesWithConvertedButtons.length,
-      data: pagesWithConvertedButtons
+      count: pagesWithAbsoluteUrls.length,
+      data: pagesWithAbsoluteUrls
     });
   } catch (error) {
     console.error('Error al obtener páginas:', error);
@@ -133,9 +137,12 @@ export const getPageBySlug = async (req, res) => {
       }
     }
     
+    // Transformar URLs relativas a absolutas
+    const pageWithAbsoluteUrls = transformImageUrls(pageObj);
+    
     res.json({
       success: true,
-      data: pageObj
+      data: pageWithAbsoluteUrls
     });
   } catch (error) {
     console.error('Error al obtener página:', error);

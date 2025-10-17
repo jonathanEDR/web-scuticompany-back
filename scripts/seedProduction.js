@@ -1,8 +1,18 @@
 import dotenv from 'dotenv';
-import connectDB from '../config/database.js';
+import mongoose from 'mongoose';
 import Page from '../models/Page.js';
 
+// Cargar variables de entorno
 dotenv.config();
+
+// Usar la URI de producción o la proporcionada como argumento
+const MONGODB_URI = process.env.MONGODB_URI_PRODUCTION || process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  console.error('❌ Error: MONGODB_URI no está definida');
+  console.log('💡 Uso: MONGODB_URI="tu_connection_string" node seedProduction.js');
+  process.exit(1);
+}
 
 const homePageData = {
   pageSlug: 'home',
@@ -188,29 +198,47 @@ const homePageData = {
   isPublished: true
 };
 
-const seedHomePage = async () => {
+const seedProduction = async () => {
   try {
-    await connectDB();
-    
+    console.log('🔌 Conectando a MongoDB...');
+    console.log(`📡 URI: ${MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')}`);
+
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    });
+
+    console.log('✅ Conectado a MongoDB');
+
     // Verificar si ya existe la página
     const existingPage = await Page.findOne({ pageSlug: 'home' });
-    
+
     if (existingPage) {
-      // ⚠️ IMPORTANTE: Solo migrar estructura, NO sobrescribir datos existentes
-      console.log('⚠️  La página ya existe. No se sobrescribirán los datos.');
-      console.log('📝 Para crear la página desde cero, elimínala primero de la BD.');
-      console.log('✅ Si necesitas migrar la estructura, usa un script de migración específico.');
-    } else {
-      // Crear nueva página solo si NO existe
-      await Page.create(homePageData);
-      console.log('✅ Home page created successfully');
+      console.log('⚠️  La página "home" ya existe en la base de datos.');
+      console.log('❓ ¿Deseas sobrescribirla? (Ctrl+C para cancelar)');
+
+      // Esperar 5 segundos antes de continuar
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      await Page.deleteOne({ pageSlug: 'home' });
+      console.log('🗑️  Página existente eliminada');
     }
 
+    // Crear nueva página
+    const page = await Page.create(homePageData);
+    console.log('✅ Página "home" creada exitosamente en producción');
+    console.log(`📄 ID: ${page._id}`);
+
+    await mongoose.connection.close();
+    console.log('👋 Desconectado de MongoDB');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error creating home page:', error);
+    console.error('❌ Error:', error.message);
+    if (mongoose.connection.readyState === 1) {
+      await mongoose.connection.close();
+    }
     process.exit(1);
   }
 };
 
-seedHomePage();
+seedProduction();
