@@ -30,10 +30,26 @@ app.use('/api/webhooks', webhooksRoutes);
 
 // Middlewares
 // CORS configurado para permitir solo frontend específico
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+  : ['http://localhost:5173'];
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Permitir requests sin origin (como apps móviles o curl)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️  CORS blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 app.use(cors(corsOptions));
 
@@ -85,29 +101,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// Ruta principal para el "Hola Mundo"
-app.get('/api/hello', (req, res) => {
-  res.json({ 
-    message: '¡Hola Mundo desde Web Scuti! 🌟',
-    timestamp: new Date().toISOString(),
-    backend: 'Node.js + Express',
-    status: 'success'
-  });
-});
-
-// Ruta para obtener información de la empresa
-app.get('/api/info', (req, res) => {
-  res.json({
-    empresa: 'Web Scuti',
-    descripcion: 'Plataforma web empresarial con SEO optimizado',
-    tecnologias: {
-      backend: 'Node.js + Express + MongoDB',
-      frontend: 'React + Vite + Tailwind CSS'
-    },
-    database: 'MongoDB'
-  });
-});
-
 // Rutas de la API
 app.use('/api/servicios', serviciosRoutes);
 app.use('/api/users', usersRoutes);
@@ -122,7 +115,26 @@ app.use((req, res) => {
   });
 });
 
+// Manejador de errores global
+app.use((err, req, res, next) => {
+  console.error('Error:', err.stack);
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production'
+      ? 'Error interno del servidor'
+      : err.message
+  });
+});
+
 // Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+  console.log(`📡 API available at: http://localhost:${PORT}/api`);
+});
+
+// Manejo de cierre gracioso
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+  });
 });
