@@ -59,11 +59,61 @@ const PageSchema = new mongoose.Schema({
         }
       },
       items: [{
-        icon: String,
+        iconLight: String,  // URL del icono para tema claro (PNG)
+        iconDark: String,   // URL del icono para tema oscuro (PNG)
         title: String,
         description: String,
-        gradient: String
-      }]
+        gradient: String    // Mantener para compatibilidad
+      }],
+      // Diseño de tarjetas por tema
+      cardsDesign: {
+        light: {
+          background: { type: String, default: 'rgba(0, 0, 0, 0.08)' },
+          border: { type: String, default: 'rgba(0, 0, 0, 0.15)' },
+          borderWidth: { type: String, default: '1px' },
+          shadow: { type: String, default: '0 8px 32px rgba(0, 0, 0, 0.1)' },
+          hoverBackground: { type: String, default: 'rgba(255, 255, 255, 0.25)' },
+          hoverBorder: { type: String, default: 'rgba(139, 92, 246, 0.4)' },
+          hoverShadow: { type: String, default: '0 20px 40px rgba(139, 92, 246, 0.15)' },
+          iconGradient: { type: String, default: 'linear-gradient(135deg, #8B5CF6, #06B6D4)' },
+          iconBackground: { type: String, default: 'rgba(255, 255, 255, 0.9)' },
+          iconColor: { type: String, default: '#1f2937' },
+          titleColor: { type: String, default: '#1f2937' },
+          descriptionColor: { type: String, default: '#4b5563' },
+          linkColor: { type: String, default: '#a78bfa' },
+          // Tamaño de tarjetas
+          cardMinWidth: { type: String, default: '280px' },
+          cardMaxWidth: { type: String, default: '100%' },
+          cardMinHeight: { type: String, default: 'auto' },
+          cardPadding: { type: String, default: '2rem' },
+          // Configuración de iconos
+          iconBorderEnabled: { type: Boolean, default: true },
+          iconAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'left' }
+        },
+        dark: {
+          background: { type: String, default: 'rgba(255, 255, 255, 0.05)' },
+          border: { type: String, default: 'rgba(255, 255, 255, 0.2)' },
+          borderWidth: { type: String, default: '1px' },
+          shadow: { type: String, default: '0 8px 32px rgba(0, 0, 0, 0.3)' },
+          hoverBackground: { type: String, default: 'rgba(255, 255, 255, 0.08)' },
+          hoverBorder: { type: String, default: 'rgba(139, 92, 246, 0.5)' },
+          hoverShadow: { type: String, default: '0 20px 40px rgba(139, 92, 246, 0.2)' },
+          iconGradient: { type: String, default: 'linear-gradient(135deg, #8B5CF6, #06B6D4)' },
+          iconBackground: { type: String, default: 'rgba(17, 24, 39, 0.8)' },
+          iconColor: { type: String, default: '#ffffff' },
+          titleColor: { type: String, default: '#ffffff' },
+          descriptionColor: { type: String, default: '#d1d5db' },
+          linkColor: { type: String, default: '#a78bfa' },
+          // Tamaño de tarjetas
+          cardMinWidth: { type: String, default: '280px' },
+          cardMaxWidth: { type: String, default: '100%' },
+          cardMinHeight: { type: String, default: 'auto' },
+          cardPadding: { type: String, default: '2rem' },
+          // Configuración de iconos
+          iconBorderEnabled: { type: Boolean, default: true },
+          iconAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'left' }
+        }
+      }
     },
     sections: [
       {

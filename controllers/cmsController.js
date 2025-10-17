@@ -91,6 +91,39 @@ export const getPageBySlug = async (req, res) => {
     
     // Convertir estructura de botones para el frontend
     const pageObj = page.toObject();
+    
+    // Migrar backgroundImage de string a objeto si es necesario
+    if (pageObj.content?.hero?.backgroundImage && typeof pageObj.content.hero.backgroundImage === 'string') {
+      const oldValue = pageObj.content.hero.backgroundImage;
+      pageObj.content.hero.backgroundImage = {
+        light: '',
+        dark: oldValue || ''
+      };
+    }
+    
+    if (pageObj.content?.solutions?.backgroundImage && typeof pageObj.content.solutions.backgroundImage === 'string') {
+      const oldValue = pageObj.content.solutions.backgroundImage;
+      pageObj.content.solutions.backgroundImage = {
+        light: '',
+        dark: oldValue || ''
+      };
+    }
+    
+    // Asegurar que los estilos existen
+    if (pageObj.content?.hero && !pageObj.content.hero.styles) {
+      pageObj.content.hero.styles = {
+        light: { titleColor: '', subtitleColor: '', descriptionColor: '' },
+        dark: { titleColor: '', subtitleColor: '', descriptionColor: '' }
+      };
+    }
+    
+    if (pageObj.content?.solutions && !pageObj.content.solutions.styles) {
+      pageObj.content.solutions.styles = {
+        light: { titleColor: '', descriptionColor: '' },
+        dark: { titleColor: '', descriptionColor: '' }
+      };
+    }
+    
     if (pageObj.theme) {
       if (pageObj.theme.lightMode?.buttons) {
         pageObj.theme.lightMode.buttons = convertButtonsToFrontend(pageObj.theme.lightMode.buttons);

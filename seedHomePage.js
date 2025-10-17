@@ -14,14 +14,42 @@ const homePageData = {
       description: 'Transformamos procesos con soluciones digitales, proyectos de software y modelos de IA personalizados.',
       ctaText: 'Conoce nuestros servicios',
       ctaLink: '#servicios',
-      backgroundImage: '',
-      backgroundImageAlt: 'Hero background'
+      backgroundImage: {
+        light: '',
+        dark: ''
+      },
+      backgroundImageAlt: 'Hero background',
+      styles: {
+        light: {
+          titleColor: '',
+          subtitleColor: '',
+          descriptionColor: ''
+        },
+        dark: {
+          titleColor: '',
+          subtitleColor: '',
+          descriptionColor: ''
+        }
+      }
     },
     solutions: {
       title: 'Soluciones',
       description: 'En el dinámico entorno empresarial de hoy, la tecnología es la columna vertebral del éxito. Impulsa la innovación, seguridad y el crecimiento de tu negocio.',
-      backgroundImage: '',
+      backgroundImage: {
+        light: '',
+        dark: ''
+      },
       backgroundImageAlt: 'Solutions background',
+      styles: {
+        light: {
+          titleColor: '',
+          descriptionColor: ''
+        },
+        dark: {
+          titleColor: '',
+          descriptionColor: ''
+        }
+      },
       items: [
         {
           icon: '💻',
@@ -86,22 +114,19 @@ const seedHomePage = async () => {
     const existingPage = await Page.findOne({ pageSlug: 'home' });
     
     if (existingPage) {
-      // Actualizar la página existente
-      await Page.findOneAndUpdate(
-        { pageSlug: 'home' },
-        homePageData,
-        { new: true, runValidators: true }
-      );
-      console.log('Home page updated successfully');
+      // ⚠️ IMPORTANTE: Solo migrar estructura, NO sobrescribir datos existentes
+      console.log('⚠️  La página ya existe. No se sobrescribirán los datos.');
+      console.log('📝 Para crear la página desde cero, elimínala primero de la BD.');
+      console.log('✅ Si necesitas migrar la estructura, usa un script de migración específico.');
     } else {
-      // Crear nueva página
+      // Crear nueva página solo si NO existe
       await Page.create(homePageData);
-      console.log('Home page created successfully');
+      console.log('✅ Home page created successfully');
     }
 
     process.exit(0);
   } catch (error) {
-    console.error('Error creating/updating home page:', error);
+    console.error('❌ Error creating home page:', error);
     process.exit(1);
   }
 };
