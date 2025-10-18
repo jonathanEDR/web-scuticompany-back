@@ -223,4 +223,12 @@ const PageSchema = new mongoose.Schema({
   timestamps: true
 });
 
-export default mongoose.model('Page', PageSchema);
+// Importar y configurar tracking de cambios
+import setupPageChangeTracking from '../utils/pageChangeTracker.js';
+
+const Page = mongoose.model('Page', PageSchema);
+
+// Configurar tracking
+setupPageChangeTracking(Page);
+
+export default Page;
