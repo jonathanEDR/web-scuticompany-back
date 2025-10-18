@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import logger from '../utils/logger.js';
 
 /**
  * @desc    Sincronizar usuario de Clerk con MongoDB
@@ -6,7 +7,11 @@ import User from '../models/User.js';
  * @access  Private (requiere datos de usuario de Clerk)
  */
 export const syncUser = async (req, res) => {
+  const startTime = Date.now();
+  
   try {
+    logger.api('POST', '/api/users/sync', 'PROCESSING');
+    
     const {
       clerkId,
       email,
@@ -16,8 +21,15 @@ export const syncUser = async (req, res) => {
       profileImage
     } = req.body;
 
+    logger.debug('Datos recibidos para sync', {
+      clerkId: clerkId ? 'presente' : 'faltante',
+      email: email ? 'presente' : 'faltante',
+      firstName: firstName || 'vacío'
+    });
+
     // Validar datos requeridos
     if (!clerkId || !email) {
+      logger.warn('Datos requeridos faltantes en sync de usuario', { clerkId: !!clerkId, email: !!email });
       return res.status(400).json({
         success: false,
         message: 'clerkId y email son requeridos'
@@ -26,8 +38,14 @@ export const syncUser = async (req, res) => {
 
     // Buscar si el usuario ya existe
     let existingUser = await User.findOne({ clerkId });
+    logger.database('QUERY', 'users', { operation: 'findOne', clerkId });
 
     if (existingUser) {
+      logger.success('Usuario existente encontrado, actualizando datos', {
+        userId: existingUser._id,
+        clerkId: existingUser.clerkId
+      });
+      
       // Usuario existe, actualizar datos si es necesario
       const updated = await User.findOneAndUpdate(
         { clerkId },
@@ -41,6 +59,9 @@ export const syncUser = async (req, res) => {
         },
         { new: true }
       );
+
+      logger.database('UPDATE', 'users', { clerkId: updated.clerkId });
+      logger.api('POST', '/api/users/sync', 200, Date.now() - startTime);
 
       return res.status(200).json({
         success: true,
@@ -57,6 +78,11 @@ export const syncUser = async (req, res) => {
         }
       });
     } else {
+      logger.startup('Creando nuevo usuario en la base de datos', {
+        clerkId: clerkId,
+        email: email
+      });
+      
       // Usuario no existe, crear nuevo
       const newUser = new User({
         clerkId,
@@ -69,6 +95,15 @@ export const syncUser = async (req, res) => {
       });
 
       await newUser.save();
+      
+      logger.success('Nuevo usuario creado exitosamente', {
+        userId: newUser._id,
+        clerkId: newUser.clerkId,
+        email: newUser.email
+      });
+      
+      logger.database('CREATE', 'users', { clerkId: newUser.clerkId });
+      logger.api('POST', '/api/users/sync', 201, Date.now() - startTime);
 
       return res.status(201).json({
         success: true,
@@ -87,7 +122,9 @@ export const syncUser = async (req, res) => {
     }
 
   } catch (error) {
-    console.error('❌ Error sincronizando usuario:', error);
+    logger.error('Error sincronizando usuario', error);
+    logger.api('POST', '/api/users/sync', 500, Date.now() - startTime);
+    
     return res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
