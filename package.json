@@ -12,7 +12,8 @@
     "analyze-logs": "node scripts/analyzeLogs.js",
     "view-logs": "node scripts/viewLogs.js",
     "test-auto-init": "node scripts/testAutoInit.js",
-    "seed:home": "node scripts/seedHomePage.js"
+    "seed:home": "node scripts/seedHomePage.js",
+    "migrate:images": "node scripts/migrateImages.js"
   },
   "keywords": [
     "express",
@@ -29,6 +30,7 @@
     "express-rate-limit": "^8.1.0",
     "mongoose": "^8.19.1",
     "node-fetch": "^3.3.2",
+    "sharp": "^0.34.4",
     "svix": "^1.77.0"
   },
   "devDependencies": {

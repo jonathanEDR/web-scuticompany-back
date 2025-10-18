@@ -36,6 +36,14 @@ export const requireAuth = (req, res, next) => {
   // ADVERTENCIA: Esto NO es seguro para producción
   console.warn('⚠️  ADVERTENCIA: Usando autenticación básica. Implementa validación JWT para producción.');
 
+  // Simular usuario para development
+  // En producción, esto vendría del token JWT decodificado
+  req.user = {
+    userId: 'dev-user-id',
+    email: 'dev@example.com',
+    role: 'user'
+  };
+
   next();
 };
 
@@ -52,8 +60,12 @@ export const optionalAuth = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    // Si hay token, podríamos verificarlo aquí
-    // req.user = decodedUser;
+    // Si hay token, simular usuario para development
+    req.user = {
+      userId: 'dev-user-id',
+      email: 'dev@example.com',
+      role: 'user'
+    };
   }
 
   // Continuar independientemente de si hay auth o no

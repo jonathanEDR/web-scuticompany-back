@@ -1,5 +1,6 @@
 import Page from '../models/Page.js';
 import { transformImageUrls } from '../utils/urlTransformer.js';
+import { updateImageReferences } from '../utils/imageTracker.js';
 
 // Helper: Convertir estructura de botones simplificada (nuevo formato)
 const convertButtonsToBackend = (buttons) => {
@@ -162,6 +163,9 @@ export const updatePage = async (req, res) => {
     const { slug } = req.params;
     const updateData = req.body;
     
+    // Obtener datos anteriores para comparar imágenes
+    const oldPage = await Page.findOne({ pageSlug: slug });
+    
     // Convertir estructura de botones de frontend a backend antes de guardar
     if (updateData.theme) {
       if (updateData.theme.lightMode?.buttons) {
@@ -193,6 +197,18 @@ export const updatePage = async (req, res) => {
     }
     
     console.log('💾 Página guardada en base de datos');
+    
+    // Actualizar referencias de imágenes
+    if (oldPage) {
+      await updateImageReferences(
+        oldPage.toObject(), 
+        page.toObject(), 
+        'Page', 
+        page._id
+      ).catch(error => {
+        console.error('Error actualizando referencias de imágenes:', error);
+      });
+    }
     
     // Convertir de vuelta a formato frontend antes de enviar respuesta
     const pageObj = page.toObject();

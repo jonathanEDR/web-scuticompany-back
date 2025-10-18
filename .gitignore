@@ -72,5 +72,8 @@ Thumbs.db
 # MongoDB dump files
 dump/
 
+# Media uploads
+uploads/
+
 # VSCode settings
 .vscode/
