@@ -17,6 +17,12 @@ const imageSchema = new mongoose.Schema({
     required: [true, 'La URL es requerida']
   },
   
+  // ID de Cloudinary (para poder eliminar la imagen)
+  cloudinaryId: {
+    type: String,
+    index: true
+  },
+  
   // Información técnica
   mimetype: {
     type: String,

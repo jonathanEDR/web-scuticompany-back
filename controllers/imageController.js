@@ -4,14 +4,15 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import logger from '../utils/logger.js';
 import { getImageDimensions } from '../utils/imageProcessor.js';
+import cloudinary, { deleteFromCloudinary } from '../config/cloudinary.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Directorio de uploads
+// Directorio de uploads (mantener para compatibilidad local)
 const uploadsDir = path.join(__dirname, '../uploads');
 
-// @desc    Subir imagen y guardar en DB
+// @desc    Subir imagen y guardar en DB (usando Cloudinary)
 // @route   POST /api/upload/image
 // @access  Private
 export const uploadImage = async (req, res) => {
@@ -43,23 +44,25 @@ export const uploadImage = async (req, res) => {
       });
     }
 
-    // Generar nombre único
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(7);
-    const extension = path.extname(imageFile.name);
-    const filename = `${timestamp}-${randomString}${extension}`;
-    
-    // Ruta completa del archivo
-    const uploadPath = path.join(uploadsDir, filename);
+    // Subir a Cloudinary
+    const uploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'web-scuti',
+          resource_type: 'image',
+          transformation: [
+            { width: 2000, height: 2000, crop: 'limit' },
+            { quality: 'auto:best' }
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
 
-    // Mover el archivo
-    await imageFile.mv(uploadPath);
-
-    // Extraer dimensiones de la imagen
-    const dimensions = await getImageDimensions(uploadPath);
-
-    // URL pública del archivo
-    const imageUrl = `/uploads/${filename}`;
+      uploadStream.end(imageFile.data);
+    });
 
     // Obtener metadatos adicionales del body (si existen)
     const {
@@ -72,13 +75,14 @@ export const uploadImage = async (req, res) => {
 
     // Crear registro en la base de datos
     const imageRecord = await Image.create({
-      filename,
+      filename: uploadResult.public_id, // Usar public_id de Cloudinary
       originalName: imageFile.name,
-      url: imageUrl,
+      url: uploadResult.secure_url, // URL pública de Cloudinary
+      cloudinaryId: uploadResult.public_id, // Guardar ID para eliminar después
       mimetype: imageFile.mimetype,
-      size: imageFile.size,
-      width: dimensions.width,
-      height: dimensions.height,
+      size: uploadResult.bytes,
+      width: uploadResult.width,
+      height: uploadResult.height,
       category,
       title,
       description,
@@ -88,7 +92,7 @@ export const uploadImage = async (req, res) => {
       isOrphan: true // Inicialmente es huérfana hasta que se use
     });
 
-    logger.success(`Imagen subida: ${filename} por usuario ${userId}`);
+    logger.success(`Imagen subida a Cloudinary: ${uploadResult.public_id} por usuario ${userId}`);
 
     res.status(201).json({
       success: true,
@@ -255,16 +259,27 @@ export const deleteImage = async (req, res) => {
       });
     }
 
-    // Eliminar archivo físico
-    const filePath = path.join(uploadsDir, image.filename);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    // Eliminar de Cloudinary si tiene cloudinaryId
+    if (image.cloudinaryId) {
+      try {
+        await deleteFromCloudinary(image.cloudinaryId);
+        logger.success(`Imagen eliminada de Cloudinary: ${image.cloudinaryId}`);
+      } catch (cloudinaryError) {
+        logger.error('Error al eliminar de Cloudinary:', cloudinaryError);
+        // Continuar con la eliminación de BD aunque falle Cloudinary
+      }
+    } else {
+      // Fallback: eliminar archivo físico local (para imágenes antiguas)
+      const filePath = path.join(uploadsDir, image.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
     }
 
     // Eliminar registro de la base de datos
     await Image.findByIdAndDelete(id);
 
-    logger.success(`Imagen eliminada: ${image.filename}`);
+    logger.success(`Imagen eliminada de BD: ${image.filename}`);
 
     res.json({
       success: true,
