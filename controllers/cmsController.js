@@ -8,8 +8,9 @@ const convertButtonsToBackend = (buttons) => {
   
   const converted = {};
   for (const [key, button] of Object.entries(buttons)) {
-    // Nuevo formato simplificado: background, textColor, borderColor
+    // Nuevo formato simplificado: text, background, textColor, borderColor
     converted[key] = {
+      text: button.text || '',
       background: button.background || button.bg || 'transparent',
       textColor: button.textColor || button.text || '#8B5CF6',
       borderColor: button.borderColor || button.border || 'transparent'
@@ -26,6 +27,7 @@ const convertButtonsToFrontend = (buttons) => {
   for (const [key, button] of Object.entries(buttons)) {
     // Nuevo formato simplificado
     converted[key] = {
+      text: button.text || '',
       background: button.background || 'transparent',
       textColor: button.textColor || '#8B5CF6',
       borderColor: button.borderColor || 'transparent'

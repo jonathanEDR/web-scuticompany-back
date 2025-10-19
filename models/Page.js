@@ -156,19 +156,29 @@ const PageSchema = new mongoose.Schema({
       buttons: {
         // Botón "Conoce nuestros servicios"
         ctaPrimary: {
+          text: { type: String, default: 'Conoce nuestros servicios' },
           background: { type: String, default: 'linear-gradient(90deg, #8B5CF6, #06B6D4, #8B5CF6)' },
           textColor: { type: String, default: '#FFFFFF' },
           borderColor: { type: String, default: 'transparent' }
         },
         // Botón "CONTÁCTANOS"
         contact: {
+          text: { type: String, default: 'CONTÁCTANOS' },
           background: { type: String, default: 'transparent' },
           textColor: { type: String, default: '#8B5CF6' },
           borderColor: { type: String, default: 'linear-gradient(90deg, #8B5CF6, #06B6D4)' }
         },
         // Botón "Ir al Dashboard"
         dashboard: {
+          text: { type: String, default: 'Ir al Dashboard' },
           background: { type: String, default: 'linear-gradient(90deg, #8B5CF6, #06B6D4)' },
+          textColor: { type: String, default: '#FFFFFF' },
+          borderColor: { type: String, default: 'transparent' }
+        },
+        // Botón "Ver más..." 
+        viewMore: {
+          text: { type: String, default: 'Ver más...' },
+          background: { type: String, default: 'linear-gradient(135deg, #01c2cc 0%, #7528ee 100%)' },
           textColor: { type: String, default: '#FFFFFF' },
           borderColor: { type: String, default: 'transparent' }
         }
@@ -188,19 +198,29 @@ const PageSchema = new mongoose.Schema({
       buttons: {
         // Botón "Conoce nuestros servicios"
         ctaPrimary: {
+          text: { type: String, default: 'Conoce nuestros servicios' },
           background: { type: String, default: 'linear-gradient(90deg, #A78BFA, #22D3EE, #A78BFA)' },
           textColor: { type: String, default: '#111827' },
           borderColor: { type: String, default: 'transparent' }
         },
         // Botón "CONTÁCTANOS"
         contact: {
+          text: { type: String, default: 'CONTÁCTANOS' },
           background: { type: String, default: 'transparent' },
           textColor: { type: String, default: '#A78BFA' },
           borderColor: { type: String, default: 'linear-gradient(90deg, #A78BFA, #22D3EE)' }
         },
         // Botón "Ir al Dashboard"
         dashboard: {
+          text: { type: String, default: 'Ir al Dashboard' },
           background: { type: String, default: 'linear-gradient(90deg, #A78BFA, #22D3EE)' },
+          textColor: { type: String, default: '#111827' },
+          borderColor: { type: String, default: 'transparent' }
+        },
+        // Botón "Ver más..."
+        viewMore: {
+          text: { type: String, default: 'Ver más...' },
+          background: { type: String, default: 'linear-gradient(135deg, #22d3ee 0%, #a78bfa 100%)' },
           textColor: { type: String, default: '#111827' },
           borderColor: { type: String, default: 'transparent' }
         }

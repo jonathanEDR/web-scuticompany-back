@@ -6,19 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
-    "diagnose": "node scripts/diagnose.js",
-    "diagnose:images": "node scripts/diagnoseImages.js",
-    "test:images": "node scripts/testImageEndpoints.js",
-    "test:cloudinary": "node scripts/testCloudinary.js",
-    "fix:image-urls": "node scripts/fixImageUrls.js --apply",
-    "preview:image-urls": "node scripts/fixImageUrls.js",
-    "monitor": "node scripts/monitor.js",
-    "analyze-logs": "node scripts/analyzeLogs.js",
-    "view-logs": "node scripts/viewLogs.js",
-    "test-auto-init": "node scripts/testAutoInit.js",
-    "seed:home": "node scripts/seedHomePage.js",
-    "migrate:images": "node scripts/migrateImages.js"
+    "dev": "nodemon server.js"
   },
   "keywords": [
     "express",
@@ -28,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.12.2",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
