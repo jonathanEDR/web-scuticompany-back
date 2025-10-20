@@ -69,6 +69,7 @@ const defaultHomePageData = {
           cardMaxWidth: '100%',
           cardMinHeight: 'auto',
           cardPadding: '2rem',
+          cardsAlignment: 'left',
           iconBorderEnabled: true,
           iconAlignment: 'center'
         },
@@ -90,6 +91,7 @@ const defaultHomePageData = {
           cardMaxWidth: '100%',
           cardMinHeight: 'auto',
           cardPadding: '2rem',
+          cardsAlignment: 'left',
           iconBorderEnabled: true,
           iconAlignment: 'center'
         }
@@ -118,6 +120,36 @@ const defaultHomePageData = {
           title: 'Modelos de IA',
           description: 'Implementamos inteligencia artificial personalizada para automatizar y potenciar tu empresa.',
           gradient: 'from-amber-500 to-amber-700'
+        }
+      ]
+    },
+    contact: {
+      phone: '+51 973 397 306',
+      email: 'corpocomunicados@gmail.com',
+      socialLinks: [
+        {
+          name: 'facebook',
+          url: '#',
+          icon: '',
+          enabled: true
+        },
+        {
+          name: 'twitter',
+          url: '#',
+          icon: '',
+          enabled: true
+        },
+        {
+          name: 'pinterest',
+          url: '#',
+          icon: '',
+          enabled: true
+        },
+        {
+          name: 'whatsapp',
+          url: '#',
+          icon: '',
+          enabled: true
         }
       ]
     }

@@ -86,6 +86,8 @@ const PageSchema = new mongoose.Schema({
           cardMaxWidth: { type: String, default: '100%' },
           cardMinHeight: { type: String, default: 'auto' },
           cardPadding: { type: String, default: '2rem' },
+          // Alineación de tarjetas
+          cardsAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'left' },
           // Configuración de iconos
           iconBorderEnabled: { type: Boolean, default: true },
           iconAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'left' }
@@ -109,11 +111,23 @@ const PageSchema = new mongoose.Schema({
           cardMaxWidth: { type: String, default: '100%' },
           cardMinHeight: { type: String, default: 'auto' },
           cardPadding: { type: String, default: '2rem' },
+          // Alineación de tarjetas
+          cardsAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'left' },
           // Configuración de iconos
           iconBorderEnabled: { type: Boolean, default: true },
           iconAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'left' }
         }
       }
+    },
+    contact: {
+      phone: { type: String, default: '+51 973 397 306' },
+      email: { type: String, default: 'corpocomunicados@gmail.com' },
+      socialLinks: [{
+        name: { type: String, required: true }, // facebook, twitter, instagram, whatsapp, etc.
+        url: { type: String, required: true },
+        icon: { type: String, default: '' }, // URL del icono personalizado
+        enabled: { type: Boolean, default: true }
+      }]
     },
     sections: [
       {
