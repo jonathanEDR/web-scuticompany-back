@@ -119,6 +119,88 @@ const PageSchema = new mongoose.Schema({
         }
       }
     },
+    valueAdded: {
+      title: { type: String, default: 'Valor agregado' },
+      description: { type: String, default: '' },
+      showIcons: { type: Boolean, default: true }, // Controla si se muestran los iconos
+      // Imágenes por tema
+      backgroundImage: {
+        light: { type: String, default: '' }, // Imagen para tema claro
+        dark: { type: String, default: '' }   // Imagen para tema oscuro
+      },
+      backgroundImageAlt: { type: String, default: 'Value Added background' },
+      // Estilos de texto por tema
+      styles: {
+        light: {
+          titleColor: { type: String, default: '' },
+          descriptionColor: { type: String, default: '' }
+        },
+        dark: {
+          titleColor: { type: String, default: '' },
+          descriptionColor: { type: String, default: '' }
+        }
+      },
+      items: [{
+        iconLight: String,  // URL del icono para tema claro (PNG)
+        iconDark: String,   // URL del icono para tema oscuro (PNG)
+        title: String,
+        description: String,
+        gradient: String
+      }],
+      // Diseño de tarjetas por tema (similar a solutions)
+      cardsDesign: {
+        light: {
+          background: { type: String, default: 'rgba(255, 255, 255, 0.9)' },
+          border: { type: String, default: 'linear-gradient(135deg, #8B5CF6, #06B6D4)' },
+          borderWidth: { type: String, default: '2px' },
+          shadow: { type: String, default: '0 8px 32px rgba(0, 0, 0, 0.1)' },
+          hoverBackground: { type: String, default: 'rgba(255, 255, 255, 0.95)' },
+          hoverBorder: { type: String, default: 'linear-gradient(135deg, #a78bfa, #22d3ee)' },
+          hoverShadow: { type: String, default: '0 20px 40px rgba(139, 92, 246, 0.2)' },
+          iconGradient: { type: String, default: 'linear-gradient(135deg, #8B5CF6, #06B6D4)' },
+          iconBackground: { type: String, default: 'rgba(255, 255, 255, 0.9)' },
+          iconColor: { type: String, default: '#7528ee' },
+          titleColor: { type: String, default: '#1F2937' },
+          descriptionColor: { type: String, default: '#4B5563' },
+          linkColor: { type: String, default: '#06B6D4' },
+          // Tamaño de tarjetas
+          cardMinWidth: { type: String, default: '280px' },
+          cardMaxWidth: { type: String, default: '350px' },
+          cardMinHeight: { type: String, default: '200px' },
+          cardPadding: { type: String, default: '2rem' },
+          // Alineación de tarjetas
+          cardsAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' },
+          // Configuración de iconos
+          iconBorderEnabled: { type: Boolean, default: false },
+          iconAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' }
+        },
+        dark: {
+          background: { type: String, default: 'rgba(17, 24, 39, 0.9)' },
+          border: { type: String, default: 'linear-gradient(135deg, #8B5CF6, #06B6D4)' },
+          borderWidth: { type: String, default: '2px' },
+          shadow: { type: String, default: '0 8px 32px rgba(0, 0, 0, 0.5)' },
+          hoverBackground: { type: String, default: 'rgba(31, 41, 55, 0.95)' },
+          hoverBorder: { type: String, default: 'linear-gradient(135deg, #a78bfa, #22d3ee)' },
+          hoverShadow: { type: String, default: '0 20px 40px rgba(139, 92, 246, 0.3)' },
+          iconGradient: { type: String, default: 'linear-gradient(135deg, #8B5CF6, #06B6D4)' },
+          iconBackground: { type: String, default: 'rgba(17, 24, 39, 0.8)' },
+          iconColor: { type: String, default: '#ffffff' },
+          titleColor: { type: String, default: '#FFFFFF' },
+          descriptionColor: { type: String, default: '#D1D5DB' },
+          linkColor: { type: String, default: '#a78bfa' },
+          // Tamaño de tarjetas
+          cardMinWidth: { type: String, default: '280px' },
+          cardMaxWidth: { type: String, default: '350px' },
+          cardMinHeight: { type: String, default: '200px' },
+          cardPadding: { type: String, default: '2rem' },
+          // Alineación de tarjetas
+          cardsAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' },
+          // Configuración de iconos
+          iconBorderEnabled: { type: Boolean, default: false },
+          iconAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' }
+        }
+      }
+    },
     contact: {
       phone: { type: String, default: '+51 973 397 306' },
       email: { type: String, default: 'corpocomunicados@gmail.com' },

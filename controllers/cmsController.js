@@ -45,9 +45,53 @@ export const getAllPages = async (req, res) => {
       .select('-__v')
       .sort({ pageSlug: 1 });
     
-    // Convertir estructura de botones para el frontend
+    // Convertir estructura de botones para el frontend y asegurar estilos
     const pagesWithConvertedButtons = pages.map(page => {
       const pageObj = page.toObject();
+      
+      // Migrar backgroundImage de string a objeto si es necesario para hero
+      if (pageObj.content?.hero?.backgroundImage && typeof pageObj.content.hero.backgroundImage === 'string') {
+        const oldValue = pageObj.content.hero.backgroundImage;
+        pageObj.content.hero.backgroundImage = {
+          light: '',
+          dark: oldValue || ''
+        };
+      }
+      
+      // Migrar backgroundImage de string a objeto si es necesario para solutions
+      if (pageObj.content?.solutions?.backgroundImage && typeof pageObj.content.solutions.backgroundImage === 'string') {
+        const oldValue = pageObj.content.solutions.backgroundImage;
+        pageObj.content.solutions.backgroundImage = {
+          light: '',
+          dark: oldValue || ''
+        };
+      }
+      
+      // Asegurar que los estilos existen para hero
+      if (pageObj.content?.hero && !pageObj.content.hero.styles) {
+        pageObj.content.hero.styles = {
+          light: { titleColor: '', subtitleColor: '', descriptionColor: '' },
+          dark: { titleColor: '', subtitleColor: '', descriptionColor: '' }
+        };
+      }
+      
+      // Asegurar que los estilos existen para solutions
+      if (pageObj.content?.solutions && !pageObj.content.solutions.styles) {
+        pageObj.content.solutions.styles = {
+          light: { titleColor: '', descriptionColor: '' },
+          dark: { titleColor: '', descriptionColor: '' }
+        };
+      }
+      
+      // Asegurar que los estilos existen para valueAdded
+      if (pageObj.content?.valueAdded && !pageObj.content.valueAdded.styles) {
+        pageObj.content.valueAdded.styles = {
+          light: { titleColor: '', descriptionColor: '' },
+          dark: { titleColor: '', descriptionColor: '' }
+        };
+      }
+      
+      // Convertir botones
       if (pageObj.theme) {
         if (pageObj.theme.lightMode?.buttons) {
           pageObj.theme.lightMode.buttons = convertButtonsToFrontend(pageObj.theme.lightMode.buttons);
@@ -131,6 +175,13 @@ export const getPageBySlug = async (req, res) => {
       };
     }
     
+    if (pageObj.content?.valueAdded && !pageObj.content.valueAdded.styles) {
+      pageObj.content.valueAdded.styles = {
+        light: { titleColor: '', descriptionColor: '' },
+        dark: { titleColor: '', descriptionColor: '' }
+      };
+    }
+    
     if (pageObj.theme) {
       if (pageObj.theme.lightMode?.buttons) {
         pageObj.theme.lightMode.buttons = convertButtonsToFrontend(pageObj.theme.lightMode.buttons);
@@ -165,6 +216,16 @@ export const updatePage = async (req, res) => {
     const { slug } = req.params;
     const updateData = req.body;
     
+    console.log('💾 [Backend] Actualizando página:', slug);
+    console.log('💾 [Backend] ValueAdded cardsDesign recibido:', 
+      updateData.content?.valueAdded?.cardsDesign ? 'SÍ' : 'NO'
+    );
+    
+    if (updateData.content?.valueAdded?.cardsDesign) {
+      console.log('💾 [Backend] Light styles:', updateData.content.valueAdded.cardsDesign.light);
+      console.log('💾 [Backend] Dark styles:', updateData.content.valueAdded.cardsDesign.dark);
+    }
+    
     // Obtener datos anteriores para comparar imágenes
     const oldPage = await Page.findOne({ pageSlug: slug });
     
@@ -198,7 +259,10 @@ export const updatePage = async (req, res) => {
       });
     }
     
-    console.log('💾 Página guardada en base de datos');
+    console.log('✅ [Backend] Página guardada en base de datos');
+    console.log('✅ [Backend] ValueAdded cardsDesign guardado:', 
+      page.content?.valueAdded?.cardsDesign ? 'SÍ' : 'NO'
+    );
     
     // Actualizar referencias de imágenes
     if (oldPage) {

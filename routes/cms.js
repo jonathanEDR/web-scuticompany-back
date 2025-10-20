@@ -8,6 +8,7 @@ import {
 } from '../controllers/cmsController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { initializeDatabase, checkDatabaseHealth } from '../utils/dbInitializer.js';
+import validateCardStylesMiddleware from '../middleware/validateCardStyles.js';
 
 const router = express.Router();
 
@@ -33,8 +34,8 @@ router.get('/health', async (req, res) => {
 });
 
 // Rutas protegidas (requieren autenticación)
-router.put('/pages/:slug', requireAuth, updatePage);
-router.post('/pages', requireAuth, createPage);
+router.put('/pages/:slug', requireAuth, validateCardStylesMiddleware, updatePage);
+router.post('/pages', requireAuth, validateCardStylesMiddleware, createPage);
 router.post('/pages/init-home', requireAuth, initHomePage);
 
 // Forzar re-inicialización de base de datos (solo para admin)
