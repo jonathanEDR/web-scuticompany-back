@@ -147,6 +147,35 @@ const PageSchema = new mongoose.Schema({
         description: String,
         gradient: String
       }],
+      // Logos de tecnologías/empresas que se muestran arriba de las tarjetas
+      logos: [{
+        name: String,       // Nombre del logo (ej: "SQL", "Python", "Java")
+        imageUrl: String,   // URL de la imagen del logo
+        alt: String,        // Texto alternativo
+        link: String,       // URL opcional para hacer clickeable el logo
+        order: { type: Number, default: 0 } // Orden de aparición
+      }],
+      // Configuración de la barra de logos
+      logosBarDesign: {
+        light: {
+          background: { type: String, default: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.8) 100%)' },
+          borderColor: { type: String, default: 'rgba(139, 92, 246, 0.15)' },
+          borderWidth: { type: String, default: '1px' },
+          borderRadius: { type: String, default: '1rem' }, // 16px
+          shadow: { type: String, default: '0 8px 32px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05)' },
+          backdropBlur: { type: Boolean, default: true },
+          disperseEffect: { type: Boolean, default: false } // Efecto de dispersión en los bordes
+        },
+        dark: {
+          background: { type: String, default: 'linear-gradient(135deg, rgba(17, 24, 39, 0.9) 0%, rgba(31, 41, 55, 0.8) 100%)' },
+          borderColor: { type: String, default: 'rgba(139, 92, 246, 0.25)' },
+          borderWidth: { type: String, default: '1px' },
+          borderRadius: { type: String, default: '1rem' }, // 16px
+          shadow: { type: String, default: '0 8px 32px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(255, 255, 255, 0.05)' },
+          backdropBlur: { type: Boolean, default: true },
+          disperseEffect: { type: Boolean, default: false } // Efecto de dispersión en los bordes
+        }
+      },
       // Diseño de tarjetas por tema (similar a solutions)
       cardsDesign: {
         light: {
