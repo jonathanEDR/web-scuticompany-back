@@ -133,6 +133,10 @@ function autoCorrectCardStyles(styles, theme) {
  */
 export const validateCardStylesMiddleware = (req, res, next) => {
   try {
+    // 🚨 DESACTIVADO TEMPORALMENTE: Auto-corrección interfiere con cambios del usuario
+    console.log('🔧 validateCardStylesMiddleware: OMITIDO para permitir cambios del usuario');
+    return next();
+    
     // Solo validar en actualizaciones de contenido
     if (req.method !== 'PUT' && req.method !== 'POST') {
       return next();
@@ -231,7 +235,8 @@ export const validateCardStylesMiddleware = (req, res, next) => {
       
       // Agregar header de respuesta para que el frontend sepa que hubo correcciones
       res.set('X-Auto-Corrected', 'true');
-      res.set('X-Auto-Corrections', JSON.stringify(correctionLog));
+      // Enviar número de correcciones en lugar del JSON completo (evita caracteres inválidos)
+      res.set('X-Auto-Corrections-Count', correctionLog.length.toString());
     }
     
     next();

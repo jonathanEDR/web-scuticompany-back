@@ -450,7 +450,8 @@ const PageSchema = new mongoose.Schema({
     default: 'admin'
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  strict: false // ✅ Permite guardar campos no definidos en el schema (importante para cardsDesign)
 });
 
 // Importar y configurar tracking de cambios

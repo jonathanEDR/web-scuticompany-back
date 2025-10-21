@@ -83,15 +83,120 @@ export const getAllPages = async (req, res) => {
         };
       }
       
-      // Asegurar que los estilos existen para valueAdded
-      if (pageObj.content?.valueAdded && !pageObj.content.valueAdded.styles) {
-        pageObj.content.valueAdded.styles = {
-          light: { titleColor: '', descriptionColor: '' },
-          dark: { titleColor: '', descriptionColor: '' }
-        };
-      }
-      
-      // Convertir botones
+    // Asegurar que los estilos existen para valueAdded
+    if (pageObj.content?.valueAdded && !pageObj.content.valueAdded.styles) {
+      pageObj.content.valueAdded.styles = {
+        light: { titleColor: '', descriptionColor: '' },
+        dark: { titleColor: '', descriptionColor: '' }
+      };
+    }
+
+    // 🔧 CORRECCIÓN: Asegurar que cardsDesign existe para solutions
+    if (pageObj.content?.solutions && !pageObj.content.solutions.cardsDesign) {
+      console.log('⚠️ [Backend] Migrando cardsDesign para solutions');
+      pageObj.content.solutions.cardsDesign = {
+        light: {
+          background: 'rgba(255, 255, 255, 0.1)',
+          border: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+          borderWidth: '1px',
+          shadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          hoverBackground: 'rgba(255, 255, 255, 0.15)',
+          hoverBorder: 'linear-gradient(135deg, #a78bfa, #22d3ee)',
+          hoverShadow: '0 20px 40px rgba(139, 92, 246, 0.2)',
+          iconGradient: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+          iconBackground: 'rgba(255, 255, 255, 0.9)',
+          iconColor: '#7528ee',
+          titleColor: '#333333',
+          descriptionColor: '#6B7280',
+          linkColor: '#7528ee',
+          cardMinWidth: '200px',
+          cardMaxWidth: '100%',
+          cardMinHeight: 'auto',
+          cardPadding: '2rem',
+          cardsAlignment: 'left',
+          iconBorderEnabled: false,
+          iconAlignment: 'center'
+        },
+        dark: {
+          background: 'rgba(0, 0, 0, 0.3)',
+          border: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+          borderWidth: '2px',
+          shadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+          hoverBackground: 'rgba(0, 0, 0, 0.4)',
+          hoverBorder: 'linear-gradient(135deg, #a78bfa, #22d3ee)',
+          hoverShadow: '0 20px 40px rgba(139, 92, 246, 0.3)',
+          iconGradient: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+          iconBackground: 'rgba(17, 24, 39, 0.8)',
+          iconColor: '#ffffff',
+          titleColor: '#ffffff',
+          descriptionColor: '#d1d5db',
+          linkColor: '#a78bfa',
+          cardMinWidth: '280px',
+          cardMaxWidth: '100%',
+          cardMinHeight: 'auto',
+          cardPadding: '2rem',
+          cardsAlignment: 'left',
+          iconBorderEnabled: false,
+          iconAlignment: 'center'
+        }
+      };
+    }
+
+    // 🔧 CORRECCIÓN: Asegurar que cardsDesign existe para valueAdded
+    if (pageObj.content?.valueAdded && !pageObj.content.valueAdded.cardsDesign) {
+      console.log('⚠️ [Backend] Migrando cardsDesign para valueAdded');
+      pageObj.content.valueAdded.cardsDesign = {
+        light: {
+          background: 'rgba(255, 255, 255, 0.9)',
+          border: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+          borderWidth: '2px',
+          shadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          hoverBackground: 'rgba(255, 255, 255, 0.95)',
+          hoverBorder: 'linear-gradient(135deg, #a78bfa, #22d3ee)',
+          hoverShadow: '0 20px 40px rgba(139, 92, 246, 0.2)',
+          iconGradient: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+          iconBackground: 'rgba(255, 255, 255, 0.9)',
+          iconColor: '#7528ee',
+          titleColor: '#FFFFFF',
+          descriptionColor: '#E5E7EB',
+          linkColor: '#22d3ee',
+          cardMinWidth: '280px',
+          cardMaxWidth: '350px',
+          cardMinHeight: '200px',
+          cardPadding: '2rem',
+          cardsAlignment: 'center',
+          iconBorderEnabled: false,
+          iconAlignment: 'center'
+        },
+        dark: {
+          background: 'rgba(255, 255, 255, 0.9)',
+          border: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+          borderWidth: '2px',
+          shadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+          hoverBackground: 'rgba(255, 255, 255, 0.95)',
+          hoverBorder: 'linear-gradient(135deg, #a78bfa, #22d3ee)',
+          hoverShadow: '0 20px 40px rgba(139, 92, 246, 0.3)',
+          iconGradient: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+          iconBackground: 'rgba(17, 24, 39, 0.8)',
+          iconColor: '#ffffff',
+          titleColor: '#FFFFFF',
+          descriptionColor: '#E5E7EB',
+          linkColor: '#a78bfa',
+          cardMinWidth: '280px',
+          cardMaxWidth: '350px',
+          cardMinHeight: '200px',
+          cardPadding: '2rem',
+          cardsAlignment: 'center',
+          iconBorderEnabled: false,
+          iconAlignment: 'center'
+        }
+      };
+    }
+
+    // Logs de depuración para verificar la corrección
+    console.log('🔍 [Backend] Verificando cardsDesign en respuesta pública:');
+    console.log('   Solutions cardsDesign:', pageObj.content?.solutions?.cardsDesign ? 'EXISTE' : 'NO EXISTE');
+    console.log('   ValueAdded cardsDesign:', pageObj.content?.valueAdded?.cardsDesign ? 'EXISTE' : 'NO EXISTE');      // Convertir botones
       if (pageObj.theme) {
         if (pageObj.theme.lightMode?.buttons) {
           pageObj.theme.lightMode.buttons = convertButtonsToFrontend(pageObj.theme.lightMode.buttons);
@@ -216,15 +321,11 @@ export const updatePage = async (req, res) => {
     const { slug } = req.params;
     const updateData = req.body;
     
-    console.log('💾 [Backend] Actualizando página:', slug);
-    console.log('💾 [Backend] ValueAdded cardsDesign recibido:', 
-      updateData.content?.valueAdded?.cardsDesign ? 'SÍ' : 'NO'
-    );
-    
-    if (updateData.content?.valueAdded?.cardsDesign) {
-      console.log('💾 [Backend] Light styles:', updateData.content.valueAdded.cardsDesign.light);
-      console.log('💾 [Backend] Dark styles:', updateData.content.valueAdded.cardsDesign.dark);
-    }
+    // 🔍 [DEBUG] Log completo del body recibido
+    console.log('📥 [RECIBIDO BACKEND] Body completo:', JSON.stringify({
+      contentSolutions: updateData.content?.solutions?.cardsDesign?.light,
+      contentValueAdded: updateData.content?.valueAdded?.cardsDesign?.light
+    }, null, 2));
     
     // Obtener datos anteriores para comparar imágenes
     const oldPage = await Page.findOne({ pageSlug: slug });
@@ -243,14 +344,9 @@ export const updatePage = async (req, res) => {
     updateData.lastUpdated = Date.now();
     updateData.updatedBy = req.user?.email || 'admin';
     
-    const page = await Page.findOneAndUpdate(
-      { pageSlug: slug },
-      updateData,
-      {
-        new: true, // Retornar documento actualizado
-        runValidators: true // Validar datos
-      }
-    );
+    // 🔧 SOLUCIÓN: Usar findOne + save() en lugar de findOneAndUpdate
+    // porque findOneAndUpdate puede ignorar strict: false en algunos casos
+    const page = await Page.findOne({ pageSlug: slug });
     
     if (!page) {
       return res.status(404).json({
@@ -259,10 +355,52 @@ export const updatePage = async (req, res) => {
       });
     }
     
-    console.log('✅ [Backend] Página guardada en base de datos');
-    console.log('✅ [Backend] ValueAdded cardsDesign guardado:', 
-      page.content?.valueAdded?.cardsDesign ? 'SÍ' : 'NO'
-    );
+    // Actualizar campos manualmente
+    if (updateData.content) {
+      console.log('🔄 [UPDATE] Actualizando content...');
+      console.log('🔍 [UPDATE] borderWidth ANTES de asignar:', page.content?.solutions?.cardsDesign?.light?.borderWidth);
+      console.log('🔍 [UPDATE] borderWidth en updateData:', updateData.content?.solutions?.cardsDesign?.light?.borderWidth);
+      page.content = updateData.content;
+      page.markModified('content'); // ⚠️ CRÍTICO: Marcar como modificado para forzar guardado
+      console.log('🔍 [UPDATE] borderWidth DESPUÉS de asignar:', page.content?.solutions?.cardsDesign?.light?.borderWidth);
+      console.log('✅ [UPDATE] Content marcado como modificado');
+    }
+    if (updateData.seo) {
+      console.log('🔄 [UPDATE] Actualizando SEO...');
+      page.seo = updateData.seo;
+      page.markModified('seo');
+    }
+    if (updateData.theme) {
+      console.log('🔄 [UPDATE] Actualizando theme...');
+      page.theme = updateData.theme;
+      page.markModified('theme');
+    }
+    if (updateData.isPublished !== undefined) {
+      console.log('🔄 [UPDATE] Actualizando isPublished...');
+      page.isPublished = updateData.isPublished;
+    }
+    page.lastUpdated = updateData.lastUpdated;
+    page.updatedBy = updateData.updatedBy;
+    
+    // 🔍 [DEBUG] Logging antes del guardado
+    console.log('🔍 [ANTES SAVE] Verificando datos a guardar...');
+    if (page.content?.solutions?.cardsDesign?.light?.borderWidth) {
+      console.log('🔍 [ANTES SAVE] borderWidth:', page.content.solutions.cardsDesign.light.borderWidth);
+    }
+    
+    // Guardar cambios
+    console.log('💾 [SAVE] Iniciando save() a MongoDB...');
+    await page.save();
+    console.log('✅ [SAVE] save() completado');
+    
+    // 🔍 [DEBUG] Logging después del guardado
+    console.log('🔍 [DESPUÉS SAVE] Verificando datos guardados...');
+    const verifyPage = await Page.findOne({ pageSlug: slug });
+    if (verifyPage.content?.solutions?.cardsDesign?.light?.borderWidth) {
+      console.log('🔍 [DESPUÉS SAVE] borderWidth en BD:', verifyPage.content.solutions.cardsDesign.light.borderWidth);
+    }
+    
+    console.log('✅ Guardado en DB');
     
     // Actualizar referencias de imágenes
     if (oldPage) {
