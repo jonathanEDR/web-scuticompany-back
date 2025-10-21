@@ -230,6 +230,91 @@ const PageSchema = new mongoose.Schema({
         }
       }
     },
+    clientLogos: {
+      title: { type: String, default: 'Nuestros clientes' },
+      description: { type: String, default: 'Empresas que confían en nosotros' },
+      visible: { type: Boolean, default: true }, // Controla si se muestra la sección
+      showText: { type: Boolean, default: true }, // Controla si se muestran título y descripción
+      // Imagen de fondo única (no por tema)
+      backgroundImage: { type: String, default: '' }, // Imagen de fondo única
+      backgroundImageAlt: { type: String, default: 'Client logos background' },
+      // Configuración directa de la sección (sin contenedor extra)
+      sectionHeight: { type: String, default: 'auto' }, // Altura de la sección
+      sectionPaddingY: { type: String, default: '4rem' }, // Espaciado vertical
+      logosHeight: { type: String, default: '60px' }, // Altura específica de los logos
+      // Estilos de texto por tema
+      styles: {
+        light: {
+          titleColor: { type: String, default: '' },
+          descriptionColor: { type: String, default: '' }
+        },
+        dark: {
+          titleColor: { type: String, default: '' },
+          descriptionColor: { type: String, default: '' }
+        }
+      },
+      // Logos de clientes
+      logos: [{
+        name: String,       // Nombre del cliente (ej: "Microsoft", "Google", "IBM")
+        imageUrl: String,   // URL de la imagen del logo
+        alt: String,        // Texto alternativo
+        link: String,       // URL opcional para hacer clickeable el logo
+        order: { type: Number, default: 0 }, // Orden de aparición
+        background: String  // Fondo individual del logo (color o gradiente)
+      }],
+      // Configuración del diseño de la sección
+      sectionDesign: {
+        light: {
+          background: { type: String, default: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)' },
+          borderColor: { type: String, default: 'rgba(139, 92, 246, 0.1)' },
+          borderWidth: { type: String, default: '1px' },
+          borderRadius: { type: String, default: '1.5rem' },
+          shadow: { type: String, default: '0 10px 40px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)' },
+          padding: { type: String, default: '3rem' },
+          margin: { type: String, default: '2rem 0' }
+        },
+        dark: {
+          background: { type: String, default: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(31, 41, 55, 0.9) 100%)' },
+          borderColor: { type: String, default: 'rgba(139, 92, 246, 0.2)' },
+          borderWidth: { type: String, default: '1px' },
+          borderRadius: { type: String, default: '1.5rem' },
+          shadow: { type: String, default: '0 10px 40px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(255, 255, 255, 0.02)' },
+          padding: { type: String, default: '3rem' },
+          margin: { type: String, default: '2rem 0' }
+        }
+      },
+      // Configuración de los logos
+      logosDesign: {
+        light: {
+          logoMaxWidth: { type: String, default: '120px' },
+          logoMaxHeight: { type: String, default: '80px' },
+          logoOpacity: { type: String, default: '0.7' },
+          logoHoverOpacity: { type: String, default: '1' },
+          logoFilter: { type: String, default: 'grayscale(0%)' },
+          logoHoverFilter: { type: String, default: 'grayscale(0%)' },
+          logoBackground: { type: String, default: 'transparent' },
+          logoPadding: { type: String, default: '1rem' },
+          logosBorderRadius: { type: String, default: '0.5rem' },
+          logosGap: { type: String, default: '2rem' },
+          logosPerRow: { type: Number, default: 4 }, // Logos por fila en desktop
+          logosAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' }
+        },
+        dark: {
+          logoMaxWidth: { type: String, default: '120px' },
+          logoMaxHeight: { type: String, default: '80px' },
+          logoOpacity: { type: String, default: '0.8' },
+          logoHoverOpacity: { type: String, default: '1' },
+          logoFilter: { type: String, default: 'brightness(0) invert(1)' }, // Hace los logos blancos
+          logoHoverFilter: { type: String, default: 'brightness(0) invert(1)' },
+          logoBackground: { type: String, default: 'transparent' },
+          logoPadding: { type: String, default: '1rem' },
+          logosBorderRadius: { type: String, default: '0.5rem' },
+          logosGap: { type: String, default: '2rem' },
+          logosPerRow: { type: Number, default: 4 }, // Logos por fila en desktop
+          logosAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' }
+        }
+      }
+    },
     contact: {
       phone: { type: String, default: '+51 973 397 306' },
       email: { type: String, default: 'corpocomunicados@gmail.com' },
