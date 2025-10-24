@@ -317,7 +317,12 @@ const PageSchema = new mongoose.Schema({
     },
     contact: {
       phone: { type: String, default: '+51 973 397 306' },
-      email: { type: String, default: 'corpocomunicados@gmail.com' },
+      email: { type: String, default: 'gscutic@gmail.com' },
+      address: { type: String, default: '' },
+      city: { type: String, default: 'Huánuco' },
+      country: { type: String, default: 'Perú' },
+      businessHours: { type: String, default: 'Lunes a Viernes: 9:00 AM - 6:00 PM' },
+      description: { type: String, default: 'Empresa líder en desarrollo de software en Perú. Creamos soluciones digitales, aplicaciones móviles y modelos de IA para empresas que buscan innovar.' },
       socialLinks: [{
         name: { type: String, required: true }, // facebook, twitter, instagram, whatsapp, etc.
         url: { type: String, required: true },
