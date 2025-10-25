@@ -206,6 +206,20 @@ export const getRoleStatistics = async () => {
 /**
  * Verificar permisos específicos de un usuario
  */
+/**
+ * Verificar si un rol tiene un permiso específico
+ * @param {string} role - Rol a verificar
+ * @param {string} permission - Permiso requerido
+ * @returns {boolean} - True si el rol tiene el permiso
+ */
+export const hasPermission = (role, permission) => {
+  const rolePermissions = ROLE_PERMISSIONS[role] || [];
+  return rolePermissions.includes(permission);
+};
+
+/**
+ * Verificar permisos de usuario por ID
+ */
 export const checkUserPermissions = async (userId, permissions) => {
   try {
     const user = await User.findById(userId);

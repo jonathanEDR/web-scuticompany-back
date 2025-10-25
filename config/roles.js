@@ -50,7 +50,31 @@ export const PERMISSIONS = {
   
   // Gestión de roles
   ASSIGN_ROLES: 'ASSIGN_ROLES',
-  VIEW_ROLES: 'VIEW_ROLES'
+  VIEW_ROLES: 'VIEW_ROLES',
+  
+  // ========================================
+  // 💼 PERMISOS CRM (Customer Relationship Management)
+  // ========================================
+  
+  // Leads - Lectura
+  VIEW_ALL_LEADS: 'VIEW_ALL_LEADS',           // Ver todos los leads del sistema
+  VIEW_OWN_LEADS: 'VIEW_OWN_LEADS',           // Ver solo leads asignados a ti
+  VIEW_TEAM_LEADS: 'VIEW_TEAM_LEADS',         // Ver leads del equipo
+  
+  // Leads - Escritura
+  CREATE_LEADS: 'CREATE_LEADS',               // Crear nuevos leads
+  EDIT_ALL_LEADS: 'EDIT_ALL_LEADS',           // Editar cualquier lead
+  EDIT_OWN_LEADS: 'EDIT_OWN_LEADS',           // Editar solo tus leads
+  DELETE_LEADS: 'DELETE_LEADS',               // Eliminar leads
+  
+  // Leads - Gestión
+  ASSIGN_LEADS: 'ASSIGN_LEADS',               // Asignar leads a usuarios
+  CHANGE_LEAD_STATUS: 'CHANGE_LEAD_STATUS',   // Cambiar estado de leads
+  ADD_LEAD_ACTIVITIES: 'ADD_LEAD_ACTIVITIES', // Agregar notas y actividades
+  
+  // CRM - Reportes y Analytics
+  VIEW_CRM_REPORTS: 'VIEW_CRM_REPORTS',       // Ver reportes del CRM
+  EXPORT_CRM_DATA: 'EXPORT_CRM_DATA'          // Exportar datos del CRM
 };
 
 // Matriz de permisos por rol
@@ -71,7 +95,20 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.MANAGE_SYSTEM,
     PERMISSIONS.VIEW_LOGS,
     PERMISSIONS.ASSIGN_ROLES,
-    PERMISSIONS.VIEW_ROLES
+    PERMISSIONS.VIEW_ROLES,
+    // CRM - Acceso total
+    PERMISSIONS.VIEW_ALL_LEADS,
+    PERMISSIONS.VIEW_OWN_LEADS,
+    PERMISSIONS.VIEW_TEAM_LEADS,
+    PERMISSIONS.CREATE_LEADS,
+    PERMISSIONS.EDIT_ALL_LEADS,
+    PERMISSIONS.EDIT_OWN_LEADS,
+    PERMISSIONS.DELETE_LEADS,
+    PERMISSIONS.ASSIGN_LEADS,
+    PERMISSIONS.CHANGE_LEAD_STATUS,
+    PERMISSIONS.ADD_LEAD_ACTIVITIES,
+    PERMISSIONS.VIEW_CRM_REPORTS,
+    PERMISSIONS.EXPORT_CRM_DATA
   ],
   
   [ROLES.ADMIN]: [
@@ -89,7 +126,19 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.EXPORT_DATA,
     PERMISSIONS.VIEW_LOGS,
     PERMISSIONS.ASSIGN_ROLES, // Solo a roles inferiores
-    PERMISSIONS.VIEW_ROLES
+    PERMISSIONS.VIEW_ROLES,
+    // CRM - Gestión completa excepto delete
+    PERMISSIONS.VIEW_ALL_LEADS,
+    PERMISSIONS.VIEW_OWN_LEADS,
+    PERMISSIONS.VIEW_TEAM_LEADS,
+    PERMISSIONS.CREATE_LEADS,
+    PERMISSIONS.EDIT_ALL_LEADS,
+    PERMISSIONS.EDIT_OWN_LEADS,
+    PERMISSIONS.ASSIGN_LEADS,
+    PERMISSIONS.CHANGE_LEAD_STATUS,
+    PERMISSIONS.ADD_LEAD_ACTIVITIES,
+    PERMISSIONS.VIEW_CRM_REPORTS,
+    PERMISSIONS.EXPORT_CRM_DATA
   ],
   
   [ROLES.MODERATOR]: [
@@ -101,7 +150,14 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_SERVICES,
     PERMISSIONS.UPLOAD_FILES,
     PERMISSIONS.VIEW_ANALYTICS,
-    PERMISSIONS.VIEW_ROLES
+    PERMISSIONS.VIEW_ROLES,
+    // CRM - Solo sus leads y los de su equipo
+    PERMISSIONS.VIEW_TEAM_LEADS,
+    PERMISSIONS.VIEW_OWN_LEADS,
+    PERMISSIONS.CREATE_LEADS,
+    PERMISSIONS.EDIT_OWN_LEADS,
+    PERMISSIONS.CHANGE_LEAD_STATUS,
+    PERMISSIONS.ADD_LEAD_ACTIVITIES
   ],
   
   [ROLES.CLIENT]: [

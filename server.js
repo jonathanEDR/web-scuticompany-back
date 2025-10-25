@@ -13,6 +13,7 @@ import cmsRoutes from './routes/cms.js';
 import uploadRoutes from './routes/upload.js';
 import adminRoutes from './routes/admin.js';
 import demoRoutes from './routes/demo.js';
+import crmRoutes from './routes/crm.js';
 import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import logger from './utils/logger.js';
@@ -258,6 +259,7 @@ app.use('/api/cms', cmsRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/demo', demoRoutes);
+app.use('/api/crm', crmRoutes); // 💼 CRM Routes
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {
