@@ -17,6 +17,8 @@ const uploadsDir = path.join(__dirname, '../uploads');
 // @access  Private
 export const uploadImage = async (req, res) => {
   try {
+    // Verificar archivos y autenticación
+
     if (!req.files || !req.files.image) {
       return res.status(400).json({
         success: false,
@@ -25,7 +27,15 @@ export const uploadImage = async (req, res) => {
     }
 
     const imageFile = req.files.image;
-    const userId = req.user.userId; // Del middleware auth
+    const userId = req.user?.clerkId || req.user?.id; // Fallback
+    
+    if (!userId) {
+      logger.error('Usuario no autenticado correctamente', { user: req.user });
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no autenticado correctamente'
+      });
+    }
     
     // Validar tipo de archivo
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];

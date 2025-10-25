@@ -330,6 +330,136 @@ const PageSchema = new mongoose.Schema({
         enabled: { type: Boolean, default: true }
       }]
     },
+    contactForm: {
+      // Textos principales
+      title: { type: String, default: 'Contáctanos' },
+      subtitle: { type: String, default: 'Estamos aquí para ayudarte' },
+      description: { type: String, default: '¿Tienes un proyecto en mente? Cuéntanos sobre él y te responderemos pronto.' },
+      
+      // Configuración de campos del formulario
+      fields: {
+        nombreLabel: { type: String, default: 'Nombre' },
+        nombrePlaceholder: { type: String, default: 'Tu nombre completo' },
+        nombreRequired: { type: Boolean, default: true },
+        
+        celularLabel: { type: String, default: 'Celular / Teléfono' },
+        celularPlaceholder: { type: String, default: '+51 999 999 999' },
+        celularRequired: { type: Boolean, default: true },
+        
+        correoLabel: { type: String, default: 'Correo Electrónico' },
+        correoPlaceholder: { type: String, default: 'tu@email.com' },
+        correoRequired: { type: Boolean, default: true },
+        
+        mensajeLabel: { type: String, default: 'Cuéntanos sobre tu proyecto' },
+        mensajePlaceholder: { type: String, default: 'Describe tu proyecto, necesidades o consulta...' },
+        mensajeRequired: { type: Boolean, default: true },
+        mensajeRows: { type: Number, default: 5 },
+        
+        termsText: { type: String, default: 'Acepto la Política de Privacidad y Términos de Servicio' },
+        termsLink: { type: String, default: '/terminos' },
+        termsRequired: { type: Boolean, default: true }
+      },
+      
+      // Configuración del botón
+      button: {
+        text: { type: String, default: 'ENVIAR' },
+        loadingText: { type: String, default: 'Enviando...' }
+      },
+      
+      // Mensajes de respuesta
+      messages: {
+        success: { 
+          type: String, 
+          default: '¡Gracias por contactarnos! Te responderemos pronto.' 
+        },
+        error: { 
+          type: String, 
+          default: 'Hubo un error al enviar el mensaje. Por favor, intenta nuevamente.' 
+        }
+      },
+      
+      // Imagen de fondo por tema
+      backgroundImage: {
+        light: { type: String, default: '' },
+        dark: { type: String, default: '' }
+      },
+      backgroundImageAlt: { type: String, default: 'Contact background' },
+      
+      // Estilos por tema
+      styles: {
+        light: {
+          // Colores de texto
+          titleColor: { type: String, default: '#1f2937' },
+          subtitleColor: { type: String, default: '#6b7280' },
+          descriptionColor: { type: String, default: '#4b5563' },
+          
+          // Estilos del formulario
+          formBackground: { type: String, default: 'rgba(255, 255, 255, 0.95)' },
+          formBorder: { type: String, default: 'rgba(0, 0, 0, 0.1)' },
+          formShadow: { type: String, default: '0 10px 40px rgba(0, 0, 0, 0.1)' },
+          
+          // Campos de entrada
+          inputBackground: { type: String, default: '#ffffff' },
+          inputBorder: { type: String, default: '#e5e7eb' },
+          inputText: { type: String, default: '#1f2937' },
+          inputPlaceholder: { type: String, default: '#9ca3af' },
+          inputFocusBorder: { type: String, default: '#8B5CF6' },
+          
+          // Labels
+          labelColor: { type: String, default: '#374151' },
+          
+          // Botón
+          buttonBackground: { type: String, default: 'linear-gradient(90deg, #8B5CF6, #06B6D4)' },
+          buttonText: { type: String, default: '#ffffff' },
+          buttonHoverBackground: { type: String, default: 'linear-gradient(90deg, #7C3AED, #0891B2)' },
+          
+          // Mensajes
+          successColor: { type: String, default: '#10b981' },
+          errorColor: { type: String, default: '#ef4444' }
+        },
+        dark: {
+          // Colores de texto
+          titleColor: { type: String, default: '#f9fafb' },
+          subtitleColor: { type: String, default: '#d1d5db' },
+          descriptionColor: { type: String, default: '#9ca3af' },
+          
+          // Estilos del formulario
+          formBackground: { type: String, default: 'rgba(31, 41, 55, 0.95)' },
+          formBorder: { type: String, default: 'rgba(255, 255, 255, 0.1)' },
+          formShadow: { type: String, default: '0 10px 40px rgba(0, 0, 0, 0.5)' },
+          
+          // Campos de entrada
+          inputBackground: { type: String, default: '#1f2937' },
+          inputBorder: { type: String, default: '#374151' },
+          inputText: { type: String, default: '#f9fafb' },
+          inputPlaceholder: { type: String, default: '#6b7280' },
+          inputFocusBorder: { type: String, default: '#A78BFA' },
+          
+          // Labels
+          labelColor: { type: String, default: '#e5e7eb' },
+          
+          // Botón
+          buttonBackground: { type: String, default: 'linear-gradient(90deg, #A78BFA, #22D3EE)' },
+          buttonText: { type: String, default: '#111827' },
+          buttonHoverBackground: { type: String, default: 'linear-gradient(90deg, #8B5CF6, #06B6D4)' },
+          
+          // Mensajes
+          successColor: { type: String, default: '#34d399' },
+          errorColor: { type: String, default: '#f87171' }
+        }
+      },
+      
+      // Configuración de diseño
+      layout: {
+        maxWidth: { type: String, default: '600px' },
+        padding: { type: String, default: '3rem' },
+        borderRadius: { type: String, default: '1rem' },
+        gap: { type: String, default: '1.5rem' }
+      },
+      
+      // Habilitar/deshabilitar formulario
+      enabled: { type: Boolean, default: true }
+    },
     sections: [
       {
         type: {

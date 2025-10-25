@@ -55,6 +55,15 @@ class Logger {
     }
   }
 
+  // ℹ️ Logs informativos
+  info(message, data = null) {
+    const timestamp = new Date().toISOString();
+    console.log(`ℹ️ [INFO] ${timestamp}: ${message}`);
+    if (data && this.isDev) {
+      console.log('   Info:', JSON.stringify(data, null, 2));
+    }
+  }
+
   // 🔍 Logs de debug (solo en desarrollo)
   debug(message, data = null) {
     if (!this.isDev) return;

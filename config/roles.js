@@ -74,7 +74,20 @@ export const PERMISSIONS = {
   
   // CRM - Reportes y Analytics
   VIEW_CRM_REPORTS: 'VIEW_CRM_REPORTS',       // Ver reportes del CRM
-  EXPORT_CRM_DATA: 'EXPORT_CRM_DATA'          // Exportar datos del CRM
+  EXPORT_CRM_DATA: 'EXPORT_CRM_DATA',         // Exportar datos del CRM
+  
+  // ========================================
+  // 📧 PERMISOS DE CONTACTO (Contact Management)
+  // ========================================
+  
+  // Contactos - Lectura
+  VIEW_CONTACTS: 'VIEW_CONTACTS',             // Ver contactos recibidos
+  
+  // Contactos - Gestión
+  MANAGE_CONTACTS: 'MANAGE_CONTACTS',         // Gestionar contactos (cambiar estado, asignar, notas)
+  
+  // Contactos - Eliminación
+  DELETE_CONTACTS: 'DELETE_CONTACTS'          // Eliminar contactos
 };
 
 // Matriz de permisos por rol
@@ -108,7 +121,11 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.CHANGE_LEAD_STATUS,
     PERMISSIONS.ADD_LEAD_ACTIVITIES,
     PERMISSIONS.VIEW_CRM_REPORTS,
-    PERMISSIONS.EXPORT_CRM_DATA
+    PERMISSIONS.EXPORT_CRM_DATA,
+    // Contactos - Acceso total
+    PERMISSIONS.VIEW_CONTACTS,
+    PERMISSIONS.MANAGE_CONTACTS,
+    PERMISSIONS.DELETE_CONTACTS
   ],
   
   [ROLES.ADMIN]: [
@@ -138,7 +155,10 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.CHANGE_LEAD_STATUS,
     PERMISSIONS.ADD_LEAD_ACTIVITIES,
     PERMISSIONS.VIEW_CRM_REPORTS,
-    PERMISSIONS.EXPORT_CRM_DATA
+    PERMISSIONS.EXPORT_CRM_DATA,
+    // Contactos - Gestión completa
+    PERMISSIONS.VIEW_CONTACTS,
+    PERMISSIONS.MANAGE_CONTACTS
   ],
   
   [ROLES.MODERATOR]: [
@@ -157,7 +177,9 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.CREATE_LEADS,
     PERMISSIONS.EDIT_OWN_LEADS,
     PERMISSIONS.CHANGE_LEAD_STATUS,
-    PERMISSIONS.ADD_LEAD_ACTIVITIES
+    PERMISSIONS.ADD_LEAD_ACTIVITIES,
+    // Contactos - Solo lectura
+    PERMISSIONS.VIEW_CONTACTS
   ],
   
   [ROLES.CLIENT]: [
