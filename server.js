@@ -15,6 +15,7 @@ import adminRoutes from './routes/admin.js';
 import demoRoutes from './routes/demo.js';
 import crmRoutes from './routes/crm.js';
 import contactRoutes from './routes/contact.js';
+import debugRoutes from './routes/debug.js';
 import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import logger from './utils/logger.js';
@@ -262,6 +263,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/demo', demoRoutes);
 app.use('/api/crm', crmRoutes); // 💼 CRM Routes
 app.use('/api/contact', contactRoutes); // 📧 Contact Routes (público + admin)
+app.use('/api', debugRoutes); // 🔍 Debug Routes (temporal)
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {
