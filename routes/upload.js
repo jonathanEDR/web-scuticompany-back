@@ -12,43 +12,43 @@ import {
   addImageReference,
   removeImageReference
 } from '../controllers/imageController.js';
-import { requireAuth } from '../middleware/auth.js';
+import { canUploadFiles, canManageUploads, requireUser } from '../middleware/roleAuth.js';
 
 const router = express.Router();
 
 // Rutas de upload y gestión de imágenes (todas protegidas con autenticación)
 
-// Upload de imagen
-router.post('/image', requireAuth, uploadImage);
+// Upload de imagen (requiere permiso de upload)
+router.post('/image', canUploadFiles, uploadImage);
 
-// Listar todas las imágenes con filtros
-router.get('/images', requireAuth, listImages);
+// Listar todas las imágenes con filtros (requiere permiso de gestión)
+router.get('/images', canManageUploads, listImages);
 
-// Buscar imágenes
-router.get('/images/search', requireAuth, searchImages);
+// Buscar imágenes (requiere permiso de gestión)
+router.get('/images/search', canManageUploads, searchImages);
 
-// Obtener estadísticas
-router.get('/images/stats', requireAuth, getImageStatistics);
+// Obtener estadísticas (requiere gestión de uploads)
+router.get('/images/stats', canManageUploads, getImageStatistics);
 
-// Obtener imágenes huérfanas
-router.get('/images/orphans', requireAuth, getOrphanImages);
+// Obtener imágenes huérfanas (requiere gestión de uploads)
+router.get('/images/orphans', canManageUploads, getOrphanImages);
 
-// Limpiar imágenes huérfanas
-router.post('/images/cleanup', requireAuth, cleanupOrphanImages);
+// Limpiar imágenes huérfanas (requiere gestión de uploads)
+router.post('/images/cleanup', canManageUploads, cleanupOrphanImages);
 
-// Obtener imagen por ID
-router.get('/images/:id', requireAuth, getImageById);
+// Obtener imagen por ID (requiere usuario autenticado)
+router.get('/images/:id', requireUser, getImageById);
 
-// Actualizar metadatos de imagen
-router.patch('/images/:id', requireAuth, updateImageMetadata);
+// Actualizar metadatos de imagen (requiere gestión de uploads)
+router.patch('/images/:id', canManageUploads, updateImageMetadata);
 
-// Eliminar imagen
-router.delete('/images/:id', requireAuth, deleteImage);
+// Eliminar imagen (requiere gestión de uploads)
+router.delete('/images/:id', canManageUploads, deleteImage);
 
-// Agregar referencia de uso (internal)
-router.post('/images/:id/reference', requireAuth, addImageReference);
+// Agregar referencia de uso - internal (requiere gestión de uploads)
+router.post('/images/:id/reference', canManageUploads, addImageReference);
 
-// Eliminar referencia de uso (internal)
-router.delete('/images/:id/reference', requireAuth, removeImageReference);
+// Eliminar referencia de uso - internal (requiere gestión de uploads)
+router.delete('/images/:id/reference', canManageUploads, removeImageReference);
 
 export default router;

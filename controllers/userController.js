@@ -66,15 +66,27 @@ export const syncUser = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: 'Usuario actualizado correctamente',
+        synced: true,
         user: {
-          id: updated._id,
+          _id: updated._id,
           clerkId: updated.clerkId,
           email: updated.email,
           firstName: updated.firstName,
           lastName: updated.lastName,
           username: updated.username,
+          fullName: updated.fullName || `${updated.firstName || ''} ${updated.lastName || ''}`.trim(),
           profileImage: updated.profileImage,
-          isNewUser: false
+          emailVerified: updated.emailVerified || false,
+          role: updated.role,
+          customPermissions: updated.customPermissions || [],
+          isActive: updated.isActive,
+          roleAssignedBy: updated.roleAssignedBy,
+          roleAssignedAt: updated.roleAssignedAt,
+          lastLogin: updated.lastLogin,
+          createdAt: updated.createdAt,
+          updatedAt: updated.updatedAt,
+          clerkCreatedAt: updated.clerkCreatedAt,
+          clerkUpdatedAt: updated.clerkUpdatedAt
         }
       });
     } else {
@@ -91,6 +103,7 @@ export const syncUser = async (req, res) => {
         lastName: lastName || '',
         username: username || email.split('@')[0],
         profileImage: profileImage || '',
+        role: 'USER', // Rol por defecto
         lastLogin: new Date()
       });
 
@@ -108,15 +121,27 @@ export const syncUser = async (req, res) => {
       return res.status(201).json({
         success: true,
         message: 'Usuario creado correctamente',
+        synced: true,
         user: {
-          id: newUser._id,
+          _id: newUser._id,
           clerkId: newUser.clerkId,
           email: newUser.email,
           firstName: newUser.firstName,
           lastName: newUser.lastName,
           username: newUser.username,
+          fullName: newUser.fullName || `${newUser.firstName || ''} ${newUser.lastName || ''}`.trim(),
           profileImage: newUser.profileImage,
-          isNewUser: true
+          emailVerified: newUser.emailVerified || false,
+          role: newUser.role,
+          customPermissions: newUser.customPermissions || [],
+          isActive: newUser.isActive,
+          roleAssignedBy: newUser.roleAssignedBy,
+          roleAssignedAt: newUser.roleAssignedAt,
+          lastLogin: newUser.lastLogin,
+          createdAt: newUser.createdAt,
+          updatedAt: newUser.updatedAt,
+          clerkCreatedAt: newUser.clerkCreatedAt,
+          clerkUpdatedAt: newUser.clerkUpdatedAt
         }
       });
     }

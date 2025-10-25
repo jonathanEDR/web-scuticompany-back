@@ -11,6 +11,8 @@ import webhooksRoutes from './routes/webhooks.js';
 import usersRoutes from './routes/users.js';
 import cmsRoutes from './routes/cms.js';
 import uploadRoutes from './routes/upload.js';
+import adminRoutes from './routes/admin.js';
+import demoRoutes from './routes/demo.js';
 import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import logger from './utils/logger.js';
@@ -254,6 +256,8 @@ app.use('/api/servicios', serviciosRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/demo', demoRoutes);
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

@@ -1,4 +1,5 @@
 import Page from '../models/Page.js';
+import { ensureSuperAdminExists } from './roleHelper.js';
 import logger from './logger.js';
 
 /**
@@ -268,6 +269,20 @@ export const initializeDatabase = async () => {
       });
       
       logger.database('FOUND', 'pages', { slug: 'home' });
+    }
+
+    // Verificar existencia de Super Admin
+    logger.init('Verificando Super Administrador del sistema');
+    const superAdmin = await ensureSuperAdminExists();
+    
+    if (superAdmin) {
+      logger.success('Super Administrador verificado', {
+        email: superAdmin.email,
+        id: superAdmin._id
+      });
+    } else {
+      logger.warn('No se pudo verificar/crear Super Administrador');
+      logger.warn('Asegúrate de configurar DEFAULT_SUPER_ADMIN_EMAIL en .env');
     }
 
     // Verificar estado general de la BD

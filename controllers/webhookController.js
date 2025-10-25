@@ -98,19 +98,44 @@ export const clerkWebhook = async (req, res) => {
  */
 async function handleUserCreated(clerkId, attributes) {
   try {
+    // Obtener email del usuario
+    const email = attributes.email_addresses?.[0]?.email_address || '';
+    
+    // Verificar si es el primer super admin basado en email
+    const { DEFAULT_SUPER_ADMIN } = await import('../config/roles.js');
+    const isDefaultSuperAdmin = email === DEFAULT_SUPER_ADMIN.email;
+    
+    // Verificar si ya existe algún super admin
+    const existingSuperAdmin = await User.findOne({ 
+      role: 'SUPER_ADMIN',
+      isActive: true 
+    });
+    
     const userData = {
       clerkId,
-      email: attributes.email_addresses?.[0]?.email_address || '',
+      email,
       firstName: attributes.first_name || '',
       lastName: attributes.last_name || '',
-      username: attributes.username || '',
+      username: attributes.username || email.split('@')[0],
       profileImage: attributes.image_url || '',
       emailVerified: attributes.email_addresses?.[0]?.verification?.status === 'verified',
+      // Asignar rol: Super Admin si es el email por defecto y no hay otros super admins
+      role: (isDefaultSuperAdmin && !existingSuperAdmin) ? 'SUPER_ADMIN' : 'USER',
       clerkCreatedAt: new Date(attributes.created_at),
       clerkUpdatedAt: new Date(attributes.updated_at)
     };
 
     const user = await User.create(userData);
+    
+    // Log importante si se crea un super admin
+    if (user.role === 'SUPER_ADMIN') {
+      const logger = (await import('../utils/logger.js')).default;
+      logger.success('Super Admin creado automáticamente via webhook', {
+        email: user.email,
+        clerkId: user.clerkId
+      });
+    }
+    
     return user;
   } catch (error) {
     console.error('Error creating user:', error.message);
@@ -123,6 +148,8 @@ async function handleUserCreated(clerkId, attributes) {
  */
 async function handleUserUpdated(clerkId, attributes) {
   try {
+    // Solo actualizar datos de perfil de Clerk, NO el rol
+    // El rol se mantiene en la base de datos y solo se cambia via API administrativa
     const updateData = {
       email: attributes.email_addresses?.[0]?.email_address || '',
       firstName: attributes.first_name || '',
@@ -131,6 +158,7 @@ async function handleUserUpdated(clerkId, attributes) {
       profileImage: attributes.image_url || '',
       emailVerified: attributes.email_addresses?.[0]?.verification?.status === 'verified',
       clerkUpdatedAt: new Date(attributes.updated_at)
+      // IMPORTANTE: NO actualizar role, customPermissions, roleAssignedBy, etc.
     };
 
     const user = await User.findOneAndUpdate(
@@ -140,6 +168,7 @@ async function handleUserUpdated(clerkId, attributes) {
     );
 
     if (!user) {
+      // Si el usuario no existe en nuestra DB, crearlo
       await handleUserCreated(clerkId, attributes);
     }
 

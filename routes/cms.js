@@ -6,7 +6,8 @@ import {
   createPage,
   initHomePage
 } from '../controllers/cmsController.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/clerkAuth.js';
+import { canManageContent, canManageSystem } from '../middleware/roleAuth.js';
 import { initializeDatabase, checkDatabaseHealth } from '../utils/dbInitializer.js';
 import validateCardStylesMiddleware from '../middleware/validateCardStyles.js';
 
@@ -33,13 +34,13 @@ router.get('/health', async (req, res) => {
   }
 });
 
-// Rutas protegidas (requieren autenticación)
-router.put('/pages/:slug', requireAuth, validateCardStylesMiddleware, updatePage);
-router.post('/pages', requireAuth, validateCardStylesMiddleware, createPage);
-router.post('/pages/init-home', requireAuth, initHomePage);
+// Rutas protegidas (requieren permisos de gestión de contenido)
+router.put('/pages/:slug', canManageContent, validateCardStylesMiddleware, updatePage);
+router.post('/pages', canManageContent, validateCardStylesMiddleware, createPage);
+router.post('/pages/init-home', canManageContent, initHomePage);
 
-// Forzar re-inicialización de base de datos (solo para admin)
-router.post('/init-database', requireAuth, async (req, res) => {
+// Forzar re-inicialización de base de datos (solo para admins con permisos de sistema)
+router.post('/init-database', canManageSystem, async (req, res) => {
   try {
     console.log('🔄 Forzando re-inicialización de base de datos...');
     await initializeDatabase();
