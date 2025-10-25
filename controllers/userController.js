@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import logger from '../utils/logger.js';
+import { normalizeRole, getDefaultRole } from '../utils/roleNormalizer.js';
 
 /**
  * @desc    Sincronizar usuario de Clerk con MongoDB
@@ -96,6 +97,8 @@ export const syncUser = async (req, res) => {
       });
       
       // Usuario no existe, crear nuevo
+      const defaultRole = getDefaultRole(email); // Determinar rol automáticamente
+      
       const newUser = new User({
         clerkId,
         email,
@@ -103,8 +106,14 @@ export const syncUser = async (req, res) => {
         lastName: lastName || '',
         username: username || email.split('@')[0],
         profileImage: profileImage || '',
-        role: 'USER', // Rol por defecto
+        role: defaultRole, // Rol determinado automáticamente
         lastLogin: new Date()
+      });
+
+      logger.debug('Creando nuevo usuario con rol determinado', {
+        email,
+        assignedRole: defaultRole,
+        isDefaultSuperAdmin: defaultRole === 'SUPER_ADMIN'
       });
 
       await newUser.save();

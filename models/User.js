@@ -41,7 +41,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['SUPER_ADMIN', 'ADMIN', 'MODERATOR', 'CLIENT', 'USER'],
       default: 'USER',
-      required: true
+      required: true,
+      // Middleware para normalizar rol a uppercase antes de guardar
+      set: function(value) {
+        if (typeof value === 'string') {
+          return value.toUpperCase().trim();
+        }
+        return value;
+      }
     },
     // Permisos adicionales específicos (opcional)
     customPermissions: [{
