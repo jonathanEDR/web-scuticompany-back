@@ -1,5 +1,7 @@
 import Contact from '../models/Contact.js';
+import Lead from '../models/Lead.js';
 import { body, validationResult } from 'express-validator';
+import logger from '../utils/logger.js';
 
 /**
  * 📝 VALIDADORES
@@ -70,6 +72,41 @@ export const createContact = async (req, res) => {
 
     await nuevoContacto.save();
 
+    // 🎯 INTEGRACIÓN CRM: Crear también un Lead para gestión interna
+    try {
+      const nuevoLead = new Lead({
+        nombre,
+        celular,
+        correo: correo,
+        tipoServicio: 'consultoria', // Valor por defecto para contactos públicos
+        descripcionProyecto: mensaje,
+        estado: 'nuevo',
+        prioridad: 'media',
+        origen: 'web',
+        tags: ['contacto-publico', 'formulario-web'],
+        creadoPor: {
+          userId: 'system', // Sistema para contactos públicos
+          nombre: 'Sistema Público',
+          email: 'system@webscuti.com'
+        },
+        // Agregar actividad inicial
+        actividades: [{
+          fecha: new Date(),
+          tipo: 'nota',
+          descripcion: 'Lead creado automáticamente desde formulario público del sitio web',
+          usuarioId: 'system',
+          usuarioNombre: 'Sistema Público'
+        }]
+      });
+
+      await nuevoLead.save();
+      
+      logger.info(`✅ Lead CRM ${nuevoLead._id} creado automáticamente desde contacto público ${nuevoContacto._id}`);
+    } catch (crmError) {
+      // No fallar si hay error en CRM, el contacto ya se guardó
+      logger.error('⚠️ Error al crear Lead en CRM desde contacto público:', crmError);
+    }
+
     // Respuesta exitosa (sin datos sensibles)
     res.status(201).json({
       success: true,
@@ -77,8 +114,8 @@ export const createContact = async (req, res) => {
       contactId: nuevoContacto._id
     });
 
-    // TODO: Aquí se puede agregar notificación por email/webhook
-    console.log('✉️ Nuevo contacto recibido:', {
+    // Log del nuevo contacto
+    logger.info('✉️ Nuevo contacto recibido:', {
       id: nuevoContacto._id,
       nombre: nuevoContacto.nombre,
       correo: nuevoContacto.correo
