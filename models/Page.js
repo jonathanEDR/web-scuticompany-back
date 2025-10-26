@@ -467,8 +467,32 @@ const PageSchema = new mongoose.Schema({
         height: { type: String, default: '400px' },
         companyName: { type: String, default: 'Nuestra Ubicación' },
         address: { type: String, default: '' },
-        markerColor: { type: String, default: '#8B5CF6' },
-        pulseColor: { type: String, default: '#8B5CF6' }
+        
+        // Diseño del contenedor
+        containerSize: { type: String, enum: ['small', 'medium', 'large', 'xl'], default: 'medium' },
+        aspectRatio: { type: String, enum: ['square', 'landscape', 'portrait', 'custom'], default: 'landscape' },
+        alignment: { type: String, enum: ['left', 'center', 'right', 'full'], default: 'center' },
+        borderRadius: { type: String, default: '8px' },
+        shadow: { type: String, enum: ['none', 'small', 'medium', 'large'], default: 'medium' },
+        
+        // Configuración del marcador
+        markerColor: { type: String, default: '#ef4444' },
+        pulseColor: { type: String, default: '#ef4444' },
+        customLogo: { type: String, default: '' }, // URL del logo personalizado
+        logoSize: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' },
+        showCompanyName: { type: Boolean, default: true },
+        
+        // Configuración avanzada del marcador
+        markerStyle: { type: String, enum: ['solid', 'gradient', 'custom'], default: 'solid' },
+        markerBorderWidth: { type: String, default: '2px' },
+        markerBackground: { type: String, default: '#ffffff' },
+        markerBorderColor: { type: String, default: '#000000' },
+        
+        // Efectos y animaciones
+        animationEnabled: { type: Boolean, default: true },
+        pulseIntensity: { type: String, enum: ['none', 'low', 'medium', 'high', 'extreme'], default: 'medium' },
+        pulseSpeed: { type: String, enum: ['slow', 'normal', 'fast', 'ultra'], default: 'normal' },
+        hoverEffect: { type: String, enum: ['none', 'glow', 'thunder', 'rainbow', 'shake'], default: 'glow' }
       },
       
       // Habilitar/deshabilitar formulario
