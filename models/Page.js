@@ -457,6 +457,20 @@ const PageSchema = new mongoose.Schema({
         gap: { type: String, default: '1.5rem' }
       },
       
+      // Configuración del mapa
+      map: {
+        enabled: { type: Boolean, default: false },
+        googleMapsUrl: { type: String, default: '' }, // Enlace de Google Maps
+        latitude: { type: Number, default: -12.0464 }, // Lima, Perú
+        longitude: { type: Number, default: -77.0428 },
+        zoom: { type: Number, default: 15 },
+        height: { type: String, default: '400px' },
+        companyName: { type: String, default: 'Nuestra Ubicación' },
+        address: { type: String, default: '' },
+        markerColor: { type: String, default: '#8B5CF6' },
+        pulseColor: { type: String, default: '#8B5CF6' }
+      },
+      
       // Habilitar/deshabilitar formulario
       enabled: { type: Boolean, default: true }
     },
