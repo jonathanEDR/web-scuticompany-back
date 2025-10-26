@@ -324,8 +324,16 @@ export const updatePage = async (req, res) => {
     // 🔍 [DEBUG] Log completo del body recibido
     console.log('📥 [RECIBIDO BACKEND] Body completo:', JSON.stringify({
       contentSolutions: updateData.content?.solutions?.cardsDesign?.light,
-      contentValueAdded: updateData.content?.valueAdded?.cardsDesign?.light
+      contentValueAdded: updateData.content?.valueAdded?.cardsDesign?.light,
+      contentContactForm: updateData.content?.contactForm?.cardsDesign?.light
     }, null, 2));
+    
+    // 🔍 [DEBUG] Log específico para contactForm
+    if (updateData.content?.contactForm?.cardsDesign) {
+      console.log('📧 [CONTACTFORM] cardsDesign recibido:', JSON.stringify(updateData.content.contactForm.cardsDesign, null, 2));
+    } else {
+      console.log('❌ [CONTACTFORM] No se recibió cardsDesign en contactForm');
+    }
     
     // Obtener datos anteriores para comparar imágenes
     const oldPage = await Page.findOne({ pageSlug: slug });

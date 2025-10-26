@@ -133,8 +133,7 @@ function autoCorrectCardStyles(styles, theme) {
  */
 export const validateCardStylesMiddleware = (req, res, next) => {
   try {
-    // 🚨 DESACTIVADO TEMPORALMENTE: Auto-corrección interfiere con cambios del usuario
-    console.log('🔧 validateCardStylesMiddleware: OMITIDO para permitir cambios del usuario');
+    // DESACTIVADO TEMPORALMENTE: Auto-corrección interfiere con cambios del usuario
     return next();
     
     // Solo validar en actualizaciones de contenido
@@ -154,8 +153,13 @@ export const validateCardStylesMiddleware = (req, res, next) => {
       body.content?.solutions?.cardsDesign ||
       body['content.solutions.cardsDesign.light'] ||
       body['content.solutions.cardsDesign.dark'];
+      
+    const hasContactFormCardsDesign = 
+      body.content?.contactForm?.cardsDesign ||
+      body['content.contactForm.cardsDesign.light'] ||
+      body['content.contactForm.cardsDesign.dark'];
     
-    if (!hasValueAddedCardsDesign && !hasSolutionsCardsDesign) {
+    if (!hasValueAddedCardsDesign && !hasSolutionsCardsDesign && !hasContactFormCardsDesign) {
       return next();
     }
     
@@ -214,6 +218,35 @@ export const validateCardStylesMiddleware = (req, res, next) => {
           correctionsMade = true;
           correctionLog.push({
             section: 'Solutions - Tema Oscuro',
+            changes: darkResult.changes
+          });
+        }
+      }
+    }
+    
+    // Validar ContactForm
+    if (body.content?.contactForm?.cardsDesign) {
+      const { light, dark } = body.content.contactForm.cardsDesign;
+      
+      if (light) {
+        const lightResult = autoCorrectCardStyles(light, 'light');
+        if (lightResult.wasCorrected) {
+          body.content.contactForm.cardsDesign.light = lightResult.corrected;
+          correctionsMade = true;
+          correctionLog.push({
+            section: 'ContactForm - Tema Claro',
+            changes: lightResult.changes
+          });
+        }
+      }
+      
+      if (dark) {
+        const darkResult = autoCorrectCardStyles(dark, 'dark');
+        if (darkResult.wasCorrected) {
+          body.content.contactForm.cardsDesign.dark = darkResult.corrected;
+          correctionsMade = true;
+          correctionLog.push({
+            section: 'ContactForm - Tema Oscuro',
             changes: darkResult.changes
           });
         }
