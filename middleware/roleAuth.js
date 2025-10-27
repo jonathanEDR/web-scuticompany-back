@@ -72,6 +72,41 @@ export const canManageServices = [
   requirePermission(PERMISSIONS.MANAGE_SERVICES)
 ];
 
+export const canCreateServices = [
+  requireAuth,
+  requirePermission(PERMISSIONS.CREATE_SERVICES)
+];
+
+export const canEditAllServices = [
+  requireAuth,
+  requirePermission(PERMISSIONS.EDIT_ALL_SERVICES)
+];
+
+export const canEditOwnServices = [
+  requireAuth,
+  requirePermission(PERMISSIONS.EDIT_OWN_SERVICES)
+];
+
+export const canDeleteServices = [
+  requireAuth,
+  requirePermission(PERMISSIONS.DELETE_SERVICES)
+];
+
+export const canViewServicesStats = [
+  requireAuth,
+  requirePermission(PERMISSIONS.VIEW_SERVICES_STATS)
+];
+
+export const canManagePaquetes = [
+  requireAuth,
+  requirePermission(PERMISSIONS.MANAGE_PAQUETES)
+];
+
+export const canDuplicateServices = [
+  requireAuth,
+  requirePermission(PERMISSIONS.DUPLICATE_SERVICES)
+];
+
 // Gestión de uploads
 export const canManageUploads = [
   requireAuth,
@@ -285,18 +320,101 @@ export const requireOwnershipOrAdmin = (resourceModel, resourceIdParam = 'id') =
         });
       }
 
-      req.resource = resource;
       next();
 
     } catch (error) {
-      logger.error('Error en verificación de propiedad', error);
+      logger.error('Error en middleware requireOwnership:', error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        code: 'OWNERSHIP_CHECK_ERROR'
+        message: 'Error al verificar permisos',
+        error: error.message
       });
     }
   };
+};
+
+/**
+ * Middleware para validar que el usuario puede editar un servicio
+ * - SUPER_ADMIN y ADMIN pueden editar cualquier servicio
+ * - MODERATOR solo puede editar servicios donde sea responsable
+ */
+export const canEditService = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { user } = req;
+
+    // Si tiene permiso para editar todos los servicios, permitir
+    if (user.permissions.includes(PERMISSIONS.EDIT_ALL_SERVICES)) {
+      return next();
+    }
+
+    // Si solo puede editar sus propios servicios, verificar ownership
+    if (user.permissions.includes(PERMISSIONS.EDIT_OWN_SERVICES)) {
+      const Servicio = (await import('../models/Servicio.js')).default;
+      const servicio = await Servicio.findById(id);
+
+      if (!servicio) {
+        return res.status(404).json({
+          success: false,
+          message: 'Servicio no encontrado'
+        });
+      }
+
+      // Verificar si el usuario es el responsable
+      if (servicio.responsable && servicio.responsable.toString() === user.id) {
+        return next();
+      }
+
+      return res.status(403).json({
+        success: false,
+        message: 'Solo puedes editar servicios de los que eres responsable',
+        code: 'NOT_SERVICE_OWNER'
+      });
+    }
+
+    // Sin permisos
+    return res.status(403).json({
+      success: false,
+      message: 'No tienes permisos para editar servicios',
+      code: 'INSUFFICIENT_PERMISSIONS'
+    });
+
+  } catch (error) {
+    logger.error('Error en middleware canEditService:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error al verificar permisos',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Middleware para validar que el usuario puede eliminar un servicio
+ * Solo SUPER_ADMIN y ADMIN pueden eliminar servicios
+ */
+export const canDeleteService = async (req, res, next) => {
+  try {
+    const { user } = req;
+
+    if (!user.permissions.includes(PERMISSIONS.DELETE_SERVICES)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para eliminar servicios',
+        code: 'INSUFFICIENT_PERMISSIONS'
+      });
+    }
+
+    next();
+
+  } catch (error) {
+    logger.error('Error en middleware canDeleteService:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error al verificar permisos',
+      error: error.message
+    });
+  }
 };
 
 export default {
@@ -310,6 +428,15 @@ export default {
   canManageContent,
   canModerateContent,
   canManageServices,
+  canCreateServices,
+  canEditAllServices,
+  canEditOwnServices,
+  canDeleteServices,
+  canViewServicesStats,
+  canManagePaquetes,
+  canDuplicateServices,
+  canEditService,
+  canDeleteService,
   canManageUploads,
   canUploadFiles,
   canViewAnalytics,

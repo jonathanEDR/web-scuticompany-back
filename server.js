@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import connectDB from './config/database.js';
 import serviciosRoutes from './routes/servicios.js';
+import paquetesRoutes from './routes/paquetes.js';
 import webhooksRoutes from './routes/webhooks.js';
 import usersRoutes from './routes/users.js';
 import cmsRoutes from './routes/cms.js';
@@ -255,6 +256,7 @@ app.get('/api/project-info', async (req, res) => {
 
 // Rutas de la API
 app.use('/api/servicios', serviciosRoutes);
+app.use('/api/paquetes', paquetesRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/upload', uploadRoutes);
