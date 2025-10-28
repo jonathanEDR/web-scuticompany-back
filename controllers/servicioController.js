@@ -196,6 +196,12 @@ export const createServicio = async (req, res) => {
  */
 export const updateServicio = async (req, res) => {
   try {
+    console.log('📥 Datos recibidos para actualizar:', {
+      id: req.params.id,
+      imagen: req.body.imagen,
+      titulo: req.body.titulo
+    });
+
     const servicio = await Servicio.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -211,6 +217,8 @@ export const updateServicio = async (req, res) => {
         message: 'Servicio no encontrado'
       });
     }
+
+    console.log('✅ Servicio actualizado - imagen guardada:', servicio.imagen);
 
     res.status(200).json({
       success: true,

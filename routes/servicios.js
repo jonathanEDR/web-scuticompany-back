@@ -76,16 +76,16 @@ router.route('/')
 
 router.route('/:id')
   .get(getServicio)                     // GET /api/servicios/:id - Público
-  .put(canEditService, updateServicio)  // PUT /api/servicios/:id - Requiere permiso
-  .delete(canDeleteService, deleteServicio); // DELETE /api/servicios/:id - Solo admins
+  .put(requireAuth, canEditService, updateServicio)  // PUT /api/servicios/:id - Requiere auth + permiso
+  .delete(requireAuth, canDeleteService, deleteServicio); // DELETE /api/servicios/:id - Solo admins
 
 // ============================================
 // RUTAS DE ACCIONES ESPECIALES POR SERVICIO
 // ============================================
-router.post('/:id/duplicar', canDuplicateServices, duplicarServicio);
-router.patch('/:id/estado', canEditService, cambiarEstado);
-router.delete('/:id/soft', canDeleteService, softDeleteServicio);
-router.patch('/:id/restaurar', canManageServices, restaurarServicio);
+router.post('/:id/duplicar', requireAuth, canDuplicateServices, duplicarServicio);
+router.patch('/:id/estado', requireAuth, canEditService, cambiarEstado);
+router.delete('/:id/soft', requireAuth, canDeleteService, softDeleteServicio);
+router.patch('/:id/restaurar', requireAuth, canManageServices, restaurarServicio);
 
 // ============================================
 // RUTAS DE PAQUETES POR SERVICIO

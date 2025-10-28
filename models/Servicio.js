@@ -78,6 +78,12 @@ const servicioSchema = new mongoose.Schema(
       default: 0
     },
     
+    // Imagen principal
+    imagen: {
+      type: String,
+      default: ''
+    },
+    
     // Pricing avanzado
     precio: {
       type: Number,

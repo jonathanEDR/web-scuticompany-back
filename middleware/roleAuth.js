@@ -343,6 +343,24 @@ export const canEditService = async (req, res, next) => {
     const { id } = req.params;
     const { user } = req;
 
+    // Verificar que el usuario esté autenticado
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Autenticación requerida',
+        code: 'AUTHENTICATION_REQUIRED'
+      });
+    }
+
+    // Verificar que el usuario tenga permisos
+    if (!user.permissions || !Array.isArray(user.permissions)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Usuario sin permisos configurados',
+        code: 'NO_PERMISSIONS'
+      });
+    }
+
     // Si tiene permiso para editar todos los servicios, permitir
     if (user.permissions.includes(PERMISSIONS.EDIT_ALL_SERVICES)) {
       return next();
