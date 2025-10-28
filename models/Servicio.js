@@ -98,8 +98,8 @@ const servicioSchema = new mongoose.Schema(
     },
     moneda: {
       type: String,
-      default: 'USD',
-      enum: ['USD', 'MXN', 'EUR']
+      default: 'PEN',
+      enum: ['USD', 'MXN', 'EUR', 'PEN']
     },
     
     // Duración y timing
@@ -153,6 +153,22 @@ const servicioSchema = new mongoose.Schema(
     beneficios: [{
       type: String
     }],
+    incluye: [{
+      type: String
+    }],
+    noIncluye: [{
+      type: String
+    }],
+    faq: [{
+      pregunta: {
+        type: String,
+        required: true
+      },
+      respuesta: {
+        type: String,
+        required: true
+      }
+    }],
     tecnologias: [{
       type: String
     }],
@@ -161,6 +177,21 @@ const servicioSchema = new mongoose.Schema(
       lowercase: true,
       trim: true
     }],
+    
+    // Información adicional del servicio
+    tiempoEntrega: {
+      type: String,
+      maxlength: [100, 'El tiempo de entrega no puede tener más de 100 caracteres']
+    },
+    garantia: {
+      type: String,
+      maxlength: [200, 'La garantía no puede tener más de 200 caracteres']
+    },
+    soporte: {
+      type: String,
+      enum: ['basico', 'premium', 'dedicado', '24x7'],
+      default: 'basico'
+    },
     
     // Organización interna
     departamento: {
@@ -286,14 +317,27 @@ servicioSchema.virtual('duracionFormateada').get(function() {
 });
 
 // Middleware: Generar slug automáticamente antes de guardar
-servicioSchema.pre('save', function(next) {
-  if (this.isModified('titulo') && !this.slug) {
-    this.slug = this.titulo
+servicioSchema.pre('save', async function(next) {
+  // Generar slug si no existe o si el título fue modificado
+  if (this.isModified('titulo') || !this.slug) {
+    let slugBase = this.titulo
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '') // Quitar acentos
       .replace(/[^a-z0-9]+/g, '-') // Reemplazar espacios y caracteres especiales
       .replace(/^-+|-+$/g, ''); // Quitar guiones del inicio y final
+    
+    // Si el slug ya existe, agregar timestamp para hacerlo único
+    let slug = slugBase;
+    let counter = 1;
+    
+    // Verificar si el slug ya existe
+    while (await this.constructor.findOne({ slug, _id: { $ne: this._id } })) {
+      slug = `${slugBase}-${Date.now()}-${counter}`;
+      counter++;
+    }
+    
+    this.slug = slug;
   }
   
   // Validar rangos de precio

@@ -34,8 +34,8 @@ const paqueteServicioSchema = new mongoose.Schema(
     },
     moneda: {
       type: String,
-      default: 'USD',
-      enum: ['USD', 'MXN', 'EUR']
+      default: 'PEN',
+      enum: ['USD', 'MXN', 'EUR', 'PEN']
     },
     tipoFacturacion: {
       type: String,

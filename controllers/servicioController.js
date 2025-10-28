@@ -151,7 +151,18 @@ export const createServicio = async (req, res) => {
       servicioData.responsable = req.user.id;
     }
 
+    // Si no se proporciona slug, se generará automáticamente en el middleware
+    // Si se proporciona slug y ya existe, el middleware agregará timestamp
+    
+    console.log('📝 Creando servicio con datos:', {
+      titulo: servicioData.titulo,
+      slug: servicioData.slug || 'auto-generado',
+      categoria: servicioData.categoria
+    });
+
     const servicio = await Servicio.create(servicioData);
+    
+    console.log('✅ Servicio creado exitosamente con slug:', servicio.slug);
     
     res.status(201).json({
       success: true,
@@ -159,6 +170,17 @@ export const createServicio = async (req, res) => {
       data: servicio
     });
   } catch (error) {
+    console.error('❌ Error al crear servicio:', error);
+    
+    // Manejo específico para error de slug duplicado
+    if (error.code === 11000 && error.keyPattern?.slug) {
+      return res.status(400).json({
+        success: false,
+        message: 'Error: El slug del servicio ya existe',
+        error: 'Por favor, intenta con un título diferente o deja que el sistema genere el slug automáticamente'
+      });
+    }
+    
     res.status(400).json({
       success: false,
       message: 'Error al crear el servicio',
