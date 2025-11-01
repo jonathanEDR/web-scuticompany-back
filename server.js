@@ -16,8 +16,10 @@ import adminRoutes from './routes/admin.js';
 import demoRoutes from './routes/demo.js';
 import crmRoutes from './routes/crm.js';
 import contactRoutes from './routes/contact.js';
+import categoriasRoutes from './routes/categorias.js';
 import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
+import { inicializarCategorias } from './utils/categoriaInitializer.js';
 import logger from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,10 +31,12 @@ dotenv.config();
 // Conectar a la base de datos e inicializar
 logger.startup('Iniciando Web Scuti Backend Server');
 
-connectDB().then(() => {
+connectDB().then(async () => {
   logger.success('Conexión a MongoDB establecida');
   // Inicializar páginas por defecto si no existen
   initializeDatabase();
+  // Inicializar categorías por defecto si no existen
+  await inicializarCategorias();
 }).catch(err => {
   logger.error('Error al conectar a la base de datos', err);
 });
@@ -264,6 +268,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/demo', demoRoutes);
 app.use('/api/crm', crmRoutes); // 💼 CRM Routes
 app.use('/api/contact', contactRoutes); // 📧 Contact Routes (público + admin)
+app.use('/api/categorias', categoriasRoutes); // 📁 Categorías Routes
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

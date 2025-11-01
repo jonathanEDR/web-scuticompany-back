@@ -128,9 +128,9 @@ const servicioSchema = new mongoose.Schema(
       default: 'activo'
     },
     categoria: {
-      type: String,
-      enum: ['desarrollo', 'diseño', 'marketing', 'consultoría', 'mantenimiento', 'otro'],
-      default: 'otro'
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Categoria',
+      required: [true, 'La categoría es obligatoria']
     },
     destacado: {
       type: Boolean,

@@ -5,7 +5,7 @@ const PageSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    enum: ['home', 'nosotros', 'servicios', 'contacto']
+    enum: ['home', 'nosotros', 'servicios', 'contacto', 'services', 'about', 'contact']
   },
   pageName: {
     type: String,

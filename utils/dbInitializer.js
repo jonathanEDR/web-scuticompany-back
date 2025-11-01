@@ -1,5 +1,6 @@
 import Page from '../models/Page.js';
 import { ensureSuperAdminExists } from './roleHelper.js';
+import { inicializarCategorias } from './categoriaInitializer.js';
 import logger from './logger.js';
 
 /**
@@ -224,6 +225,33 @@ const defaultHomePageData = {
 };
 
 /**
+ * Datos por defecto para la página Services
+ */
+const defaultServicesPageData = {
+  pageSlug: 'services',
+  pageName: 'Servicios Profesionales',
+  metaTitle: 'Servicios Profesionales - Scuti Company',
+  metaDescription: 'Descubre nuestra amplia gama de servicios profesionales de tecnología, desarrollo web, marketing digital y más.',
+  metaKeywords: ['servicios', 'tecnología', 'desarrollo web', 'marketing digital', 'consultoría', 'diseño'],
+  ogTitle: 'Servicios Profesionales - Scuti Company',
+  ogDescription: 'Servicios profesionales de tecnología y desarrollo web',
+  ogImage: '',
+  content: {
+    hero: {
+      title: 'Nuestros Servicios',
+      subtitle: 'Soluciones profesionales para tu negocio',
+      description: 'Ofrecemos una amplia gama de servicios tecnológicos diseñados para impulsar el crecimiento de tu empresa.',
+      backgroundImage: {
+        light: '',
+        dark: ''
+      }
+    }
+  },
+  isPublished: true,
+  updatedBy: 'system-init'
+};
+
+/**
  * Inicializa las páginas requeridas en la base de datos
  * Se ejecuta al iniciar el servidor
  */
@@ -271,6 +299,21 @@ export const initializeDatabase = async () => {
       logger.database('FOUND', 'pages', { slug: 'home' });
     }
 
+    // Verificar si existe la página Services
+    const servicesPage = await Page.findOne({ pageSlug: 'services' });
+
+    if (!servicesPage) {
+      logger.init('Página Services no encontrada, creando configuración por defecto');
+
+      await Page.create(defaultServicesPageData);
+      
+      logger.success('Página Services creada exitosamente');
+      logger.database('CREATE', 'pages', { slug: 'services' });
+    } else {
+      logger.success('Página Services encontrada');
+      logger.database('FOUND', 'pages', { slug: 'services' });
+    }
+
     // Verificar existencia de Super Admin
     logger.init('Verificando Super Administrador del sistema');
     const superAdmin = await ensureSuperAdminExists();
@@ -284,6 +327,10 @@ export const initializeDatabase = async () => {
       logger.warn('No se pudo verificar/crear Super Administrador');
       logger.warn('Asegúrate de configurar DEFAULT_SUPER_ADMIN_EMAIL en .env');
     }
+
+    // Inicializar categorías por defecto
+    logger.init('Verificando categorías del sistema');
+    await inicializarCategorias();
 
     // Verificar estado general de la BD
     const totalPages = await Page.countDocuments();

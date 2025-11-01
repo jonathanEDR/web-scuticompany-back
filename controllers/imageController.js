@@ -17,9 +17,23 @@ const uploadsDir = path.join(__dirname, '../uploads');
 // @access  Private
 export const uploadImage = async (req, res) => {
   try {
-    // Verificar archivos y autenticación
+    // ============================================
+    // LOGGING INICIAL PARA DEBUGGING
+    // ============================================
+    logger.info('📤 Upload request iniciado', {
+      hasFile: !!req.files?.image,
+      userId: req.user?.clerkId || req.user?.id,
+      fileInfo: req.files?.image ? {
+        name: req.files.image.name,
+        size: req.files.image.size,
+        mimetype: req.files.image.mimetype
+      } : null,
+      cloudinaryConfigured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY)
+    });
 
+    // Verificar archivos y autenticación
     if (!req.files || !req.files.image) {
+      logger.warn('❌ No se proporcionó imagen en la request');
       return res.status(400).json({
         success: false,
         message: 'No se ha proporcionado ninguna imagen'
@@ -30,7 +44,7 @@ export const uploadImage = async (req, res) => {
     const userId = req.user?.clerkId || req.user?.id; // Fallback
     
     if (!userId) {
-      logger.error('Usuario no autenticado correctamente', { user: req.user });
+      logger.error('❌ Usuario no autenticado correctamente', { user: req.user });
       return res.status(401).json({
         success: false,
         message: 'Usuario no autenticado correctamente'
@@ -54,7 +68,11 @@ export const uploadImage = async (req, res) => {
       });
     }
 
-    // Subir a Cloudinary
+    // ============================================
+    // SUBIR A CLOUDINARY CON LOGS
+    // ============================================
+    logger.info('☁️ Iniciando upload a Cloudinary...');
+    
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -66,8 +84,23 @@ export const uploadImage = async (req, res) => {
           ]
         },
         (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
+          if (error) {
+            logger.error('❌ Error en Cloudinary upload:', {
+              error: error.message,
+              code: error.http_code,
+              details: error
+            });
+            reject(error);
+          } else {
+            logger.success('✅ Upload a Cloudinary exitoso:', {
+              publicId: result.public_id,
+              url: result.secure_url,
+              size: result.bytes,
+              format: result.format,
+              dimensions: `${result.width}x${result.height}`
+            });
+            resolve(result);
+          }
         }
       );
 
@@ -83,7 +116,11 @@ export const uploadImage = async (req, res) => {
       tags = []
     } = req.body;
 
-    // Crear registro en la base de datos
+    // ============================================
+    // CREAR REGISTRO EN BASE DE DATOS
+    // ============================================
+    logger.info('💾 Guardando registro en base de datos...');
+    
     const imageRecord = await Image.create({
       filename: uploadResult.public_id, // Usar public_id de Cloudinary
       originalName: imageFile.name,
@@ -102,7 +139,14 @@ export const uploadImage = async (req, res) => {
       isOrphan: true // Inicialmente es huérfana hasta que se use
     });
 
-    logger.success(`Imagen subida a Cloudinary: ${uploadResult.public_id} por usuario ${userId}`);
+    logger.success('🎉 Upload completado exitosamente:', {
+      imageId: imageRecord._id,
+      cloudinaryId: uploadResult.public_id,
+      url: uploadResult.secure_url,
+      userId: userId,
+      category: category,
+      size: `${(uploadResult.bytes / 1024 / 1024).toFixed(2)}MB`
+    });
 
     res.status(201).json({
       success: true,
@@ -110,11 +154,40 @@ export const uploadImage = async (req, res) => {
       data: imageRecord
     });
   } catch (error) {
-    logger.error('Error al subir imagen:', error);
-    res.status(500).json({
+    // ============================================
+    // MANEJO DE ERRORES CON LOGS DETALLADOS
+    // ============================================
+    logger.error('💥 Error crítico en upload de imagen:', {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.clerkId || req.user?.id,
+      fileName: req.files?.image?.name,
+      cloudinaryConfig: {
+        cloudName: process.env.CLOUDINARY_CLOUD_NAME ? '✅ CONFIGURADO' : '❌ NO CONFIGURADO',
+        apiKey: process.env.CLOUDINARY_API_KEY ? '✅ CONFIGURADO' : '❌ NO CONFIGURADO',
+        apiSecret: process.env.CLOUDINARY_API_SECRET ? '✅ CONFIGURADO' : '❌ NO CONFIGURADO'
+      }
+    });
+
+    // Determinar tipo de error para respuesta más específica
+    let statusCode = 500;
+    let message = 'Error interno del servidor al subir la imagen';
+
+    if (error.message.includes('Invalid image file')) {
+      statusCode = 400;
+      message = 'Formato de imagen no válido';
+    } else if (error.message.includes('File too large')) {
+      statusCode = 413;
+      message = 'El archivo es demasiado grande';
+    } else if (error.message.includes('Cloudinary')) {
+      statusCode = 503;
+      message = 'Error en el servicio de almacenamiento de imágenes';
+    }
+
+    res.status(statusCode).json({
       success: false,
-      message: 'Error al subir la imagen',
-      error: error.message
+      message: message,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };

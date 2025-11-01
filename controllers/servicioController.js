@@ -1,5 +1,6 @@
 import Servicio from '../models/Servicio.js';
 import PaqueteServicio from '../models/PaqueteServicio.js';
+import Categoria from '../models/Categoria.js';
 
 /**
  * @desc    Obtener todos los servicios con filtros avanzados
@@ -69,6 +70,7 @@ export const getServicios = async (req, res) => {
       .limit(options.limit)
       .skip((options.page - 1) * options.limit)
       .populate('responsable', 'firstName lastName email')
+      .populate('categoria', 'nombre descripcion slug icono color')
       .populate('paquetes');
 
     const total = await Servicio.countDocuments(filtros);
@@ -106,7 +108,8 @@ export const getServicio = async (req, res) => {
         { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null },
         { slug: id }
       ]
-    }).populate('responsable', 'firstName lastName email');
+    }).populate('responsable', 'firstName lastName email')
+      .populate('categoria', 'nombre descripcion slug icono color');
 
     if (includePaquetes === 'true') {
       query = query.populate('paquetes');
@@ -153,16 +156,8 @@ export const createServicio = async (req, res) => {
 
     // Si no se proporciona slug, se generará automáticamente en el middleware
     // Si se proporciona slug y ya existe, el middleware agregará timestamp
-    
-    console.log('📝 Creando servicio con datos:', {
-      titulo: servicioData.titulo,
-      slug: servicioData.slug || 'auto-generado',
-      categoria: servicioData.categoria
-    });
 
     const servicio = await Servicio.create(servicioData);
-    
-    console.log('✅ Servicio creado exitosamente con slug:', servicio.slug);
     
     res.status(201).json({
       success: true,
@@ -217,8 +212,6 @@ export const updateServicio = async (req, res) => {
         message: 'Servicio no encontrado'
       });
     }
-
-    console.log('✅ Servicio actualizado - imagen guardada:', servicio.imagen);
 
     res.status(200).json({
       success: true,
