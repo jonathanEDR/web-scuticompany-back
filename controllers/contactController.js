@@ -26,7 +26,12 @@ export const validateContactCreation = [
   body('mensaje')
     .trim()
     .notEmpty().withMessage('El mensaje es requerido')
-    .isLength({ min: 10, max: 2000 }).withMessage('El mensaje debe tener entre 10 y 2000 caracteres')
+    .isLength({ min: 10, max: 2000 }).withMessage('El mensaje debe tener entre 10 y 2000 caracteres'),
+    
+  body('categoria')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('La categoría no puede tener más de 100 caracteres')
 ];
 
 /**
@@ -47,7 +52,7 @@ export const createContact = async (req, res) => {
       });
     }
 
-    const { nombre, celular, correo, mensaje } = req.body;
+    const { nombre, celular, correo, mensaje, categoria } = req.body;
 
     // Crear metadata desde la request
     const metadata = {
@@ -78,12 +83,12 @@ export const createContact = async (req, res) => {
         nombre,
         celular,
         correo: correo,
-        tipoServicio: 'consultoria', // Valor por defecto para contactos públicos
+        tipoServicio: categoria || 'consultoria',
         descripcionProyecto: mensaje,
         estado: 'nuevo',
         prioridad: 'media',
         origen: 'web',
-        tags: ['contacto-publico', 'formulario-web'],
+        tags: ['contacto-publico', 'formulario-web', ...(categoria ? [categoria] : [])],
         creadoPor: {
           userId: 'system', // Sistema para contactos públicos
           nombre: 'Sistema Público',
