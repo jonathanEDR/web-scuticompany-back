@@ -23,17 +23,24 @@ export const getServicios = async (req, res) => {
       sort = '-createdAt',
       page = 1,
       limit = 10,
-      includeDeleted = false
+      includeDeleted = false,
+      admin = false // Para identificar si es una consulta administrativa
     } = req.query;
     
     // Construir filtros dinámicos
     const filtros = {};
     
+    // Si no es una consulta administrativa, filtrar solo servicios públicos
+    if (admin !== 'true') {
+      filtros.activo = true;
+      filtros.visibleEnWeb = true;
+    }
+    
     if (categoria) filtros.categoria = categoria;
     if (destacado !== undefined) filtros.destacado = destacado === 'true';
-    if (activo !== undefined) filtros.activo = activo === 'true';
+    if (activo !== undefined && admin === 'true') filtros.activo = activo === 'true';
     if (estado) filtros.estado = estado;
-    if (visibleEnWeb !== undefined) filtros.visibleEnWeb = visibleEnWeb === 'true';
+    if (visibleEnWeb !== undefined && admin === 'true') filtros.visibleEnWeb = visibleEnWeb === 'true';
     if (etiqueta) filtros.etiquetas = etiqueta;
     if (tipoPrecio) filtros.tipoPrecio = tipoPrecio;
     if (departamento) filtros.departamento = departamento;
@@ -100,15 +107,25 @@ export const getServicios = async (req, res) => {
 export const getServicio = async (req, res) => {
   try {
     const { id } = req.params;
-    const { includePaquetes = true } = req.query;
+    const { includePaquetes = true, admin = false } = req.query;
     
-    // Buscar por ID o por slug
-    let query = Servicio.findOne({
+    // Construir filtros base
+    const baseFilter = {
       $or: [
         { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null },
         { slug: id }
       ]
-    }).populate('responsable', 'firstName lastName email')
+    };
+    
+    // Si no es una consulta administrativa, filtrar solo servicios públicos
+    if (admin !== 'true') {
+      baseFilter.activo = true;
+      baseFilter.visibleEnWeb = true;
+    }
+    
+    // Buscar por ID o por slug con filtros de visibilidad
+    let query = Servicio.findOne(baseFilter)
+      .populate('responsable', 'firstName lastName email')
       .populate('categoria', 'nombre descripcion slug icono color');
 
     if (includePaquetes === 'true') {
@@ -120,7 +137,7 @@ export const getServicio = async (req, res) => {
     if (!servicio) {
       return res.status(404).json({
         success: false,
-        message: 'Servicio no encontrado'
+        message: 'Servicio no encontrado o no disponible públicamente'
       });
     }
 

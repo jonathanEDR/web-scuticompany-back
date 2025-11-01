@@ -49,20 +49,44 @@ const PORT = process.env.PORT || 5000;
 app.use('/api/webhooks', webhooksRoutes);
 
 // Middlewares
-// CORS configurado para permitir solo frontend específico
+// CORS configurado para permitir frontend específico con fallbacks seguros
 const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-  : ['http://localhost:5173'];
+  : [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://127.0.0.1:5173',
+      'https://web-scuticompany.vercel.app',
+      'https://web-scuti.vercel.app'
+    ];
 
 const corsOptions = {
   origin: function (origin, callback) {
     // Permitir requests sin origin (como apps móviles o curl)
     if (!origin) return callback(null, true);
 
+    // Verificar si el origin está en la lista permitida
     if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } 
+    // En desarrollo, ser más permisivo con localhost
+    else if (process.env.NODE_ENV === 'development' && origin && 
+             (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      console.log(`✅ Development CORS allowed for: ${origin}`);
+      callback(null, true);
+    }
+    // Verificar patrones de dominios de producción conocidos
+    else if (origin && (
+      origin.includes('web-scuti') || 
+      origin.includes('scuticompany') || 
+      origin.includes('vercel.app') ||
+      origin.includes('netlify.app')
+    )) {
+      console.log(`✅ Production domain pattern allowed for: ${origin}`);
       callback(null, true);
     } else {
       console.warn(`⚠️  CORS blocked request from origin: ${origin}`);
+      console.warn(`Allowed origins:`, allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -121,6 +145,17 @@ app.get('/', (req, res) => {
     message: '🚀 API Web Scuti funcionando correctamente',
     version: '1.0.0',
     status: 'OK'
+  });
+});
+
+// Simple health check (sin db check para rapidez)
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Backend is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0'
   });
 });
 
