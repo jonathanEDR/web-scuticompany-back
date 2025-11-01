@@ -72,7 +72,6 @@ const corsOptions = {
     // En desarrollo, ser más permisivo con localhost
     else if (process.env.NODE_ENV === 'development' && origin && 
              (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-      console.log(`✅ Development CORS allowed for: ${origin}`);
       callback(null, true);
     }
     // Verificar patrones de dominios de producción conocidos
@@ -82,11 +81,11 @@ const corsOptions = {
       origin.includes('vercel.app') ||
       origin.includes('netlify.app')
     )) {
-      console.log(`✅ Production domain pattern allowed for: ${origin}`);
       callback(null, true);
     } else {
-      console.warn(`⚠️  CORS blocked request from origin: ${origin}`);
-      console.warn(`Allowed origins:`, allowedOrigins);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`⚠️  CORS blocked request from origin: ${origin}`);
+      }
       callback(new Error('Not allowed by CORS'));
     }
   },
