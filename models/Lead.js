@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 /**
  * 📝 Schema de Actividad de Lead
  * Registra todas las interacciones con el lead
+ * Extendido con capacidades de mensajería
  */
 const leadActivitySchema = new mongoose.Schema({
   fecha: {
@@ -11,7 +12,7 @@ const leadActivitySchema = new mongoose.Schema({
   },
   tipo: {
     type: String,
-    enum: ['nota', 'llamada', 'email', 'reunion', 'propuesta', 'cambio_estado'],
+    enum: ['nota', 'llamada', 'email', 'reunion', 'propuesta', 'cambio_estado', 'mensaje_interno', 'mensaje_cliente'],
     required: true
   },
   descripcion: {
@@ -25,6 +26,63 @@ const leadActivitySchema = new mongoose.Schema({
   usuarioNombre: {
     type: String,
     required: true
+  },
+  
+  // ========================================
+  // 💬 CAMPOS DE MENSAJERÍA
+  // ========================================
+  
+  // Indica si es una nota privada del equipo (no visible para el cliente)
+  esPrivado: {
+    type: Boolean,
+    default: true // Por defecto, las notas son privadas
+  },
+  
+  // Dirección del mensaje
+  direccion: {
+    type: String,
+    enum: ['interno', 'saliente', 'entrante'],
+    default: 'interno'
+    // interno: nota del equipo
+    // saliente: mensaje enviado al cliente
+    // entrante: respuesta del cliente
+  },
+  
+  // Estado del mensaje (para tracking)
+  estadoMensaje: {
+    type: String,
+    enum: ['borrador', 'enviado', 'entregado', 'leido', 'respondido'],
+    default: 'enviado'
+  },
+  
+  // ID del destinatario (si el cliente está registrado)
+  destinatarioId: {
+    type: String, // Clerk user ID del cliente
+    default: null
+  },
+  
+  // Archivos adjuntos
+  adjuntos: [{
+    nombre: String,
+    url: String,
+    tipo: String, // 'image', 'pdf', 'document', etc.
+    tamaño: Number, // en bytes
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  
+  // Fecha de lectura del mensaje
+  readAt: {
+    type: Date,
+    default: null
+  },
+  
+  // Referencia a mensaje padre (para threading/respuestas)
+  respondidoA: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null
   }
 });
 
@@ -108,6 +166,27 @@ const leadSchema = new mongoose.Schema({
     },
     nombre: String,
     email: String
+  },
+  
+  // ========================================
+  // 👤 VINCULACIÓN CON USUARIO REGISTRADO
+  // ========================================
+  usuarioRegistrado: {
+    userId: {
+      type: String, // Clerk user ID del cliente registrado
+      default: null,
+      index: true
+    },
+    nombre: String,
+    email: String,
+    vinculadoEn: {
+      type: Date,
+      default: null
+    },
+    vinculadoPor: {
+      userId: String,
+      nombre: String
+    }
   },
   
   // ========================================
@@ -218,6 +297,141 @@ leadSchema.methods.asignarA = function(usuario, asignadoPor) {
     `Lead asignado a ${this.asignadoA.nombre}`,
     asignadoPor
   );
+};
+
+// ========================================
+// 💬 MÉTODOS DE MENSAJERÍA
+// ========================================
+
+/**
+ * Vincular lead con usuario registrado
+ * @param {object} usuario - Información del usuario registrado (cliente)
+ * @param {object} vinculadoPor - Usuario que hace la vinculación
+ */
+leadSchema.methods.vincularUsuario = function(usuario, vinculadoPor) {
+  this.usuarioRegistrado = {
+    userId: usuario.id || usuario.clerkId,
+    nombre: `${usuario.firstName || ''} ${usuario.lastName || ''}`.trim() || usuario.email,
+    email: usuario.email || usuario.emailAddresses?.[0]?.emailAddress,
+    vinculadoEn: new Date(),
+    vinculadoPor: {
+      userId: vinculadoPor.id || vinculadoPor.clerkId,
+      nombre: `${vinculadoPor.firstName || ''} ${vinculadoPor.lastName || ''}`.trim()
+    }
+  };
+  
+  return this.agregarActividad(
+    'nota',
+    `Lead vinculado con usuario registrado: ${this.usuarioRegistrado.email}`,
+    vinculadoPor
+  );
+};
+
+/**
+ * Agregar mensaje interno (nota privada del equipo)
+ * @param {string} contenido - Contenido del mensaje
+ * @param {object} usuario - Usuario que envía el mensaje
+ * @param {array} adjuntos - Archivos adjuntos (opcional)
+ */
+leadSchema.methods.agregarMensajeInterno = function(contenido, usuario, adjuntos = []) {
+  this.actividades.push({
+    tipo: 'mensaje_interno',
+    descripcion: contenido,
+    usuarioId: usuario.id || usuario.clerkId,
+    usuarioNombre: `${usuario.firstName || ''} ${usuario.lastName || ''}`.trim() || usuario.email,
+    esPrivado: true,
+    direccion: 'interno',
+    estadoMensaje: 'enviado',
+    adjuntos: adjuntos
+  });
+  return this.save();
+};
+
+/**
+ * Enviar mensaje al cliente
+ * @param {string} contenido - Contenido del mensaje
+ * @param {object} usuario - Usuario que envía el mensaje
+ * @param {array} adjuntos - Archivos adjuntos (opcional)
+ */
+leadSchema.methods.enviarMensajeCliente = function(contenido, usuario, adjuntos = []) {
+  if (!this.usuarioRegistrado?.userId) {
+    throw new Error('El lead no tiene un usuario registrado vinculado');
+  }
+  
+  this.actividades.push({
+    tipo: 'mensaje_cliente',
+    descripcion: contenido,
+    usuarioId: usuario.id || usuario.clerkId,
+    usuarioNombre: `${usuario.firstName || ''} ${usuario.lastName || ''}`.trim() || usuario.email,
+    esPrivado: false,
+    direccion: 'saliente',
+    estadoMensaje: 'enviado',
+    destinatarioId: this.usuarioRegistrado.userId,
+    adjuntos: adjuntos
+  });
+  return this.save();
+};
+
+/**
+ * Registrar respuesta del cliente
+ * @param {string} contenido - Contenido de la respuesta
+ * @param {object} usuario - Usuario cliente que responde
+ * @param {string} actividadId - ID de la actividad a la que responde (opcional)
+ */
+leadSchema.methods.registrarRespuestaCliente = function(contenido, usuario, actividadId = null) {
+  this.actividades.push({
+    tipo: 'mensaje_cliente',
+    descripcion: contenido,
+    usuarioId: usuario.id || usuario.clerkId,
+    usuarioNombre: `${usuario.firstName || ''} ${usuario.lastName || ''}`.trim() || usuario.email,
+    esPrivado: false,
+    direccion: 'entrante',
+    estadoMensaje: 'enviado',
+    respondidoA: actividadId
+  });
+  return this.save();
+};
+
+/**
+ * Marcar mensaje como leído
+ * @param {string} actividadId - ID de la actividad/mensaje
+ */
+leadSchema.methods.marcarMensajeLeido = function(actividadId) {
+  const actividad = this.actividades.id(actividadId);
+  if (actividad) {
+    actividad.readAt = new Date();
+    actividad.estadoMensaje = 'leido';
+  }
+  return this.save();
+};
+
+/**
+ * Obtener timeline completo de mensajes
+ * @param {boolean} incluirPrivados - Si se incluyen mensajes internos
+ * @returns {array} Array de actividades filtradas
+ */
+leadSchema.methods.obtenerTimeline = function(incluirPrivados = false) {
+  if (incluirPrivados) {
+    return this.actividades.sort((a, b) => b.fecha - a.fecha);
+  }
+  // Solo mensajes no privados (visibles para el cliente)
+  return this.actividades
+    .filter(act => !act.esPrivado)
+    .sort((a, b) => b.fecha - a.fecha);
+};
+
+/**
+ * Contar mensajes no leídos
+ * @param {string} userId - ID del usuario (para filtrar mensajes dirigidos a él)
+ * @returns {number} Cantidad de mensajes no leídos
+ */
+leadSchema.methods.contarMensajesNoLeidos = function(userId) {
+  return this.actividades.filter(act => 
+    (act.destinatarioId === userId || 
+     (act.direccion === 'saliente' && this.usuarioRegistrado?.userId === userId)) &&
+    !act.readAt &&
+    act.estadoMensaje !== 'leido'
+  ).length;
 };
 
 // ========================================

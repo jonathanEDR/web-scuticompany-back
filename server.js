@@ -17,9 +17,11 @@ import demoRoutes from './routes/demo.js';
 import crmRoutes from './routes/crm.js';
 import contactRoutes from './routes/contact.js';
 import categoriasRoutes from './routes/categorias.js';
+import clientRoutes from './routes/client.js';
 import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import { inicializarCategorias } from './utils/categoriaInitializer.js';
+import { inicializarPlantillasMensajes } from './utils/messageInitializer.js';
 import logger from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -37,6 +39,8 @@ connectDB().then(async () => {
   initializeDatabase();
   // Inicializar categorías por defecto si no existen
   await inicializarCategorias();
+  // Inicializar plantillas de mensajes por defecto
+  await inicializarPlantillasMensajes();
 }).catch(err => {
   logger.error('Error al conectar a la base de datos', err);
 });
@@ -303,6 +307,7 @@ app.use('/api/demo', demoRoutes);
 app.use('/api/crm', crmRoutes); // 💼 CRM Routes
 app.use('/api/contact', contactRoutes); // 📧 Contact Routes (público + admin)
 app.use('/api/categorias', categoriasRoutes); // 📁 Categorías Routes
+app.use('/api/client', clientRoutes); // 🎉 Client Onboarding Routes
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

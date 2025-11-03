@@ -94,7 +94,30 @@ export const PERMISSIONS = {
   MANAGE_CONTACTS: 'MANAGE_CONTACTS',         // Gestionar contactos (cambiar estado, asignar, notas)
   
   // Contactos - Eliminación
-  DELETE_CONTACTS: 'DELETE_CONTACTS'          // Eliminar contactos
+  DELETE_CONTACTS: 'DELETE_CONTACTS',         // Eliminar contactos
+  
+  // ========================================
+  // 💬 PERMISOS DE MENSAJERÍA CRM
+  // ========================================
+  
+  // Mensajes - Lectura
+  VIEW_LEAD_MESSAGES: 'VIEW_LEAD_MESSAGES',           // Ver mensajes de leads
+  VIEW_ALL_LEAD_MESSAGES: 'VIEW_ALL_LEAD_MESSAGES',   // Ver todos los mensajes (incluso de leads no asignados)
+  VIEW_PRIVATE_NOTES: 'VIEW_PRIVATE_NOTES',           // Ver notas internas/privadas del equipo
+  
+  // Mensajes - Escritura
+  SEND_LEAD_MESSAGES: 'SEND_LEAD_MESSAGES',           // Enviar mensajes internos
+  SEND_CLIENT_MESSAGES: 'SEND_CLIENT_MESSAGES',       // Enviar mensajes visibles al cliente
+  REPLY_LEAD_MESSAGES: 'REPLY_LEAD_MESSAGES',         // Responder mensajes
+  
+  // Mensajes - Gestión
+  DELETE_LEAD_MESSAGES: 'DELETE_LEAD_MESSAGES',       // Eliminar mensajes
+  MANAGE_MESSAGE_TEMPLATES: 'MANAGE_MESSAGE_TEMPLATES', // Gestionar plantillas de mensajes
+  USE_MESSAGE_TEMPLATES: 'USE_MESSAGE_TEMPLATES',     // Usar plantillas de mensajes
+  
+  // Mensajes - Avanzado
+  SEND_BROADCAST_MESSAGES: 'SEND_BROADCAST_MESSAGES', // Enviar mensajes masivos
+  EXPORT_MESSAGES: 'EXPORT_MESSAGES'                  // Exportar historial de mensajes
 };
 
 // Matriz de permisos por rol
@@ -139,7 +162,19 @@ export const ROLE_PERMISSIONS = {
     // Contactos - Acceso total
     PERMISSIONS.VIEW_CONTACTS,
     PERMISSIONS.MANAGE_CONTACTS,
-    PERMISSIONS.DELETE_CONTACTS
+    PERMISSIONS.DELETE_CONTACTS,
+    // Mensajería CRM - Acceso total
+    PERMISSIONS.VIEW_LEAD_MESSAGES,
+    PERMISSIONS.VIEW_ALL_LEAD_MESSAGES,
+    PERMISSIONS.VIEW_PRIVATE_NOTES,
+    PERMISSIONS.SEND_LEAD_MESSAGES,
+    PERMISSIONS.SEND_CLIENT_MESSAGES,
+    PERMISSIONS.REPLY_LEAD_MESSAGES,
+    PERMISSIONS.DELETE_LEAD_MESSAGES,
+    PERMISSIONS.MANAGE_MESSAGE_TEMPLATES,
+    PERMISSIONS.USE_MESSAGE_TEMPLATES,
+    PERMISSIONS.SEND_BROADCAST_MESSAGES,
+    PERMISSIONS.EXPORT_MESSAGES
   ],
   
   [ROLES.ADMIN]: [
@@ -179,7 +214,19 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.EXPORT_CRM_DATA,
     // Contactos - Gestión completa
     PERMISSIONS.VIEW_CONTACTS,
-    PERMISSIONS.MANAGE_CONTACTS
+    PERMISSIONS.MANAGE_CONTACTS,
+    // Mensajería CRM - Gestión completa
+    PERMISSIONS.VIEW_LEAD_MESSAGES,
+    PERMISSIONS.VIEW_ALL_LEAD_MESSAGES,
+    PERMISSIONS.VIEW_PRIVATE_NOTES,
+    PERMISSIONS.SEND_LEAD_MESSAGES,
+    PERMISSIONS.SEND_CLIENT_MESSAGES,
+    PERMISSIONS.REPLY_LEAD_MESSAGES,
+    PERMISSIONS.DELETE_LEAD_MESSAGES,
+    PERMISSIONS.MANAGE_MESSAGE_TEMPLATES,
+    PERMISSIONS.USE_MESSAGE_TEMPLATES,
+    PERMISSIONS.SEND_BROADCAST_MESSAGES,
+    PERMISSIONS.EXPORT_MESSAGES
   ],
   
   [ROLES.MODERATOR]: [
@@ -203,7 +250,14 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.CHANGE_LEAD_STATUS,
     PERMISSIONS.ADD_LEAD_ACTIVITIES,
     // Contactos - Solo lectura
-    PERMISSIONS.VIEW_CONTACTS
+    PERMISSIONS.VIEW_CONTACTS,
+    // Mensajería CRM - Solo sus leads asignados
+    PERMISSIONS.VIEW_LEAD_MESSAGES,
+    PERMISSIONS.VIEW_PRIVATE_NOTES,
+    PERMISSIONS.SEND_LEAD_MESSAGES,
+    PERMISSIONS.SEND_CLIENT_MESSAGES,
+    PERMISSIONS.REPLY_LEAD_MESSAGES,
+    PERMISSIONS.USE_MESSAGE_TEMPLATES
   ],
   
   [ROLES.CLIENT]: [
@@ -211,13 +265,21 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_CONTENT,
     PERMISSIONS.VIEW_SERVICES,
     PERMISSIONS.UPLOAD_FILES,
-    PERMISSIONS.VIEW_ROLES // Solo su propio rol
+    PERMISSIONS.VIEW_ROLES, // Solo su propio rol
+    // Mensajería CRM - Solo sus propios leads
+    PERMISSIONS.VIEW_LEAD_MESSAGES,      // Solo mensajes no privados de sus leads
+    PERMISSIONS.REPLY_LEAD_MESSAGES      // Solo puede responder mensajes
   ],
   
   [ROLES.USER]: [
     // Acceso básico
     PERMISSIONS.VIEW_CONTENT,
-    PERMISSIONS.VIEW_SERVICES
+    PERMISSIONS.VIEW_SERVICES,
+    
+    // 💬 Permisos de mensajería (Cliente Potencial)
+    PERMISSIONS.VIEW_LEAD_MESSAGES,      // Ver mensajes de sus leads
+    PERMISSIONS.REPLY_LEAD_MESSAGES,     // Responder mensajes
+    PERMISSIONS.SEND_CLIENT_MESSAGES     // Enviar mensajes como cliente
   ]
 };
 
@@ -249,7 +311,7 @@ export const ROLE_DESCRIPTIONS = {
   },
   [ROLES.USER]: {
     name: 'Usuario',
-    description: 'Acceso básico a contenido público',
+    description: 'Cliente potencial con acceso a contenido y mensajería básica',
     color: '#6b7280', // gris
     icon: '👤'
   }

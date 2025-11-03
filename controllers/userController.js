@@ -1,6 +1,8 @@
 import User from '../models/User.js';
 import logger from '../utils/logger.js';
 import { normalizeRole, getDefaultRole } from '../utils/roleNormalizer.js';
+import { autoLinkUserToLeads } from '../utils/leadAutoLinker.js';
+import { createWelcomeOnboarding } from '../utils/onboardingService.js';
 
 /**
  * @desc    Sincronizar usuario de Clerk con MongoDB
@@ -124,6 +126,69 @@ export const syncUser = async (req, res) => {
         email: newUser.email
       });
       
+      // 🔗 VINCULACIÓN AUTOMÁTICA DE LEADS
+      let leadLinkResult = null;
+      try {
+        leadLinkResult = await autoLinkUserToLeads({
+          clerkId: newUser.clerkId,
+          email: newUser.email,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          role: newUser.role
+        });
+        
+        if (leadLinkResult.success && leadLinkResult.leadsLinked > 0) {
+          logger.success('Leads vinculados automáticamente al nuevo usuario', {
+            userEmail: newUser.email,
+            leadsLinked: leadLinkResult.leadsLinked,
+            linkedLeads: leadLinkResult.linkedLeads
+          });
+        }
+      } catch (linkError) {
+        // No fallar la creación del usuario si hay error en la vinculación
+        logger.error('Error en vinculación automática (no crítico)', {
+          error: linkError.message,
+          userEmail: newUser.email
+        });
+      }
+
+      // 🎉 ONBOARDING AUTOMÁTICO PARA USUARIOS CLIENT
+      let onboardingResult = null;
+      if (newUser.role === 'CLIENT') {
+        try {
+          // Si no se vinculó con leads existentes, crear onboarding completo
+          const needsWelcomeOnboarding = !leadLinkResult?.success || leadLinkResult?.leadsLinked === 0;
+          
+          if (needsWelcomeOnboarding) {
+            onboardingResult = await createWelcomeOnboarding({
+              clerkId: newUser.clerkId,
+              email: newUser.email,
+              firstName: newUser.firstName,
+              lastName: newUser.lastName
+            });
+            
+            if (onboardingResult.success) {
+              logger.success('🎉 Onboarding automático completado para nuevo cliente', {
+                userEmail: newUser.email,
+                leadCreated: onboardingResult.onboarding.leadCreated,
+                messagesSent: onboardingResult.onboarding.messagesSent
+              });
+            }
+          } else {
+            logger.info('Cliente vinculado con leads existentes, omitiendo onboarding automático', {
+              userEmail: newUser.email,
+              existingLeads: leadLinkResult.leadsLinked
+            });
+          }
+        } catch (onboardingError) {
+          // No fallar la creación del usuario si hay error en el onboarding
+          logger.error('Error en onboarding automático (no crítico)', {
+            error: onboardingError.message,
+            userEmail: newUser.email
+          });
+        }
+      }
+      
       logger.database('CREATE', 'users', { clerkId: newUser.clerkId });
       logger.api('POST', '/api/users/sync', 201, Date.now() - startTime);
 
@@ -131,6 +196,8 @@ export const syncUser = async (req, res) => {
         success: true,
         message: 'Usuario creado correctamente',
         synced: true,
+        leadLinking: leadLinkResult, // Información de vinculación de leads
+        onboarding: onboardingResult, // Información de onboarding automático
         user: {
           _id: newUser._id,
           clerkId: newUser.clerkId,

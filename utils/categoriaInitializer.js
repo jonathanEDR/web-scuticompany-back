@@ -129,7 +129,7 @@ export const migrarServiciosExistentes = async () => {
           logger.info(`✅ Servicio migrado: ${servicio.titulo} -> ${categoriaString}`);
         } else {
           errores++;
-          logger.warning(`⚠️  No se encontró categoría para: ${servicio.titulo} (${categoriaString})`);
+          logger.warn(`⚠️  No se encontró categoría para: ${servicio.titulo} (${categoriaString})`);
         }
       } catch (error) {
         errores++;

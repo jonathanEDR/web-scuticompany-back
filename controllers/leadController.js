@@ -1,4 +1,5 @@
 import Lead from '../models/Lead.js';
+import User from '../models/User.js';
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import { hasPermission } from '../utils/roleHelper.js';
 import { PERMISSIONS } from '../config/roles.js';
@@ -209,7 +210,54 @@ export const createLead = async (req, res) => {
     
     const lead = await Lead.create(leadData);
     
-    // 📝 Agregar actividad inicial
+    // � VINCULACIÓN AUTOMÁTICA: Buscar usuario registrado con el mismo email
+    let autoLinkResult = null;
+    if (lead.email || lead.correo) {
+      const leadEmail = lead.email || lead.correo;
+      try {
+        const existingUser = await User.findOne({ 
+          email: leadEmail,
+          role: 'CLIENT' 
+        });
+        
+        if (existingUser && !lead.usuarioRegistrado?.userId) {
+          lead.usuarioRegistrado = {
+            userId: existingUser.clerkId,
+            nombre: `${existingUser.firstName} ${existingUser.lastName}`.trim(),
+            email: existingUser.email,
+            vinculadoEn: new Date(),
+            vinculadoPor: {
+              userId: userInfo.id,
+              nombre: userInfo.fullName
+            }
+          };
+          
+          await lead.save();
+          
+          autoLinkResult = {
+            success: true,
+            message: 'Lead vinculado automáticamente con usuario existente',
+            linkedUser: {
+              clerkId: existingUser.clerkId,
+              email: existingUser.email,
+              name: `${existingUser.firstName} ${existingUser.lastName}`.trim()
+            }
+          };
+          
+          logger.success('Lead vinculado automáticamente al crearse', {
+            leadId: lead._id.toString(),
+            userEmail: existingUser.email
+          });
+        }
+      } catch (linkError) {
+        logger.error('Error en vinculación automática del lead (no crítico)', {
+          error: linkError.message,
+          leadEmail
+        });
+      }
+    }
+    
+    // �📝 Agregar actividad inicial
     await lead.agregarActividad('nota', 'Lead creado en el sistema', userInfo);
     
     logger.success(`✅ Lead ${lead._id} creado por usuario ${userId}`);
@@ -217,6 +265,7 @@ export const createLead = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Lead creado exitosamente',
+      autoLinking: autoLinkResult, // Información de vinculación automática
       data: lead
     });
     
@@ -339,7 +388,7 @@ export const deleteLead = async (req, res) => {
     lead.activo = false;
     await lead.save();
     
-    logger.warning(`⚠️ Lead ${id} eliminado (soft delete) por usuario ${userId}`);
+    logger.warn(`⚠️ Lead ${id} eliminado (soft delete) por usuario ${userId}`);
     
     res.json({
       success: true,
@@ -687,6 +736,297 @@ export const getLeadsPendientes = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Obtener timeline completo de un lead (actividades + mensajes)
+ * @route   GET /api/crm/leads/:id/timeline
+ * @access  Private
+ */
+export const getLeadTimeline = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, clerkId: userId } = req.user;
+    const { incluirPrivados = false } = req.query;
+    
+    // Verificar permisos
+    if (!hasPermission(role, PERMISSIONS.VIEW_ALL_LEADS) && 
+        !hasPermission(role, PERMISSIONS.VIEW_OWN_LEADS)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para ver este lead'
+      });
+    }
+    
+    const lead = await Lead.findById(id);
+    
+    if (!lead || !lead.activo) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lead no encontrado'
+      });
+    }
+    
+    // Verificar acceso según rol
+    if (hasPermission(role, PERMISSIONS.VIEW_OWN_LEADS) && 
+        !hasPermission(role, PERMISSIONS.VIEW_ALL_LEADS)) {
+      if (lead.asignadoA?.userId !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes acceso a este lead'
+        });
+      }
+    }
+    
+    // Determinar si puede ver mensajes privados
+    const puedeVerPrivados = hasPermission(role, PERMISSIONS.VIEW_PRIVATE_NOTES) && 
+                             incluirPrivados === 'true';
+    
+    // Obtener timeline
+    const timeline = lead.obtenerTimeline(puedeVerPrivados);
+    
+    // Contar mensajes no leídos
+    const mensajesNoLeidos = lead.contarMensajesNoLeidos(userId);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        lead: {
+          id: lead._id,
+          nombre: lead.nombre,
+          correo: lead.correo,
+          empresa: lead.empresa,
+          estado: lead.estado,
+          prioridad: lead.prioridad,
+          usuarioRegistrado: lead.usuarioRegistrado
+        },
+        timeline,
+        stats: {
+          totalActividades: timeline.length,
+          mensajesNoLeidos
+        }
+      }
+    });
+    
+  } catch (error) {
+    logger.error('❌ Error en getLeadTimeline:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * @desc    Vincular lead con usuario registrado
+ * @route   POST /api/crm/leads/:id/vincular-usuario
+ * @access  Private (ADMIN)
+ */
+export const vincularUsuario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, clerkId: userId } = req.user;
+    const { usuarioId } = req.body; // clerkId del usuario a vincular
+    
+    // Verificar permisos
+    if (!hasPermission(role, PERMISSIONS.EDIT_ALL_LEADS)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para vincular usuarios'
+      });
+    }
+    
+    if (!usuarioId) {
+      return res.status(400).json({
+        success: false,
+        message: 'El ID del usuario es requerido'
+      });
+    }
+    
+    const lead = await Lead.findById(id);
+    
+    if (!lead || !lead.activo) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lead no encontrado'
+      });
+    }
+    
+    // Verificar si ya está vinculado
+    if (lead.usuarioRegistrado?.userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Este lead ya tiene un usuario vinculado'
+      });
+    }
+    
+    // Obtener información del usuario a vincular
+    const usuarioAVincular = await getUserInfo(usuarioId);
+    
+    // Obtener información del usuario que hace la vinculación
+    const vinculadoPor = await getUserInfo(userId);
+    
+    // Vincular usuario
+    await lead.vincularUsuario(usuarioAVincular, vinculadoPor);
+    
+    logger.info(`✅ Usuario ${usuarioId} vinculado a lead ${id} por ${userId}`);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Usuario vinculado exitosamente',
+      data: {
+        lead: {
+          id: lead._id,
+          nombre: lead.nombre,
+          usuarioRegistrado: lead.usuarioRegistrado
+        }
+      }
+    });
+    
+  } catch (error) {
+    logger.error('❌ Error en vincularUsuario:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * @desc    Desvincular usuario registrado de un lead
+ * @route   DELETE /api/crm/leads/:id/vincular-usuario
+ * @access  Private (ADMIN)
+ */
+export const desvincularUsuario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, clerkId: userId } = req.user;
+    
+    // Verificar permisos
+    if (!hasPermission(role, PERMISSIONS.EDIT_ALL_LEADS)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para desvincular usuarios'
+      });
+    }
+    
+    const lead = await Lead.findById(id);
+    
+    if (!lead || !lead.activo) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lead no encontrado'
+      });
+    }
+    
+    if (!lead.usuarioRegistrado?.userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Este lead no tiene un usuario vinculado'
+      });
+    }
+    
+    // Desvincular
+    lead.usuarioRegistrado = undefined;
+    
+    // Agregar actividad
+    const vinculadoPor = await getUserInfo(userId);
+    await lead.agregarActividad(
+      'nota',
+      'Usuario registrado desvinculado',
+      vinculadoPor
+    );
+    
+    await lead.save();
+    
+    logger.info(`✅ Usuario desvinculado de lead ${id} por ${userId}`);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Usuario desvinculado exitosamente'
+    });
+    
+  } catch (error) {
+    logger.error('❌ Error en desvincularUsuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * @desc    Obtener mis leads (para clientes registrados)
+ * @route   GET /api/crm/cliente/mis-leads
+ * @access  Private (CLIENT)
+ */
+export const getMisLeads = async (req, res) => {
+  try {
+    const { clerkId: userId, role } = req.user;
+    const { page = 1, limit = 10 } = req.query;
+    
+    // Permitir acceso a clientes (CLIENT) y usuarios registrados (USER)
+    if (!['CLIENT', 'USER'].includes(role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Esta ruta es solo para clientes'
+      });
+    }
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const [leads, total] = await Promise.all([
+      Lead.find({
+        'usuarioRegistrado.userId': userId,
+        activo: true
+      })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .select('-actividades') // No enviar todas las actividades
+        .lean(),
+      Lead.countDocuments({
+        'usuarioRegistrado.userId': userId,
+        activo: true
+      })
+    ]);
+    
+    // Agregar contador de mensajes no leídos a cada lead
+    const leadsConStats = await Promise.all(
+      leads.map(async (lead) => {
+        const leadDoc = await Lead.findById(lead._id);
+        const mensajesNoLeidos = leadDoc.contarMensajesNoLeidos(userId);
+        return {
+          ...lead,
+          mensajesNoLeidos
+        };
+      })
+    );
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        leads: leadsConStats,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / parseInt(limit))
+        }
+      }
+    });
+    
+  } catch (error) {
+    logger.error('❌ Error en getMisLeads:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 // Exportar todas las funciones
 export default {
   getLeads,
@@ -698,5 +1038,9 @@ export default {
   agregarActividad,
   asignarLead,
   getEstadisticas,
-  getLeadsPendientes
+  getLeadsPendientes,
+  getLeadTimeline,
+  vincularUsuario,
+  desvincularUsuario,
+  getMisLeads
 };
