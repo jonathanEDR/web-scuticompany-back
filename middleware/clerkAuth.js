@@ -1,5 +1,5 @@
-/**
- * Middleware de Autenticación Mejorado
+﻿/**
+ * Middleware de AutenticaciÃ³n Mejorado
  * - Valida tokens JWT de Clerk
  * - Obtiene roles y permisos desde MongoDB
  * - La base de datos es la fuente de verdad para roles
@@ -11,7 +11,7 @@ import { getRolePermissions } from '../config/roles.js';
 import logger from '../utils/logger.js';
 
 /**
- * Middleware principal de autenticación
+ * Middleware principal de autenticaciÃ³n
  * Valida el token JWT de Clerk y obtiene el usuario desde MongoDB
  */
 export const requireAuth = async (req, res, next) => {
@@ -21,7 +21,7 @@ export const requireAuth = async (req, res, next) => {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
-        message: 'Token de autenticación requerido',
+        message: 'Token de autenticaciÃ³n requerido',
         code: 'MISSING_TOKEN'
       });
     }
@@ -35,10 +35,10 @@ export const requireAuth = async (req, res, next) => {
         secretKey: process.env.CLERK_SECRET_KEY
       });
     } catch (clerkError) {
-      logger.warn('Token inválido de Clerk', { error: clerkError.message });
+      logger.warn('Token invÃ¡lido de Clerk', { error: clerkError.message });
       return res.status(401).json({
         success: false,
-        message: 'Token inválido o expirado',
+        message: 'Token invÃ¡lido o expirado',
         code: 'INVALID_TOKEN'
       });
     }
@@ -52,7 +52,7 @@ export const requireAuth = async (req, res, next) => {
       logger.warn('Usuario no encontrado en DB', { clerkId: clerkUser.sub });
       return res.status(401).json({
         success: false,
-        message: 'Usuario no encontrado. Sincronización requerida.',
+        message: 'Usuario no encontrado. SincronizaciÃ³n requerida.',
         code: 'USER_NOT_SYNCED'
       });
     }
@@ -65,7 +65,7 @@ export const requireAuth = async (req, res, next) => {
       });
     }
 
-    // Agregar información del usuario a la request
+    // Agregar informaciÃ³n del usuario a la request
     req.user = {
       id: user._id,
       clerkId: user.clerkId,
@@ -80,7 +80,13 @@ export const requireAuth = async (req, res, next) => {
       dbUser: user // Usuario completo de DB si se necesita
     };
 
-    // Actualizar último login (sin await para no bloquear)
+    // También agregar req.auth para compatibilidad con otros controladores
+    req.auth = {
+      userId: user.clerkId,
+      sessionId: clerkUser.sid || null
+    };
+
+    // Actualizar Ãºltimo login (sin await para no bloquear)
     User.findByIdAndUpdate(user._id, { 
       lastLogin: new Date() 
     }).catch(err => 
@@ -96,7 +102,7 @@ export const requireAuth = async (req, res, next) => {
     next();
 
   } catch (error) {
-    logger.error('Error en middleware de autenticación', error);
+    logger.error('Error en middleware de autenticaciÃ³n', error);
     return res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -106,8 +112,8 @@ export const requireAuth = async (req, res, next) => {
 };
 
 /**
- * Middleware opcional de autenticación
- * No bloquea la request si no hay token, pero añade info si lo hay
+ * Middleware opcional de autenticaciÃ³n
+ * No bloquea la request si no hay token, pero aÃ±ade info si lo hay
  */
 export const optionalAuth = async (req, res, next) => {
   try {
@@ -119,7 +125,7 @@ export const optionalAuth = async (req, res, next) => {
       return next();
     }
 
-    // Ejecutar autenticación normal
+    // Ejecutar autenticaciÃ³n normal
     await requireAuth(req, res, next);
 
   } catch (error) {
@@ -130,14 +136,14 @@ export const optionalAuth = async (req, res, next) => {
 };
 
 /**
- * Middleware para verificar si el usuario tiene un permiso específico
+ * Middleware para verificar si el usuario tiene un permiso especÃ­fico
  */
 export const requirePermission = (permission) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Autenticación requerida',
+        message: 'AutenticaciÃ³n requerida',
         code: 'AUTH_REQUIRED'
       });
     }
@@ -165,14 +171,14 @@ export const requirePermission = (permission) => {
 };
 
 /**
- * Middleware para verificar rol específico
+ * Middleware para verificar rol especÃ­fico
  */
 export const requireRole = (role) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Autenticación requerida',
+        message: 'AutenticaciÃ³n requerida',
         code: 'AUTH_REQUIRED'
       });
     }
@@ -196,14 +202,14 @@ export const requireRole = (role) => {
 };
 
 /**
- * Middleware para verificar múltiples roles (OR)
+ * Middleware para verificar mÃºltiples roles (OR)
  */
 export const requireAnyRole = (roles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Autenticación requerida',
+        message: 'AutenticaciÃ³n requerida',
         code: 'AUTH_REQUIRED'
       });
     }
@@ -219,6 +225,44 @@ export const requireAnyRole = (roles) => {
         success: false,
         message: `Rol insuficiente. Se requiere uno de: ${roles.join(', ')}`,
         code: 'INSUFFICIENT_ROLE'
+      });
+    }
+
+    next();
+  };
+};
+
+/**
+ * Middleware para verificar multiples permisos (OR)
+ * Usuario debe tener AL MENOS UNO de los permisos especificados
+ */
+export const requireAnyPermission = (permissions) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Autenticacion requerida',
+        code: 'AUTH_REQUIRED'
+      });
+    }
+
+    const userPermissions = [...req.user.permissions, ...req.user.customPermissions];
+    const hasAnyPermission = permissions.some(permission => 
+      userPermissions.includes(permission)
+    );
+
+    if (!hasAnyPermission) {
+      logger.warn('Acceso denegado por permisos', {
+        userId: req.user.id,
+        role: req.user.role,
+        requiredPermissions: permissions,
+        userPermissions: req.user.permissions
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: 'Permisos insuficientes',
+        code: 'INSUFFICIENT_PERMISSIONS'
       });
     }
 

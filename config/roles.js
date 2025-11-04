@@ -117,7 +117,50 @@ export const PERMISSIONS = {
   
   // Mensajes - Avanzado
   SEND_BROADCAST_MESSAGES: 'SEND_BROADCAST_MESSAGES', // Enviar mensajes masivos
-  EXPORT_MESSAGES: 'EXPORT_MESSAGES'                  // Exportar historial de mensajes
+  EXPORT_MESSAGES: 'EXPORT_MESSAGES',                  // Exportar historial de mensajes
+  
+  // ========================================
+  // 📝 PERMISOS DE BLOG
+  // ========================================
+  
+  // Blog Posts - Lectura
+  VIEW_PUBLISHED_POSTS: 'VIEW_PUBLISHED_POSTS',       // Ver posts publicados (público)
+  VIEW_DRAFT_POSTS: 'VIEW_DRAFT_POSTS',               // Ver posts en borrador
+  VIEW_ALL_POSTS: 'VIEW_ALL_POSTS',                   // Ver todos los posts (cualquier estado)
+  VIEW_OWN_POSTS: 'VIEW_OWN_POSTS',                   // Ver solo posts propios
+  
+  // Blog Posts - Escritura
+  CREATE_BLOG_POSTS: 'CREATE_BLOG_POSTS',             // Crear nuevos posts
+  EDIT_OWN_BLOG_POSTS: 'EDIT_OWN_BLOG_POSTS',         // Editar solo posts propios
+  EDIT_ALL_BLOG_POSTS: 'EDIT_ALL_BLOG_POSTS',         // Editar cualquier post
+  DELETE_OWN_BLOG_POSTS: 'DELETE_OWN_BLOG_POSTS',     // Eliminar posts propios
+  DELETE_BLOG_POSTS: 'DELETE_BLOG_POSTS',             // Eliminar cualquier post
+  
+  // Blog Posts - Gestión
+  PUBLISH_BLOG_POSTS: 'PUBLISH_BLOG_POSTS',           // Publicar/despublicar posts
+  FEATURE_BLOG_POSTS: 'FEATURE_BLOG_POSTS',           // Marcar posts como destacados
+  SCHEDULE_BLOG_POSTS: 'SCHEDULE_BLOG_POSTS',         // Programar publicación
+  DUPLICATE_BLOG_POSTS: 'DUPLICATE_BLOG_POSTS',       // Duplicar posts
+  
+  // Blog Categorías - Gestión
+  MANAGE_BLOG_CATEGORIES: 'MANAGE_BLOG_CATEGORIES',   // Gestionar categorías (CRUD completo)
+  VIEW_BLOG_CATEGORIES: 'VIEW_BLOG_CATEGORIES',       // Ver categorías
+  
+  // Blog Tags - Gestión
+  MANAGE_BLOG_TAGS: 'MANAGE_BLOG_TAGS',               // Gestionar tags (CRUD completo)
+  VIEW_BLOG_TAGS: 'VIEW_BLOG_TAGS',                   // Ver tags
+  
+  // Blog Comentarios - Gestión (Fase 2)
+  MODERATE_COMMENTS: 'MODERATE_COMMENTS',             // Moderar comentarios
+  DELETE_COMMENTS: 'DELETE_COMMENTS',                 // Eliminar comentarios
+  REPLY_COMMENTS: 'REPLY_COMMENTS',                   // Responder comentarios
+  
+  // Blog Analytics - Reportes
+  VIEW_BLOG_ANALYTICS: 'VIEW_BLOG_ANALYTICS',         // Ver analytics del blog
+  EXPORT_BLOG_DATA: 'EXPORT_BLOG_DATA',               // Exportar datos del blog
+  
+  // Blog SEO - Gestión avanzada
+  MANAGE_BLOG_SEO: 'MANAGE_BLOG_SEO'                  // Gestionar configuración SEO avanzada
 };
 
 // Matriz de permisos por rol
@@ -174,7 +217,31 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.MANAGE_MESSAGE_TEMPLATES,
     PERMISSIONS.USE_MESSAGE_TEMPLATES,
     PERMISSIONS.SEND_BROADCAST_MESSAGES,
-    PERMISSIONS.EXPORT_MESSAGES
+    PERMISSIONS.EXPORT_MESSAGES,
+    // Blog - Acceso total
+    PERMISSIONS.VIEW_PUBLISHED_POSTS,
+    PERMISSIONS.VIEW_DRAFT_POSTS,
+    PERMISSIONS.VIEW_ALL_POSTS,
+    PERMISSIONS.VIEW_OWN_POSTS,
+    PERMISSIONS.CREATE_BLOG_POSTS,
+    PERMISSIONS.EDIT_OWN_BLOG_POSTS,
+    PERMISSIONS.EDIT_ALL_BLOG_POSTS,
+    PERMISSIONS.DELETE_OWN_BLOG_POSTS,
+    PERMISSIONS.DELETE_BLOG_POSTS,
+    PERMISSIONS.PUBLISH_BLOG_POSTS,
+    PERMISSIONS.FEATURE_BLOG_POSTS,
+    PERMISSIONS.SCHEDULE_BLOG_POSTS,
+    PERMISSIONS.DUPLICATE_BLOG_POSTS,
+    PERMISSIONS.MANAGE_BLOG_CATEGORIES,
+    PERMISSIONS.VIEW_BLOG_CATEGORIES,
+    PERMISSIONS.MANAGE_BLOG_TAGS,
+    PERMISSIONS.VIEW_BLOG_TAGS,
+    PERMISSIONS.MODERATE_COMMENTS,
+    PERMISSIONS.DELETE_COMMENTS,
+    PERMISSIONS.REPLY_COMMENTS,
+    PERMISSIONS.VIEW_BLOG_ANALYTICS,
+    PERMISSIONS.EXPORT_BLOG_DATA,
+    PERMISSIONS.MANAGE_BLOG_SEO
   ],
   
   [ROLES.ADMIN]: [
@@ -226,7 +293,31 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.MANAGE_MESSAGE_TEMPLATES,
     PERMISSIONS.USE_MESSAGE_TEMPLATES,
     PERMISSIONS.SEND_BROADCAST_MESSAGES,
-    PERMISSIONS.EXPORT_MESSAGES
+    PERMISSIONS.EXPORT_MESSAGES,
+    // Blog - Gestión completa igual que SUPER_ADMIN
+    PERMISSIONS.VIEW_PUBLISHED_POSTS,
+    PERMISSIONS.VIEW_DRAFT_POSTS,
+    PERMISSIONS.VIEW_ALL_POSTS,
+    PERMISSIONS.VIEW_OWN_POSTS,
+    PERMISSIONS.CREATE_BLOG_POSTS,
+    PERMISSIONS.EDIT_OWN_BLOG_POSTS,
+    PERMISSIONS.EDIT_ALL_BLOG_POSTS,
+    PERMISSIONS.DELETE_OWN_BLOG_POSTS,
+    PERMISSIONS.DELETE_BLOG_POSTS,
+    PERMISSIONS.PUBLISH_BLOG_POSTS,
+    PERMISSIONS.FEATURE_BLOG_POSTS,
+    PERMISSIONS.SCHEDULE_BLOG_POSTS,
+    PERMISSIONS.DUPLICATE_BLOG_POSTS,
+    PERMISSIONS.MANAGE_BLOG_CATEGORIES,
+    PERMISSIONS.VIEW_BLOG_CATEGORIES,
+    PERMISSIONS.MANAGE_BLOG_TAGS,
+    PERMISSIONS.VIEW_BLOG_TAGS,
+    PERMISSIONS.MODERATE_COMMENTS,
+    PERMISSIONS.DELETE_COMMENTS,
+    PERMISSIONS.REPLY_COMMENTS,
+    PERMISSIONS.VIEW_BLOG_ANALYTICS,
+    PERMISSIONS.EXPORT_BLOG_DATA,
+    PERMISSIONS.MANAGE_BLOG_SEO
   ],
   
   [ROLES.MODERATOR]: [
@@ -257,7 +348,18 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.SEND_LEAD_MESSAGES,
     PERMISSIONS.SEND_CLIENT_MESSAGES,
     PERMISSIONS.REPLY_LEAD_MESSAGES,
-    PERMISSIONS.USE_MESSAGE_TEMPLATES
+    PERMISSIONS.USE_MESSAGE_TEMPLATES,
+    // Blog - Puede crear y editar sus propios posts
+    PERMISSIONS.VIEW_PUBLISHED_POSTS,
+    PERMISSIONS.VIEW_DRAFT_POSTS,
+    PERMISSIONS.VIEW_OWN_POSTS,
+    PERMISSIONS.CREATE_BLOG_POSTS,
+    PERMISSIONS.EDIT_OWN_BLOG_POSTS,
+    PERMISSIONS.DELETE_OWN_BLOG_POSTS,
+    PERMISSIONS.VIEW_BLOG_CATEGORIES,
+    PERMISSIONS.VIEW_BLOG_TAGS,
+    PERMISSIONS.MODERATE_COMMENTS,
+    PERMISSIONS.REPLY_COMMENTS
   ],
   
   [ROLES.CLIENT]: [
@@ -268,7 +370,11 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_ROLES, // Solo su propio rol
     // Mensajería CRM - Solo sus propios leads
     PERMISSIONS.VIEW_LEAD_MESSAGES,      // Solo mensajes no privados de sus leads
-    PERMISSIONS.REPLY_LEAD_MESSAGES      // Solo puede responder mensajes
+    PERMISSIONS.REPLY_LEAD_MESSAGES,     // Solo puede responder mensajes
+    // Blog - Solo lectura
+    PERMISSIONS.VIEW_PUBLISHED_POSTS,
+    PERMISSIONS.VIEW_BLOG_CATEGORIES,
+    PERMISSIONS.VIEW_BLOG_TAGS
   ],
   
   [ROLES.USER]: [
@@ -279,7 +385,12 @@ export const ROLE_PERMISSIONS = {
     // 💬 Permisos de mensajería (Cliente Potencial)
     PERMISSIONS.VIEW_LEAD_MESSAGES,      // Ver mensajes de sus leads
     PERMISSIONS.REPLY_LEAD_MESSAGES,     // Responder mensajes
-    PERMISSIONS.SEND_CLIENT_MESSAGES     // Enviar mensajes como cliente
+    PERMISSIONS.SEND_CLIENT_MESSAGES,    // Enviar mensajes como cliente
+    
+    // 📝 Blog - Solo lectura
+    PERMISSIONS.VIEW_PUBLISHED_POSTS,    // Ver posts publicados
+    PERMISSIONS.VIEW_BLOG_CATEGORIES,    // Ver categorías
+    PERMISSIONS.VIEW_BLOG_TAGS           // Ver tags
   ]
 };
 

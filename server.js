@@ -18,6 +18,8 @@ import crmRoutes from './routes/crm.js';
 import contactRoutes from './routes/contact.js';
 import categoriasRoutes from './routes/categorias.js';
 import clientRoutes from './routes/client.js';
+import blogRoutes from './routes/blog.js';
+import commentsRoutes from './routes/comments.js';
 import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import { inicializarCategorias } from './utils/categoriaInitializer.js';
@@ -308,6 +310,8 @@ app.use('/api/crm', crmRoutes); // 💼 CRM Routes
 app.use('/api/contact', contactRoutes); // 📧 Contact Routes (público + admin)
 app.use('/api/categorias', categoriasRoutes); // 📁 Categorías Routes
 app.use('/api/client', clientRoutes); // 🎉 Client Onboarding Routes
+app.use('/api/blog', blogRoutes); // 📝 Blog Routes (Sprint 1)
+app.use('/api', commentsRoutes); // 💬 Comments & Moderation Routes (Sprint 4)
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {
