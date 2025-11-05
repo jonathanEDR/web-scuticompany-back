@@ -49,8 +49,7 @@ const getPostComments = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting post comments:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener comentarios',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -92,8 +91,7 @@ const getComment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting comment:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener comentario',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -222,8 +220,7 @@ const createComment = async (req, res) => {
         originalComment: parentComment
       });
     } catch (notifError) {
-      console.error('Error sending notifications:', notifError);
-      // No fallar la creación por errores de notificación
+            // No fallar la creación por errores de notificación
     }
 
     // Respuesta
@@ -243,8 +240,7 @@ const createComment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error creating comment:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al crear comentario',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -318,8 +314,7 @@ const updateComment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error updating comment:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al actualizar comentario',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -381,8 +376,7 @@ const deleteComment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error deleting comment:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al eliminar comentario',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -444,8 +438,7 @@ const voteComment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error voting comment:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al votar comentario',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -537,8 +530,7 @@ const reportComment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error reporting comment:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al reportar comentario',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -574,8 +566,7 @@ const getPostCommentStats = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting comment stats:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener estadísticas',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -613,8 +604,7 @@ const getUserComments = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting user comments:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener comentarios del usuario',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -652,8 +642,7 @@ const pinComment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error pinning comment:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al fijar comentario',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -687,8 +676,7 @@ const unpinComment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error unpinning comment:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al desfijar comentario',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined

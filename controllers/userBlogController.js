@@ -32,7 +32,6 @@ export const getUserBlogStats = async (req, res) => {
     }
 
 
-
     // Calcular estadísticas en paralelo
     const [
       totalComments,
@@ -45,7 +44,6 @@ export const getUserBlogStats = async (req, res) => {
       BlogPost.countDocuments({ bookmarkedBy: user._id }),
       BlogPost.countDocuments({ likedBy: user._id })
     ]);
-
 
 
     // Obtener posts leídos (del historial de lectura)
@@ -77,8 +75,7 @@ export const getUserBlogStats = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting user blog stats:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener estadísticas',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -165,8 +162,7 @@ export const getMyComments = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting my comments:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener comentarios',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -214,8 +210,7 @@ export const deleteMyComment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error deleting comment:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al eliminar comentario',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -293,8 +288,7 @@ export const getMyBookmarks = async (req, res) => {
     res.json(response);
 
   } catch (error) {
-    console.error('Error getting bookmarks:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener posts guardados',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -358,8 +352,7 @@ export const toggleBookmark = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error toggling bookmark:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al procesar bookmark',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -431,8 +424,7 @@ export const getMyLikes = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting likes:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener posts con me gusta',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -500,8 +492,7 @@ export const toggleLike = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error toggling like:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al procesar like',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -592,8 +583,7 @@ export const getReadingHistory = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting reading history:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener historial de lectura',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -668,8 +658,7 @@ export const addToReadingHistory = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error adding to reading history:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al registrar lectura',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined

@@ -54,8 +54,7 @@ export const getSitemap = async (req, res) => {
     res.send(sitemap);
     
   } catch (error) {
-    console.error('Error al generar sitemap:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar sitemap',
       message: error.message
     });
@@ -75,8 +74,7 @@ export const getImageSitemap = async (req, res) => {
     res.send(sitemap);
     
   } catch (error) {
-    console.error('Error al generar sitemap de imágenes:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar sitemap de imágenes',
       message: error.message
     });
@@ -96,8 +94,7 @@ export const getNewsSitemap = async (req, res) => {
     res.send(sitemap);
     
   } catch (error) {
-    console.error('Error al generar sitemap de noticias:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar sitemap de noticias',
       message: error.message
     });
@@ -120,8 +117,7 @@ export const getSitemapStatistics = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener estadísticas del sitemap:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al obtener estadísticas',
       message: error.message
     });
@@ -143,8 +139,7 @@ export const getRSSFeed = async (req, res) => {
     res.send(feed);
     
   } catch (error) {
-    console.error('Error al generar RSS feed:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar RSS feed',
       message: error.message
     });
@@ -166,8 +161,7 @@ export const getAtomFeed = async (req, res) => {
     res.send(feed);
     
   } catch (error) {
-    console.error('Error al generar Atom feed:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar Atom feed',
       message: error.message
     });
@@ -188,8 +182,7 @@ export const getJSONFeed = async (req, res) => {
     res.json(feed);
     
   } catch (error) {
-    console.error('Error al generar JSON feed:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar JSON feed',
       message: error.message
     });
@@ -212,8 +205,7 @@ export const getCategoryFeed = async (req, res) => {
     res.send(feed);
     
   } catch (error) {
-    console.error('Error al generar feed de categoría:', error);
-    
+        
     if (error.message === 'Categoría no encontrada') {
       return res.status(404).json({ error: error.message });
     }
@@ -239,8 +231,7 @@ export const getFeedStatistics = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener estadísticas del feed:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al obtener estadísticas',
       message: error.message
     });
@@ -283,8 +274,7 @@ Crawl-delay: 1
     res.send(robotsTxt);
     
   } catch (error) {
-    console.error('Error al generar robots.txt:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar robots.txt',
       message: error.message
     });
@@ -321,8 +311,7 @@ export const getPostSchemas = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar schemas del post:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar schemas',
       message: error.message
     });
@@ -358,8 +347,7 @@ export const getPostMetaTags = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar meta tags del post:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar meta tags',
       message: error.message
     });
@@ -392,8 +380,7 @@ export const getCategoryMetaTags = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar meta tags de categoría:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar meta tags',
       message: error.message
     });
@@ -426,8 +413,7 @@ export const getTagMetaTags = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar meta tags de tag:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar meta tags',
       message: error.message
     });
@@ -446,8 +432,7 @@ export const getBlogHomeMetaTags = async (req, res) => {
     res.json({ metaTags });
     
   } catch (error) {
-    console.error('Error al generar meta tags del home:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar meta tags',
       message: error.message
     });
@@ -482,8 +467,7 @@ export const validatePostSEOScore = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al validar SEO del post:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al validar SEO',
       message: error.message
     });
@@ -505,8 +489,7 @@ export const getOrganizationSchema = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar schema de organización:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar schema',
       message: error.message
     });
@@ -528,8 +511,7 @@ export const getWebSiteSchema = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar schema de website:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar schema',
       message: error.message
     });
@@ -551,8 +533,7 @@ export const getBlogSchema = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar schema de blog:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar schema',
       message: error.message
     });

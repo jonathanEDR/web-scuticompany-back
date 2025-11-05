@@ -36,8 +36,7 @@ export const getAllCategories = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener categorías:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener categorías',
       error: error.message
@@ -82,8 +81,7 @@ export const getCategoryBySlug = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener categoría:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener categoría',
       error: error.message
@@ -141,8 +139,7 @@ export const createCategory = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al crear categoría:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al crear categoría',
       error: error.message
@@ -218,8 +215,7 @@ export const updateCategory = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al actualizar categoría:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al actualizar categoría',
       error: error.message
@@ -275,8 +271,7 @@ export const deleteCategory = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al eliminar categoría:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al eliminar categoría',
       error: error.message
@@ -344,8 +339,7 @@ export const getCategoryPosts = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener posts de categoría:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener posts de la categoría',
       error: error.message
@@ -382,8 +376,7 @@ export const reorderCategories = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al reordenar categorías:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al reordenar categorías',
       error: error.message

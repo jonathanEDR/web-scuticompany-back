@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/clerkAuth.js';
 import {
   getMyProfile,
   updateMyProfile,

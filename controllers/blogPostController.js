@@ -69,7 +69,7 @@ export const getAllPublishedPosts = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener posts:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener posts',
@@ -85,9 +85,9 @@ export const getAllPublishedPosts = async (req, res) => {
  */
 export const getAllAdminPosts = async (req, res) => {
   try {
-    console.log('📊 [getAllAdminPosts] Llamada recibida');
-    console.log('User:', req.user?.email);
-    console.log('Query params:', req.query);
+    
+    
+    
     
     const {
       page = 1,
@@ -119,7 +119,7 @@ export const getAllAdminPosts = async (req, res) => {
       ];
     }
     
-    console.log('🔍 Query MongoDB:', query);
+    
     
     const posts = await BlogPost.find(query)
       .populate('author', 'firstName lastName email')
@@ -132,7 +132,7 @@ export const getAllAdminPosts = async (req, res) => {
     
     const total = await BlogPost.countDocuments(query);
     
-    console.log(`✅ Posts encontrados: ${posts.length} de ${total} total`);
+    
     
     res.json({
       success: true,
@@ -148,7 +148,7 @@ export const getAllAdminPosts = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener posts admin:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener posts',
@@ -197,7 +197,7 @@ export const getPostBySlug = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener post:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener post',
@@ -215,7 +215,7 @@ export const getPostById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log('📝 [getPostById] ID:', id);
+    
     
     const post = await BlogPost.findById(id)
       .populate('author', 'firstName lastName email')
@@ -230,7 +230,7 @@ export const getPostById = async (req, res) => {
       });
     }
     
-    console.log('✅ [getPostById] Post encontrado:', post.title);
+    
     
     res.json({
       success: true,
@@ -238,7 +238,7 @@ export const getPostById = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener post por ID:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener el post',
@@ -275,7 +275,7 @@ export const getFeaturedPosts = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener posts destacados:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener posts destacados',
@@ -302,7 +302,7 @@ export const getPopularPosts = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener posts populares:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener posts populares',
@@ -337,7 +337,7 @@ export const searchPosts = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al buscar posts:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al buscar posts',
@@ -371,14 +371,7 @@ export const createPost = async (req, res) => {
       isPinned
     } = req.body;
     
-    console.log('📝 [createPost] Datos recibidos:', { 
-      title, 
-      isPublished, 
-      status, 
-      category,
-      tagsCount: tags?.length 
-    });
-    
+        
     // Validaciones
     if (!title || !excerpt || !content || !category) {
       return res.status(400).json({
@@ -440,7 +433,7 @@ export const createPost = async (req, res) => {
               slug: tagSlug,
               description: `Tag: ${tag}`
             });
-            console.log(`✅ Tag creado automáticamente: ${tag}`);
+            
           }
           
           processedTags.push(existingTag._id);
@@ -519,13 +512,7 @@ export const createPost = async (req, res) => {
       allowComments: allowComments !== undefined ? allowComments : true
     });
     
-    console.log('✅ [createPost] Post creado:', { 
-      _id: post._id, 
-      title: post.title, 
-      isPublished: post.isPublished,
-      status: post.status 
-    });
-    
+        
     // Si se crea como publicado, actualizar contadores
     if (post.status === 'published') {
       await post.publish();
@@ -543,7 +530,7 @@ export const createPost = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al crear post:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al crear post',
@@ -578,8 +565,8 @@ export const updatePost = async (req, res) => {
       isPinned
     } = req.body;
     
-    console.log('📝 [updatePost] Actualizando post:', id);
-    console.log('Datos recibidos:', { title, isPublished, status });
+    
+    
     
     const post = await BlogPost.findById(id);
     
@@ -626,7 +613,7 @@ export const updatePost = async (req, res) => {
     
     // Verificar tags si cambiaron
     if (tags !== undefined) {
-      console.log('📝 [updatePost] Procesando tags:', tags);
+      
       
       // ✅ PROCESAR TAGS: Crear automáticamente si son strings
       let processedTags = [];
@@ -661,7 +648,7 @@ export const updatePost = async (req, res) => {
                 slug: tagSlug,
                 description: `Tag: ${tag}`
               });
-              console.log(`✅ [updatePost] Tag creado automáticamente: ${tag}`);
+              
             }
             
             processedTags.push(existingTag._id);
@@ -669,7 +656,7 @@ export const updatePost = async (req, res) => {
         }
       }
       
-      console.log('✅ [updatePost] Tags procesados:', processedTags);
+      
       
       const oldTags = post.tags.map(t => t.toString());
       const newTags = processedTags;
@@ -733,13 +720,13 @@ export const updatePost = async (req, res) => {
       if (isPublished && !wasPublished) {
         post.status = 'published';
         post.publishedAt = new Date();
-        console.log('✅ [updatePost] Post siendo publicado por primera vez');
+        
       }
       
       // Si se está despublicando
       if (!isPublished && wasPublished) {
         post.status = 'draft';
-        console.log('✅ [updatePost] Post siendo despublicado');
+        
       }
     }
     
@@ -784,13 +771,7 @@ export const updatePost = async (req, res) => {
     
     await post.save();
     
-    console.log('✅ [updatePost] Post actualizado exitosamente:', { 
-      _id: post._id, 
-      title: post.title,
-      isPublished: post.isPublished,
-      status: post.status
-    });
-    
+        
     // Popular para respuesta
     await post.populate('author', 'firstName lastName email');
     await post.populate('category', 'name slug color');
@@ -803,7 +784,7 @@ export const updatePost = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al actualizar post:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al actualizar post',
@@ -850,7 +831,7 @@ export const deletePost = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al eliminar post:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al eliminar post',
@@ -896,7 +877,7 @@ export const publishPost = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al publicar post:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al publicar post',
@@ -942,7 +923,7 @@ export const unpublishPost = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al despublicar post:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al despublicar post',
@@ -1018,7 +999,7 @@ export const duplicatePost = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al duplicar post:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al duplicar post',
@@ -1036,7 +1017,7 @@ export const toggleLike = async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log('🔍 [TOGGLE LIKE] Post ID:', id);
+    
     
     const post = await BlogPost.findById(id);
     
@@ -1048,7 +1029,7 @@ export const toggleLike = async (req, res) => {
     }
     
     const userId = req.auth.userId;
-    console.log('🔍 [TOGGLE LIKE] Clerk ID:', userId);
+    
     
     const user = await User.findOne({ clerkId: userId });
     
@@ -1059,8 +1040,8 @@ export const toggleLike = async (req, res) => {
       });
     }
     
-    console.log('🔍 [TOGGLE LIKE] User MongoDB ID:', user._id);
-    console.log('🔍 [TOGGLE LIKE] Post likedBy before:', post.likedBy);
+    
+    
     
     const liked = await post.toggleLike(user._id);
     
@@ -1074,7 +1055,7 @@ export const toggleLike = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ [TOGGLE LIKE] Error:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al procesar like',
@@ -1092,7 +1073,7 @@ export const toggleBookmark = async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log('🔍 [TOGGLE BOOKMARK] Post ID:', id);
+    
     
     const post = await BlogPost.findById(id);
     
@@ -1104,7 +1085,7 @@ export const toggleBookmark = async (req, res) => {
     }
     
     const userId = req.auth.userId;
-    console.log('🔍 [TOGGLE BOOKMARK] Clerk ID:', userId);
+    
     
     const user = await User.findOne({ clerkId: userId });
     
@@ -1126,7 +1107,7 @@ export const toggleBookmark = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al guardar post:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al procesar bookmark',
@@ -1196,7 +1177,7 @@ export const getPostsByUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting user posts:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener posts del usuario',

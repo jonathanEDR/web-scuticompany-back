@@ -39,7 +39,7 @@ const getModerationQueue = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting moderation queue:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener cola de moderación',
@@ -84,7 +84,7 @@ const approveComment = async (req, res) => {
     try {
       await updateAuthorReputation(comment.author.email);
     } catch (repError) {
-      console.error('Error updating author reputation:', repError);
+      
     }
 
     // Notificar al autor
@@ -94,7 +94,7 @@ const approveComment = async (req, res) => {
         post: comment.post
       });
     } catch (notifError) {
-      console.error('Error sending notification:', notifError);
+      
     }
 
     res.json({
@@ -104,7 +104,7 @@ const approveComment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error approving comment:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al aprobar comentario',
@@ -156,7 +156,7 @@ const rejectComment = async (req, res) => {
     try {
       await updateAuthorReputation(comment.author.email);
     } catch (repError) {
-      console.error('Error updating author reputation:', repError);
+      
     }
 
     // Notificar al autor
@@ -167,7 +167,7 @@ const rejectComment = async (req, res) => {
         reason
       });
     } catch (notifError) {
-      console.error('Error sending notification:', notifError);
+      
     }
 
     res.json({
@@ -177,7 +177,7 @@ const rejectComment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error rejecting comment:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al rechazar comentario',
@@ -221,7 +221,7 @@ const markAsSpam = async (req, res) => {
     try {
       await updateAuthorReputation(comment.author.email);
     } catch (repError) {
-      console.error('Error updating author reputation:', repError);
+      
     }
 
     res.json({
@@ -231,7 +231,7 @@ const markAsSpam = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error marking as spam:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al marcar como spam',
@@ -285,7 +285,7 @@ const bulkApprove = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error bulk approving:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error en aprobación masiva',
@@ -342,7 +342,7 @@ const bulkReject = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error bulk rejecting:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error en rechazo masivo',
@@ -392,7 +392,7 @@ const bulkSpam = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error bulk spam:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al marcar spam masivo',
@@ -432,7 +432,7 @@ const getReports = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting reports:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener reportes',
@@ -492,7 +492,7 @@ const resolveReport = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error resolving report:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al resolver reporte',
@@ -528,7 +528,7 @@ const dismissReport = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error dismissing report:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al descartar reporte',
@@ -642,7 +642,7 @@ const getModerationStats = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting moderation stats:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener estadísticas',
@@ -667,7 +667,7 @@ const getReportStats = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting report stats:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener estadísticas de reportes',
@@ -697,7 +697,7 @@ const reanalyzeComments = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error reanalyzing comments:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al re-analizar comentarios',
@@ -745,7 +745,7 @@ const getModerationSettings = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting settings:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener configuración',

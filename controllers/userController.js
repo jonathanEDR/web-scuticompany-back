@@ -50,16 +50,41 @@ export const syncUser = async (req, res) => {
       });
       
       // Usuario existe, actualizar datos si es necesario
+      const updateData = {
+        email: email || existingUser.email,
+        firstName: firstName || existingUser.firstName,
+        lastName: lastName || existingUser.lastName,
+        username: username || existingUser.username || email.split('@')[0],
+        profileImage: profileImage || existingUser.profileImage,
+        lastLogin: new Date()
+      };
+
+      // 🆕 Inicializar blogProfile si no existe
+      if (!existingUser.blogProfile || Object.keys(existingUser.blogProfile).length === 0) {
+        updateData.blogProfile = {
+          displayName: `${firstName || existingUser.firstName || ''} ${lastName || existingUser.lastName || ''}`.trim() || username || existingUser.username || email.split('@')[0],
+          bio: '',
+          avatar: profileImage || existingUser.profileImage || '',
+          website: '',
+          location: '',
+          expertise: [],
+          social: {
+            twitter: '',
+            linkedin: '',
+            github: '',
+            orcid: ''
+          },
+          isPublicProfile: true,
+          allowComments: true,
+          showEmail: false,
+          profileCompleteness: 15,
+          lastProfileUpdate: new Date()
+        };
+      }
+
       const updated = await User.findOneAndUpdate(
         { clerkId },
-        {
-          email: email || existingUser.email,
-          firstName: firstName || existingUser.firstName,
-          lastName: lastName || existingUser.lastName,
-          username: username || existingUser.username || email.split('@')[0],
-          profileImage: profileImage || existingUser.profileImage,
-          lastLogin: new Date()
-        },
+        updateData,
         { new: true }
       );
 
@@ -109,7 +134,27 @@ export const syncUser = async (req, res) => {
         username: username || email.split('@')[0],
         profileImage: profileImage || '',
         role: defaultRole, // Rol determinado automáticamente
-        lastLogin: new Date()
+        lastLogin: new Date(),
+        // 🆕 Inicializar blogProfile por defecto
+        blogProfile: {
+          displayName: `${firstName || ''} ${lastName || ''}`.trim() || username || email.split('@')[0],
+          bio: '',
+          avatar: profileImage || '',
+          website: '',
+          location: '',
+          expertise: [],
+          social: {
+            twitter: '',
+            linkedin: '',
+            github: '',
+            orcid: ''
+          },
+          isPublicProfile: true, // Por defecto público
+          allowComments: true,
+          showEmail: false,
+          profileCompleteness: 15, // Completitud inicial básica
+          lastProfileUpdate: new Date()
+        }
       });
 
       logger.debug('Creando nuevo usuario con rol determinado', {
@@ -271,7 +316,6 @@ export const getUserProfile = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error obteniendo perfil:', error);
     return res.status(500).json({
       success: false,
       message: 'Error interno del servidor',

@@ -127,7 +127,7 @@ export const createContact = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error al crear contacto:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al procesar tu mensaje. Por favor, intenta nuevamente.'
@@ -208,7 +208,7 @@ export const getContacts = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error al obtener contactos:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener contactos'
@@ -245,7 +245,7 @@ export const getContactById = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error al obtener contacto:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener contacto'
@@ -303,7 +303,7 @@ export const updateContact = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error al actualizar contacto:', error);
+    
     res.status(500).json({
       success: false,
       message: error.message || 'Error al actualizar contacto'
@@ -333,7 +333,7 @@ export const deleteContact = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error al eliminar contacto:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al eliminar contacto'
@@ -381,7 +381,7 @@ export const cambiarEstado = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error al cambiar estado:', error);
+    
     res.status(500).json({
       success: false,
       message: error.message || 'Error al cambiar estado'
@@ -429,7 +429,7 @@ export const agregarNota = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error al agregar nota:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al agregar nota'
@@ -502,7 +502,7 @@ export const getEstadisticas = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error al obtener estadísticas:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener estadísticas'
@@ -525,7 +525,7 @@ export const getContactosPendientes = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error al obtener contactos pendientes:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener contactos pendientes'
@@ -556,7 +556,7 @@ export const buscarContactos = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error al buscar contactos:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al buscar contactos'

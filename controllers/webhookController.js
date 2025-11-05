@@ -12,8 +12,7 @@ export const clerkWebhook = async (req, res) => {
     const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
     if (!WEBHOOK_SECRET) {
-      console.error('CLERK_WEBHOOK_SECRET not configured');
-      return res.status(500).json({
+            return res.status(500).json({
         success: false,
         message: 'Webhook secret not configured'
       });
@@ -48,8 +47,7 @@ export const clerkWebhook = async (req, res) => {
         'svix-signature': svix_signature,
       });
     } catch (err) {
-      console.error('Webhook verification failed:', err.message);
-      return res.status(400).json({
+            return res.status(400).json({
         success: false,
         message: 'Webhook verification failed'
       });
@@ -84,8 +82,7 @@ export const clerkWebhook = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Webhook processing error:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Internal server error',
       error: error.message
@@ -138,8 +135,7 @@ async function handleUserCreated(clerkId, attributes) {
     
     return user;
   } catch (error) {
-    console.error('Error creating user:', error.message);
-    throw error;
+        throw error;
   }
 }
 
@@ -174,8 +170,7 @@ async function handleUserUpdated(clerkId, attributes) {
 
     return user;
   } catch (error) {
-    console.error('Error updating user:', error.message);
-    throw error;
+        throw error;
   }
 }
 
@@ -192,7 +187,6 @@ async function handleUserDeleted(clerkId) {
 
     return user;
   } catch (error) {
-    console.error('Error deleting user:', error.message);
-    throw error;
+        throw error;
   }
 }

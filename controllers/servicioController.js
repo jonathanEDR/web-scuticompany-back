@@ -182,8 +182,7 @@ export const createServicio = async (req, res) => {
       data: servicio
     });
   } catch (error) {
-    console.error('❌ Error al crear servicio:', error);
-    
+        
     // Manejo específico para error de slug duplicado
     if (error.code === 11000 && error.keyPattern?.slug) {
       return res.status(400).json({
@@ -208,12 +207,7 @@ export const createServicio = async (req, res) => {
  */
 export const updateServicio = async (req, res) => {
   try {
-    console.log('📥 Datos recibidos para actualizar:', {
-      id: req.params.id,
-      imagen: req.body.imagen,
-      titulo: req.body.titulo
-    });
-
+    
     const servicio = await Servicio.findByIdAndUpdate(
       req.params.id,
       req.body,

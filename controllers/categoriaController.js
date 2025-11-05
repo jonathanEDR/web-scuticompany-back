@@ -28,8 +28,7 @@ export const obtenerCategorias = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener categorías:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
       error: error.message
@@ -60,8 +59,7 @@ export const obtenerCategoriaPorId = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener categoría:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
       error: error.message
@@ -111,8 +109,7 @@ export const crearCategoria = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al crear categoría:', error);
-    
+        
     if (error.name === 'ValidationError') {
       const errores = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
@@ -177,8 +174,7 @@ export const actualizarCategoria = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al actualizar categoría:', error);
-    
+        
     if (error.name === 'ValidationError') {
       const errores = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
@@ -228,8 +224,7 @@ export const eliminarCategoria = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al eliminar categoría:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
       error: error.message
@@ -248,8 +243,7 @@ export const obtenerEstadisticasCategorias = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener estadísticas:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
       error: error.message

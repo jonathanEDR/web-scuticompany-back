@@ -27,6 +27,39 @@ export const getMyProfile = async (req, res) => {
       });
     }
 
+    // 🛡️ PROTECCIÓN: Inicializar blogProfile si no existe
+    if (!user.blogProfile || !user.blogProfile.displayName) {
+      
+      user.blogProfile = {
+        displayName: user.firstName 
+          ? `${user.firstName} ${user.lastName || ''}`.trim() 
+          : (user.email ? user.email.split('@')[0] : 'Usuario'),
+        bio: '',
+        avatar: user.profileImage || '',
+        website: '',
+        location: '',
+        expertise: '',
+        social: {
+          twitter: '',
+          linkedin: '',
+          github: '',
+          orcid: ''
+        },
+        isPublicProfile: true,
+        allowComments: true,
+        showEmail: false,
+        profileCompleteness: 0,
+        lastProfileUpdate: new Date()
+      };
+      
+      user.markModified('blogProfile');
+      try {
+        await user.save();
+      } catch (saveError) {
+        throw new Error('Error al inicializar blogProfile');
+      }
+    }
+
     // Devolver perfil completo (incluye datos privados)
     res.json({
       success: true,
@@ -46,7 +79,6 @@ export const getMyProfile = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting my profile:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener perfil',
@@ -77,6 +109,7 @@ export const updateMyProfile = async (req, res) => {
 
     // Validar datos del perfil
     const { isValid, errors } = validateProfileData(req.body);
+    
     if (!isValid) {
       return res.status(400).json({
         success: false,
@@ -107,7 +140,6 @@ export const updateMyProfile = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error updating profile:', error);
     res.status(500).json({
       success: false,
       message: 'Error al actualizar perfil',
@@ -156,7 +188,6 @@ export const getPublicProfile = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting public profile:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener perfil público',
@@ -235,7 +266,6 @@ export const getProfileStats = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting profile stats:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener estadísticas',
@@ -331,7 +361,6 @@ export const listPublicProfiles = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error listing public profiles:', error);
     res.status(500).json({
       success: false,
       message: 'Error al listar perfiles',

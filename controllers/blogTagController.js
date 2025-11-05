@@ -46,8 +46,7 @@ export const getAllTags = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener tags:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener tags',
       error: error.message
@@ -73,8 +72,7 @@ export const getPopularTags = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener tags populares:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener tags populares',
       error: error.message
@@ -106,8 +104,7 @@ export const getTagBySlug = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener tag:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener tag',
       error: error.message
@@ -151,8 +148,7 @@ export const createTag = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al crear tag:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al crear tag',
       error: error.message
@@ -200,8 +196,7 @@ export const updateTag = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al actualizar tag:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al actualizar tag',
       error: error.message
@@ -262,8 +257,7 @@ export const deleteTag = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al eliminar tag:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al eliminar tag',
       error: error.message
@@ -333,8 +327,7 @@ export const getTagPosts = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al obtener posts del tag:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al obtener posts del tag',
       error: error.message
@@ -379,8 +372,7 @@ export const bulkCreateTags = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al crear tags en bulk:', error);
-    res.status(500).json({
+        res.status(500).json({
       success: false,
       message: 'Error al crear tags',
       error: error.message

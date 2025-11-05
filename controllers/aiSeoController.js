@@ -63,8 +63,7 @@ export const getAIMetadata = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar AI metadata:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar AI metadata',
       message: error.message
     });
@@ -97,8 +96,7 @@ export const getConversationalFormat = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar formato conversacional:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar formato conversacional',
       message: error.message
     });
@@ -135,8 +133,7 @@ export const getQAFormat = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar formato Q&A:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar formato Q&A',
       message: error.message
     });
@@ -174,8 +171,7 @@ export const getSemanticAnalysis = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al analizar contenido:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al analizar contenido',
       message: error.message
     });
@@ -206,8 +202,7 @@ export const getMarkdownFormat = async (req, res) => {
     res.send(markdown);
     
   } catch (error) {
-    console.error('Error al generar Markdown:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar Markdown',
       message: error.message
     });
@@ -241,8 +236,7 @@ export const getExtendedJSONLD = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar JSON-LD extendido:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar JSON-LD extendido',
       message: error.message
     });
@@ -275,8 +269,7 @@ export const getLLMMetadata = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar metadata LLM:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar metadata LLM',
       message: error.message
     });
@@ -315,8 +308,7 @@ export const getKeywords = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al extraer keywords:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al extraer keywords',
       message: error.message
     });
@@ -350,8 +342,7 @@ export const getEntities = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al extraer entidades:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al extraer entidades',
       message: error.message
     });
@@ -386,8 +377,7 @@ export const getTopics = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al extraer tópicos:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al extraer tópicos',
       message: error.message
     });
@@ -421,8 +411,7 @@ export const getReadabilityAnalysis = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al analizar legibilidad:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al analizar legibilidad',
       message: error.message
     });
@@ -456,8 +445,7 @@ export const getSentimentAnalysis = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al analizar sentimiento:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al analizar sentimiento',
       message: error.message
     });
@@ -490,8 +478,7 @@ export const getStructureAnalysis = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al analizar estructura:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al analizar estructura',
       message: error.message
     });
@@ -528,8 +515,7 @@ export const getImprovementSuggestions = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al generar sugerencias:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al generar sugerencias',
       message: error.message
     });
@@ -565,8 +551,7 @@ export const getSuggestedTags = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al sugerir tags:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al sugerir tags',
       message: error.message
     });
@@ -600,8 +585,7 @@ export const getSuggestedKeywords = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al sugerir keywords:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al sugerir keywords',
       message: error.message
     });
@@ -638,8 +622,7 @@ export const getContentScore = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al calcular content score:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al calcular content score',
       message: error.message
     });
@@ -731,8 +714,7 @@ export const optimizePost = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al optimizar post:', error);
-    res.status(500).json({
+        res.status(500).json({
       error: 'Error al optimizar post',
       message: error.message
     });

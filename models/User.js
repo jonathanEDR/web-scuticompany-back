@@ -143,10 +143,14 @@ const userSchema = new mongoose.Schema(
       },
       // Áreas de expertise/especialización
       expertise: {
-        type: String,
-        trim: true,
-        maxlength: 100,
-        default: ''
+        type: [String],
+        default: [],
+        validate: {
+          validator: function(arr) {
+            return arr.length <= 10; // Máximo 10 especialidades
+          },
+          message: 'No puedes tener más de 10 especialidades'
+        }
       },
       // Enlaces a redes sociales
       social: {
@@ -320,7 +324,8 @@ userSchema.methods.updateBlogProfile = async function(profileData) {
     // Actualizar campos del perfil de manera segura
     const allowedFields = [
       'displayName', 'bio', 'avatar', 'website', 
-      'location', 'expertise', 'isPublicProfile'
+      'location', 'expertise', 'isPublicProfile', 
+      'showEmail', 'allowComments'
     ];
     
     // Actualizar campos simples
@@ -372,20 +377,34 @@ userSchema.methods.updateBlogProfile = async function(profileData) {
 userSchema.methods.getPublicProfile = function() {
   const profile = this.blogProfile || {};
   
+  // Asegurar que expertise sea un array
+  let expertiseArray = [];
+  if (profile.expertise) {
+    if (Array.isArray(profile.expertise)) {
+      expertiseArray = profile.expertise;
+    } else if (typeof profile.expertise === 'string') {
+      expertiseArray = profile.expertise.split(',').map(e => e.trim()).filter(e => e);
+    }
+  }
+  
   return {
     _id: this._id,
+    username: this.username,
     displayName: profile.displayName || `${this.firstName || ''} ${this.lastName || ''}`.trim() || 'Usuario',
     bio: profile.bio || '',
     avatar: profile.avatar || this.profileImage, // Fallback a profileImage de Clerk
     website: profile.website || '',
     location: profile.location || '',
-    expertise: profile.expertise || [],
+    expertise: expertiseArray,
     social: profile.social || {},
     isPublicProfile: profile.isPublicProfile !== false,
     profileCompleteness: profile.profileCompleteness || 0,
     // Solo mostrar email si el usuario lo permite
     email: profile.showEmail && this.email ? this.email : null,
-    joinDate: this.createdAt
+    joinDate: this.createdAt,
+    // Información adicional útil para la vista pública
+    firstName: this.firstName,
+    lastName: this.lastName
   };
 };
 
@@ -414,16 +433,43 @@ userSchema.statics.findByPublicUsername = function(username) {
   return this.findOne({ 
     $or: [
       { username: username },
-      { 'blogProfile.displayName': new RegExp(username, 'i') }
+      { username: new RegExp(`^${username}$`, 'i') }, // Búsqueda case-insensitive exacta
+      { 'blogProfile.displayName': new RegExp(`^${username}$`, 'i') }, // DisplayName exacto
+      { 'blogProfile.displayName': new RegExp(username, 'i') }, // DisplayName que contenga
+      { email: username }, // Por si buscan por email
+      { email: new RegExp(`^${username}@`, 'i') } // Por la parte antes del @
     ],
     'blogProfile.isPublicProfile': true
   });
 };
 
-// Middleware para inicializar blogProfile en usuarios nuevos
+// Middleware para inicializar blogProfile en usuarios nuevos Y antiguos
 userSchema.pre('save', function(next) {
-  if (this.isNew && !this.blogProfile) {
-    this.blogProfile = {};
+  // Inicializar blogProfile si no existe (aplica a usuarios nuevos Y antiguos)
+  if (!this.blogProfile || !this.blogProfile.displayName) {
+    console.log(`⚠️ Inicializando blogProfile para ${this.email || this._id}`);
+    
+    this.blogProfile = {
+      displayName: this.firstName 
+        ? `${this.firstName} ${this.lastName || ''}`.trim() 
+        : (this.email ? this.email.split('@')[0] : 'Usuario'),
+      bio: this.blogProfile?.bio || '',
+      avatar: this.blogProfile?.avatar || this.profileImage || '',
+      website: this.blogProfile?.website || '',
+      location: this.blogProfile?.location || '',
+      expertise: this.blogProfile?.expertise || '',
+      social: this.blogProfile?.social || {
+        twitter: '',
+        linkedin: '',
+        github: '',
+        orcid: ''
+      },
+      isPublicProfile: this.blogProfile?.isPublicProfile !== false,
+      allowComments: this.blogProfile?.allowComments !== false,
+      showEmail: this.blogProfile?.showEmail || false,
+      profileCompleteness: 0,
+      lastProfileUpdate: new Date()
+    };
   }
   
   // Asegurar que blogProfile existe antes de calcular completitud

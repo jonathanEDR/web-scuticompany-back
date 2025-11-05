@@ -93,7 +93,7 @@ export const getAllPages = async (req, res) => {
 
     // 🔧 CORRECCIÓN: Asegurar que cardsDesign existe para solutions
     if (pageObj.content?.solutions && !pageObj.content.solutions.cardsDesign) {
-      console.log('⚠️ [Backend] Migrando cardsDesign para solutions');
+      
       pageObj.content.solutions.cardsDesign = {
         light: {
           background: 'rgba(255, 255, 255, 0.1)',
@@ -144,7 +144,7 @@ export const getAllPages = async (req, res) => {
 
     // 🔧 CORRECCIÓN: Asegurar que cardsDesign existe para valueAdded
     if (pageObj.content?.valueAdded && !pageObj.content.valueAdded.cardsDesign) {
-      console.log('⚠️ [Backend] Migrando cardsDesign para valueAdded');
+      
       pageObj.content.valueAdded.cardsDesign = {
         light: {
           background: 'rgba(255, 255, 255, 0.9)',
@@ -194,9 +194,9 @@ export const getAllPages = async (req, res) => {
     }
 
     // Logs de depuración para verificar la corrección
-    console.log('🔍 [Backend] Verificando cardsDesign en respuesta pública:');
-    console.log('   Solutions cardsDesign:', pageObj.content?.solutions?.cardsDesign ? 'EXISTE' : 'NO EXISTE');
-    console.log('   ValueAdded cardsDesign:', pageObj.content?.valueAdded?.cardsDesign ? 'EXISTE' : 'NO EXISTE');      // Convertir botones
+    
+    
+          // Convertir botones
       if (pageObj.theme) {
         if (pageObj.theme.lightMode?.buttons) {
           pageObj.theme.lightMode.buttons = convertButtonsToFrontend(pageObj.theme.lightMode.buttons);
@@ -217,7 +217,7 @@ export const getAllPages = async (req, res) => {
       data: pagesWithAbsoluteUrls
     });
   } catch (error) {
-    console.error('Error al obtener páginas:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener páginas',
@@ -304,7 +304,7 @@ export const getPageBySlug = async (req, res) => {
       data: pageWithAbsoluteUrls
     });
   } catch (error) {
-    console.error('Error al obtener página:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener página',
@@ -321,18 +321,13 @@ export const updatePage = async (req, res) => {
     const { slug } = req.params;
     const updateData = req.body;
     
-    // 🔍 [DEBUG] Log completo del body recibido
-    console.log('📥 [RECIBIDO BACKEND] Body completo:', JSON.stringify({
-      contentSolutions: updateData.content?.solutions?.cardsDesign?.light,
-      contentValueAdded: updateData.content?.valueAdded?.cardsDesign?.light,
-      contentContactForm: updateData.content?.contactForm?.cardsDesign?.light
-    }, null, 2));
+
     
     // 🔍 [DEBUG] Log específico para contactForm
     if (updateData.content?.contactForm?.cardsDesign) {
-      console.log('📧 [CONTACTFORM] cardsDesign recibido:', JSON.stringify(updateData.content.contactForm.cardsDesign, null, 2));
+      
     } else {
-      console.log('❌ [CONTACTFORM] No se recibió cardsDesign en contactForm');
+      
     }
     
     // Obtener datos anteriores para comparar imágenes
@@ -365,50 +360,50 @@ export const updatePage = async (req, res) => {
     
     // Actualizar campos manualmente
     if (updateData.content) {
-      console.log('🔄 [UPDATE] Actualizando content...');
-      console.log('🔍 [UPDATE] borderWidth ANTES de asignar:', page.content?.solutions?.cardsDesign?.light?.borderWidth);
-      console.log('🔍 [UPDATE] borderWidth en updateData:', updateData.content?.solutions?.cardsDesign?.light?.borderWidth);
+      
+      
+      
       page.content = updateData.content;
       page.markModified('content'); // ⚠️ CRÍTICO: Marcar como modificado para forzar guardado
-      console.log('🔍 [UPDATE] borderWidth DESPUÉS de asignar:', page.content?.solutions?.cardsDesign?.light?.borderWidth);
-      console.log('✅ [UPDATE] Content marcado como modificado');
+      
+      
     }
     if (updateData.seo) {
-      console.log('🔄 [UPDATE] Actualizando SEO...');
+      
       page.seo = updateData.seo;
       page.markModified('seo');
     }
     if (updateData.theme) {
-      console.log('🔄 [UPDATE] Actualizando theme...');
+      
       page.theme = updateData.theme;
       page.markModified('theme');
     }
     if (updateData.isPublished !== undefined) {
-      console.log('🔄 [UPDATE] Actualizando isPublished...');
+      
       page.isPublished = updateData.isPublished;
     }
     page.lastUpdated = updateData.lastUpdated;
     page.updatedBy = updateData.updatedBy;
     
     // 🔍 [DEBUG] Logging antes del guardado
-    console.log('🔍 [ANTES SAVE] Verificando datos a guardar...');
+    
     if (page.content?.solutions?.cardsDesign?.light?.borderWidth) {
-      console.log('🔍 [ANTES SAVE] borderWidth:', page.content.solutions.cardsDesign.light.borderWidth);
+      
     }
     
     // Guardar cambios
-    console.log('💾 [SAVE] Iniciando save() a MongoDB...');
+    
     await page.save();
-    console.log('✅ [SAVE] save() completado');
+    
     
     // 🔍 [DEBUG] Logging después del guardado
-    console.log('🔍 [DESPUÉS SAVE] Verificando datos guardados...');
+    
     const verifyPage = await Page.findOne({ pageSlug: slug });
     if (verifyPage.content?.solutions?.cardsDesign?.light?.borderWidth) {
-      console.log('🔍 [DESPUÉS SAVE] borderWidth en BD:', verifyPage.content.solutions.cardsDesign.light.borderWidth);
+      
     }
     
-    console.log('✅ Guardado en DB');
+    
     
     // Actualizar referencias de imágenes
     if (oldPage) {
@@ -418,7 +413,7 @@ export const updatePage = async (req, res) => {
         'Page', 
         page._id
       ).catch(error => {
-        console.error('Error actualizando referencias de imágenes:', error);
+        
       });
     }
     
@@ -439,7 +434,7 @@ export const updatePage = async (req, res) => {
       data: pageObj
     });
   } catch (error) {
-    console.error('Error al actualizar página:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al actualizar página',
@@ -478,7 +473,7 @@ export const createPage = async (req, res) => {
       data: page
     });
   } catch (error) {
-    console.error('Error al crear página:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al crear página',
@@ -578,7 +573,7 @@ export const initHomePage = async (req, res) => {
       data: homePage
     });
   } catch (error) {
-    console.error('Error al inicializar página Home:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al inicializar página Home',
