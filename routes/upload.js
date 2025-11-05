@@ -51,4 +51,104 @@ router.post('/images/:id/reference', canManageUploads, addImageReference);
 // Eliminar referencia de uso - internal (requiere gestión de uploads)
 router.delete('/images/:id/reference', canManageUploads, removeImageReference);
 
+// ============================================
+// RUTAS DE PERFIL (AVATARES)
+// ============================================
+
+/**
+ * @desc    Upload de avatar para perfil
+ * @route   POST /api/upload/avatar
+ * @access  Private (usuario autenticado)
+ */
+router.post('/avatar', requireUser, async (req, res) => {
+  try {
+    // Importar dinámicamente para evitar dependencias circulares
+    const { uploadAvatar } = await import('../utils/cloudinary.js');
+    const User = (await import('../models/User.js')).default;
+    
+    if (!req.files || !req.files.avatar) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se ha proporcionado ningún archivo de avatar'
+      });
+    }
+
+    const avatarFile = req.files.avatar;
+    
+    // Validar tipo de archivo
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(avatarFile.mimetype)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de archivo no permitido. Solo se permiten: JPEG, PNG, WebP'
+      });
+    }
+
+    // Validar tamaño (5MB máximo)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (avatarFile.size > maxSize) {
+      return res.status(400).json({
+        success: false,
+        message: 'El archivo es demasiado grande. Tamaño máximo: 5MB'
+      });
+    }
+
+    // Subir a Cloudinary
+    const uploadResult = await uploadAvatar(avatarFile.data);
+    
+    if (!uploadResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error al subir avatar',
+        error: uploadResult.error
+      });
+    }
+
+    // Obtener usuario actual
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Si ya tenía avatar, eliminar el anterior
+    if (user.blogProfile.avatar) {
+      const { extractPublicId, deleteFromCloudinary } = await import('../utils/cloudinary.js');
+      const oldPublicId = extractPublicId(user.blogProfile.avatar);
+      if (oldPublicId) {
+        await deleteFromCloudinary(oldPublicId);
+      }
+    }
+
+    // Actualizar avatar en el perfil
+    await user.updateBlogProfile({
+      avatar: uploadResult.url
+    });
+
+    res.json({
+      success: true,
+      message: 'Avatar actualizado exitosamente',
+      data: {
+        avatar: uploadResult.url,
+        publicId: uploadResult.publicId,
+        dimensions: {
+          width: uploadResult.width,
+          height: uploadResult.height
+        },
+        size: uploadResult.bytes
+      }
+    });
+
+  } catch (error) {
+    console.error('Error uploading avatar:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 export default router;

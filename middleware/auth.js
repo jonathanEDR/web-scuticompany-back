@@ -39,9 +39,10 @@ export const requireAuth = (req, res, next) => {
   // Simular usuario para development
   // En producción, esto vendría del token JWT decodificado
   req.user = {
-    userId: 'dev-user-id',
+    id: '690a39415b95c3b74b4f407d', // ID del usuario de prueba real
+    userId: 'dev_clerk_id_test',
     email: 'dev@example.com',
-    role: 'user'
+    role: 'USER'
   };
 
   next();
@@ -62,9 +63,10 @@ export const optionalAuth = (req, res, next) => {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     // Si hay token, simular usuario para development
     req.user = {
-      userId: 'dev-user-id',
+      id: '690a39415b95c3b74b4f407d', // ID del usuario de prueba real
+      userId: 'dev_clerk_id_test',
       email: 'dev@example.com',
-      role: 'user'
+      role: 'USER'
     };
   }
 

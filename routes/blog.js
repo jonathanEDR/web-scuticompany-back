@@ -16,7 +16,8 @@ import {
   unpublishPost,
   duplicatePost,
   toggleLike,
-  toggleBookmark
+  toggleBookmark,
+  getPostsByUser
 } from '../controllers/blogPostController.js';
 
 import {
@@ -112,6 +113,7 @@ router.get('/posts', getAllPublishedPosts);
 router.get('/posts/featured', getFeaturedPosts);
 router.get('/posts/popular', getPopularPosts);
 router.get('/posts/search', searchPosts);
+router.get('/posts/user/:username', getPostsByUser);
 router.get('/posts/:slug', getPostBySlug);
 
 // Rutas protegidas de posts

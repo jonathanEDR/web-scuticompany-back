@@ -32,8 +32,10 @@ const getModerationQueue = async (req, res) => {
 
     res.json({
       success: true,
-      data: result.comments,
-      pagination: result.pagination
+      data: {
+        data: result.comments,
+        pagination: result.pagination
+      }
     });
 
   } catch (error) {

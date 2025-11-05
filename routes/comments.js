@@ -2,7 +2,7 @@ import express from 'express';
 const router = express.Router();
 
 // Middleware
-import { requireAuth, requirePermission } from '../middleware/clerkAuth.js';
+import { requireAuth, requirePermission, optionalAuth } from '../middleware/clerkAuth.js';
 
 // Alias para compatibilidad
 const hasPermission = requirePermission;
@@ -69,7 +69,7 @@ router.get('/comments/:id', getComment);
  * Si está autenticado, usa datos del usuario
  * Si no, requiere name y email
  */
-router.post('/blog/:slug/comments', createComment);
+router.post('/blog/:slug/comments', optionalAuth, createComment);
 
 /**
  * Votar un comentario (like/dislike)
@@ -120,12 +120,12 @@ router.get('/users/:userId/comments', requireAuth, getUserComments);
  * Obtener cola de moderación
  * GET /api/admin/comments/moderation/queue
  * Query params: page, limit, status, sortBy, sortOrder
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.get(
   '/admin/comments/moderation/queue',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   getModerationQueue
 );
 
@@ -133,12 +133,12 @@ router.get(
  * Aprobar un comentario
  * POST /api/admin/comments/:id/approve
  * Body: { notes? }
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.post(
   '/admin/comments/:id/approve',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   approveComment
 );
 
@@ -146,12 +146,12 @@ router.post(
  * Rechazar un comentario
  * POST /api/admin/comments/:id/reject
  * Body: { reason, notes? }
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.post(
   '/admin/comments/:id/reject',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   rejectComment
 );
 
@@ -159,36 +159,36 @@ router.post(
  * Marcar comentario como spam
  * POST /api/admin/comments/:id/spam
  * Body: { notes? }
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.post(
   '/admin/comments/:id/spam',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   markAsSpam
 );
 
 /**
  * Fijar comentario
  * POST /api/comments/:id/pin
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.post(
   '/comments/:id/pin',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   pinComment
 );
 
 /**
  * Desfijar comentario
  * DELETE /api/comments/:id/pin
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.delete(
   '/comments/:id/pin',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   unpinComment
 );
 
@@ -200,12 +200,12 @@ router.delete(
  * Aprobar múltiples comentarios
  * POST /api/admin/comments/bulk-approve
  * Body: { commentIds: string[] }
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.post(
   '/admin/comments/bulk-approve',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   bulkApprove
 );
 
@@ -213,12 +213,12 @@ router.post(
  * Rechazar múltiples comentarios
  * POST /api/admin/comments/bulk-reject
  * Body: { commentIds: string[], reason: string }
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.post(
   '/admin/comments/bulk-reject',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   bulkReject
 );
 
@@ -226,12 +226,12 @@ router.post(
  * Marcar múltiples comentarios como spam
  * POST /api/admin/comments/bulk-spam
  * Body: { commentIds: string[] }
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.post(
   '/admin/comments/bulk-spam',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   bulkSpam
 );
 
@@ -243,12 +243,12 @@ router.post(
  * Obtener reportes pendientes
  * GET /api/admin/comments/reports
  * Query params: page, limit, reason, priority
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.get(
   '/admin/comments/reports',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   getReports
 );
 
@@ -257,12 +257,12 @@ router.get(
  * POST /api/admin/comments/reports/:id/resolve
  * Body: { action, notes? }
  * Actions: comment_removed, comment_edited, comment_approved, report_dismissed, user_warned, user_banned
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.post(
   '/admin/comments/reports/:id/resolve',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   resolveReport
 );
 
@@ -270,12 +270,12 @@ router.post(
  * Descartar un reporte
  * POST /api/admin/comments/reports/:id/dismiss
  * Body: { notes? }
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.post(
   '/admin/comments/reports/:id/dismiss',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   dismissReport
 );
 
@@ -283,12 +283,12 @@ router.post(
  * Estadísticas de reportes
  * GET /api/admin/comments/reports/stats
  * Query params: timeframe (días, default 30)
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.get(
   '/admin/comments/reports/stats',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   getReportStats
 );
 
@@ -300,12 +300,12 @@ router.get(
  * Estadísticas generales de moderación
  * GET /api/admin/comments/stats
  * Query params: timeframe (días, default 30)
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.get(
   '/admin/comments/stats',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   getModerationStats
 );
 
@@ -313,12 +313,12 @@ router.get(
  * Re-analizar comentarios pendientes
  * POST /api/admin/comments/reanalyze
  * Body: { limit? }
- * Requiere: Permiso moderate_comments
+ * Requiere: Permiso MODERATE_COMMENTS
  */
 router.post(
   '/admin/comments/reanalyze',
   requireAuth,
-  hasPermission('moderate_comments'),
+  hasPermission('MODERATE_COMMENTS'),
   reanalyzeComments
 );
 

@@ -443,7 +443,8 @@ blogCommentSchema.statics.getPostComments = async function(postId, options = {})
   };
 
   const comments = await this.find(query)
-    .populate('author.userId', 'firstName lastName avatar')
+    // Populate author with username and profile image so frontend can link to public profile
+    .populate('author.userId', 'firstName lastName username profileImage')
     .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
     .limit(limit)
     .skip((page - 1) * limit);
@@ -456,7 +457,8 @@ blogCommentSchema.statics.getPostComments = async function(postId, options = {})
       options: { sort: { createdAt: 1 } },
       populate: {
         path: 'author.userId',
-        select: 'firstName lastName avatar'
+        // Asegurar los mismos campos de usuario en las respuestas
+        select: 'firstName lastName username profileImage'
       }
     });
   }

@@ -168,7 +168,7 @@ export const getPostBySlug = async (req, res) => {
     const { incrementViews = 'true' } = req.query;
     
     const post = await BlogPost.findOne({ slug, isPublished: true, status: 'published' })
-      .populate('author', 'firstName lastName email')
+      .populate('author', 'firstName lastName email bio avatar website social role')
       .populate('category', 'name slug color description')
       .populate('tags', 'name slug color')
       .lean();
@@ -1036,6 +1036,8 @@ export const toggleLike = async (req, res) => {
   try {
     const { id } = req.params;
     
+    console.log('🔍 [TOGGLE LIKE] Post ID:', id);
+    
     const post = await BlogPost.findById(id);
     
     if (!post) {
@@ -1046,6 +1048,8 @@ export const toggleLike = async (req, res) => {
     }
     
     const userId = req.auth.userId;
+    console.log('🔍 [TOGGLE LIKE] Clerk ID:', userId);
+    
     const user = await User.findOne({ clerkId: userId });
     
     if (!user) {
@@ -1054,6 +1058,9 @@ export const toggleLike = async (req, res) => {
         message: 'Usuario no encontrado'
       });
     }
+    
+    console.log('🔍 [TOGGLE LIKE] User MongoDB ID:', user._id);
+    console.log('🔍 [TOGGLE LIKE] Post likedBy before:', post.likedBy);
     
     const liked = await post.toggleLike(user._id);
     
@@ -1067,7 +1074,7 @@ export const toggleLike = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error al dar like:', error);
+    console.error('❌ [TOGGLE LIKE] Error:', error);
     res.status(500).json({
       success: false,
       message: 'Error al procesar like',
@@ -1085,6 +1092,8 @@ export const toggleBookmark = async (req, res) => {
   try {
     const { id } = req.params;
     
+    console.log('🔍 [TOGGLE BOOKMARK] Post ID:', id);
+    
     const post = await BlogPost.findById(id);
     
     if (!post) {
@@ -1095,6 +1104,8 @@ export const toggleBookmark = async (req, res) => {
     }
     
     const userId = req.auth.userId;
+    console.log('🔍 [TOGGLE BOOKMARK] Clerk ID:', userId);
+    
     const user = await User.findOne({ clerkId: userId });
     
     if (!user) {
@@ -1124,6 +1135,76 @@ export const toggleBookmark = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Obtener posts publicados de un usuario específico
+ * @route   GET /api/blog/posts/user/:username
+ * @access  Public
+ */
+export const getPostsByUser = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const {
+      page = 1,
+      limit = 6,
+      sortBy = '-publishedAt'
+    } = req.query;
+    
+    // Buscar usuario por username público
+    const user = await User.findByPublicUsername(username);
+    
+    if (!user || !user.blogProfile?.isPublicProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Obtener posts publicados del usuario
+    const query = { 
+      author: user._id, 
+      isPublished: true, 
+      status: 'published' 
+    };
+    
+    const postsQuery = BlogPost.find(query)
+      .populate('author', 'firstName lastName username email profileImage')
+      .populate('category', 'name slug color')
+      .populate('tags', 'name slug color')
+      .select('title slug excerpt featuredImage category tags publishedAt readingTime stats isFeatured')
+      .sort(sortBy)
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+    
+    const [posts, totalPosts] = await Promise.all([
+      postsQuery.exec(),
+      BlogPost.countDocuments(query)
+    ]);
+    
+    const totalPages = Math.ceil(totalPosts / limit);
+    
+    res.json({
+      success: true,
+      data: posts,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalPosts,
+        pages: totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting user posts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener posts del usuario',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 export default {
   getAllPublishedPosts,
   getPostBySlug,
@@ -1137,5 +1218,6 @@ export default {
   unpublishPost,
   duplicatePost,
   toggleLike,
-  toggleBookmark
+  toggleBookmark,
+  getPostsByUser
 };

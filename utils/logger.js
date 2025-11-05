@@ -64,14 +64,25 @@ class Logger {
     }
   }
 
-  // 🔍 Logs de debug (solo en desarrollo)
+  // 🔍 Logs de debug (solo desarrollo)
   debug(message, data = null) {
     if (!this.isDev) return;
     
     const timestamp = new Date().toISOString();
     console.log(`🔍 [DEBUG] ${timestamp}: ${message}`);
     if (data) {
-      console.log('   Debug Data:', JSON.stringify(data, null, 2));
+      console.log('   Data:', JSON.stringify(data, null, 2));
+    }
+  }
+
+  // 📊 Logs de performance (solo desarrollo)
+  performance(operation, duration, data = null) {
+    if (!this.isDev) return;
+    
+    const timestamp = new Date().toISOString();
+    console.log(`⚡ [PERF] ${timestamp}: ${operation} completed in ${duration}ms`);
+    if (data) {
+      console.log('   Data:', JSON.stringify(data, null, 2));
     }
   }
 

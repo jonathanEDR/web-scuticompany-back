@@ -1,0 +1,11 @@
+{
+  "name": "optimize-production",
+  "description": "Script para preparar el sistema para producción",
+  "scripts": {
+    "optimize:db": "node scripts/optimizeDatabase.js",
+    "optimize:all": "npm run optimize:db"
+  },
+  "dependencies": {
+    "mongodb": "^6.0.0"
+  }
+}

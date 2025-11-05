@@ -65,7 +65,7 @@ export const requireAuth = async (req, res, next) => {
       });
     }
 
-    // Agregar informaciÃ³n del usuario a la request
+    // Agregar información del usuario a la request
     req.user = {
       id: user._id,
       clerkId: user.clerkId,
@@ -79,6 +79,9 @@ export const requireAuth = async (req, res, next) => {
       isActive: user.isActive,
       dbUser: user // Usuario completo de DB si se necesita
     };
+
+    // Agregar req.userId para compatibilidad con controladores
+    req.userId = user._id;
 
     // También agregar req.auth para compatibilidad con otros controladores
     req.auth = {
@@ -122,15 +125,17 @@ export const optionalAuth = async (req, res, next) => {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       // No hay token, continuar sin usuario
       req.user = null;
+      req.userId = null;
       return next();
     }
 
-    // Ejecutar autenticaciÃ³n normal
+    // Ejecutar autenticación normal
     await requireAuth(req, res, next);
 
   } catch (error) {
     // En caso de error, continuar sin usuario
     req.user = null;
+    req.userId = null;
     next();
   }
 };

@@ -400,7 +400,7 @@ const checkExcessiveCaps = (content) => {
  * Determina la acción automática basada en el análisis
  */
 const determineAutoAction = (score, flags, authorData) => {
-  const { approvedComments = 0, rejectedComments = 0, totalComments = 0 } = authorData;
+  const { approvedComments = 0, rejectedComments = 0, totalComments = 0, isRegistered = false } = authorData;
 
   // Si es spam evidente, rechazar
   if (flags.some(f => f.type === 'spam' && f.confidence > 0.7)) {
@@ -427,6 +427,12 @@ const determineAutoAction = (score, flags, authorData) => {
   let authorReputation = 0.5; // Neutral por defecto
   if (totalComments > 0) {
     authorReputation = approvedComments / totalComments;
+  }
+
+  // ✅ Auto-aprobar usuarios autenticados con score decente (70+)
+  // Los usuarios autenticados con Clerk ya están verificados
+  if (isRegistered && score >= 70 && criticalFlags.length === 0) {
+    return 'approve';
   }
 
   // Auto-aprobar si:
@@ -535,7 +541,8 @@ const moderateNewComment = async (comment) => {
   const authorData = {
     totalComments: authorComments,
     approvedComments: authorApproved,
-    rejectedComments: authorComments - authorApproved
+    rejectedComments: authorComments - authorApproved,
+    isRegistered: comment.author.isRegistered || false // ✅ Pasar el estado de registro
   };
 
   // Analizar contenido

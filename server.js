@@ -20,6 +20,8 @@ import categoriasRoutes from './routes/categorias.js';
 import clientRoutes from './routes/client.js';
 import blogRoutes from './routes/blog.js';
 import commentsRoutes from './routes/comments.js';
+import profileRoutes from './routes/profile.js';
+import userBlogRoutes from './routes/userBlog.js';
 import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import { inicializarCategorias } from './utils/categoriaInitializer.js';
@@ -312,6 +314,8 @@ app.use('/api/categorias', categoriasRoutes); // 📁 Categorías Routes
 app.use('/api/client', clientRoutes); // 🎉 Client Onboarding Routes
 app.use('/api/blog', blogRoutes); // 📝 Blog Routes (Sprint 1)
 app.use('/api', commentsRoutes); // 💬 Comments & Moderation Routes (Sprint 4)
+app.use('/api/profile', profileRoutes); // 👤 Profile Routes (Social System)
+app.use('/api/user-blog', userBlogRoutes); // 📚 User Blog Activity Routes (Dashboard)
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {
