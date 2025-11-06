@@ -31,15 +31,30 @@ export const requireAuth = async (req, res, next) => {
     // Validar token con Clerk
     let clerkUser;
     try {
+      // Debug: verificar que tenemos la clave secreta
+      if (!process.env.CLERK_SECRET_KEY) {
+        logger.error('❌ CLERK_SECRET_KEY no está configurado en variables de entorno');
+        return res.status(500).json({
+          success: false,
+          message: 'Error de configuración del servidor',
+          code: 'MISSING_CLERK_CONFIG'
+        });
+      }
+
       clerkUser = await verifyToken(token, {
         secretKey: process.env.CLERK_SECRET_KEY
       });
+
     } catch (clerkError) {
-      logger.warn('Token invÃ¡lido de Clerk', { error: clerkError.message });
+      logger.warn('❌ Token inválido de Clerk', { 
+        error: clerkError.message,
+        tokenPreview: token.substring(0, 20) + '...'
+      });
       return res.status(401).json({
         success: false,
-        message: 'Token invÃ¡lido o expirado',
-        code: 'INVALID_TOKEN'
+        message: 'Token inválido o expirado',
+        code: 'INVALID_TOKEN',
+        details: clerkError.message
       });
     }
 
@@ -89,18 +104,12 @@ export const requireAuth = async (req, res, next) => {
       sessionId: clerkUser.sid || null
     };
 
-    // Actualizar Ãºltimo login (sin await para no bloquear)
+    // Actualizar último login (sin await para no bloquear)
     User.findByIdAndUpdate(user._id, { 
       lastLogin: new Date() 
     }).catch(err => 
       logger.warn('Error actualizando lastLogin', err)
     );
-
-    logger.debug('Usuario autenticado exitosamente', {
-      userId: user._id,
-      role: user.role,
-      email: user.email
-    });
 
     next();
 
@@ -188,11 +197,17 @@ export const requireRole = (role) => {
       });
     }
 
-    if (req.user.role !== role) {
+    // Normalizar roles a mayúsculas para comparación
+    const normalizedRole = role.toUpperCase();
+    const userRole = req.user.role.toUpperCase();
+
+    if (userRole !== normalizedRole) {
       logger.warn('Acceso denegado por rol', {
         userId: req.user.id,
         userRole: req.user.role,
-        requiredRole: role
+        requiredRole: role,
+        normalizedUserRole: userRole,
+        normalizedRequiredRole: normalizedRole
       });
 
       return res.status(403).json({
@@ -207,23 +222,29 @@ export const requireRole = (role) => {
 };
 
 /**
- * Middleware para verificar mÃºltiples roles (OR)
+ * Middleware para verificar múltiples roles (OR)
  */
 export const requireAnyRole = (roles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'AutenticaciÃ³n requerida',
+        message: 'Autenticación requerida',
         code: 'AUTH_REQUIRED'
       });
     }
 
-    if (!roles.includes(req.user.role)) {
+    // Normalizar roles a mayúsculas para comparación
+    const normalizedRoles = roles.map(role => role.toUpperCase());
+    const userRole = req.user.role.toUpperCase();
+
+    if (!normalizedRoles.includes(userRole)) {
       logger.warn('Acceso denegado por roles', {
         userId: req.user.id,
         userRole: req.user.role,
-        allowedRoles: roles
+        allowedRoles: roles,
+        normalizedRoles,
+        normalizedUserRole: userRole
       });
 
       return res.status(403).json({

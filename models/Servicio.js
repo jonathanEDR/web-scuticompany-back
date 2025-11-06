@@ -293,7 +293,7 @@ const servicioSchema = new mongoose.Schema(
 servicioSchema.index({ titulo: 'text', descripcion: 'text', etiquetas: 'text' });
 servicioSchema.index({ categoria: 1, destacado: -1, activo: 1 });
 servicioSchema.index({ estado: 1, visibleEnWeb: 1 });
-servicioSchema.index({ slug: 1 });
+// slug: índice creado automáticamente por unique: true
 servicioSchema.index({ eliminado: 1 });
 servicioSchema.index({ orden: 1 });
 

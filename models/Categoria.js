@@ -58,8 +58,7 @@ const categoriaSchema = new mongoose.Schema(
 );
 
 // Índices
-categoriaSchema.index({ nombre: 1 });
-categoriaSchema.index({ slug: 1 });
+// nombre y slug: índices creados automáticamente por unique: true
 categoriaSchema.index({ activo: 1, orden: 1 });
 
 // Virtual: Servicios asociados

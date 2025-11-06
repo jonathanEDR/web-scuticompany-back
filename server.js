@@ -22,6 +22,9 @@ import blogRoutes from './routes/blog.js';
 import commentsRoutes from './routes/comments.js';
 import profileRoutes from './routes/profile.js';
 import userBlogRoutes from './routes/userBlog.js';
+import agentsRoutes from './routes/agents.js';
+import agentTestingRoutes from './routes/agentTesting.js';
+import aiAnalyticsRoutes from './routes/ai/analytics.js';
 import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import { inicializarCategorias } from './utils/categoriaInitializer.js';
@@ -316,6 +319,9 @@ app.use('/api/blog', blogRoutes); // 📝 Blog Routes (Sprint 1)
 app.use('/api', commentsRoutes); // 💬 Comments & Moderation Routes (Sprint 4)
 app.use('/api/profile', profileRoutes); // 👤 Profile Routes (Social System)
 app.use('/api/user-blog', userBlogRoutes); // 📚 User Blog Activity Routes (Dashboard)
+app.use('/api/agents', agentsRoutes); // 🤖 AI Agents System Routes (NEW)
+app.use('/api/ai', aiAnalyticsRoutes); // 📊 AI Analytics & Tracking Routes (NEW)
+app.use('/api/agents/testing', agentTestingRoutes); // 🧪 Advanced AI Testing Suite (NEW)
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

@@ -10,10 +10,9 @@ const BlogPostSchema = new mongoose.Schema({
   slug: {
     type: String,
     required: true,
-    unique: true,
+    unique: true, // Ya crea índice automáticamente
     lowercase: true,
-    trim: true,
-    index: true
+    trim: true
   },
   excerpt: {
     type: String,
