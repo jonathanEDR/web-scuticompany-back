@@ -152,24 +152,59 @@ class AgentOrchestrator extends EventEmitter {
    * Analizar comando y asignar agente apropiado
    */
   async analyzeCommand(command, context) {
+    // Si hay un targetAgent específico en el contexto, usarlo directamente
+    if (context.targetAgent) {
+      const targetAgentType = context.targetAgent === 'seo' ? 'SEOAgent' : 
+                              context.targetAgent === 'blog' ? 'BlogAgent' :
+                              context.targetAgent === 'cms' ? 'CMSAgent' :
+                              context.targetAgent === 'user' ? 'UserAgent' : null;
+      
+      if (targetAgentType) {
+        logger.info(`🎯 Using explicitly specified agent: ${targetAgentType}`);
+        
+        // Buscar el agente en el registro
+        const agent = this.findAgentByType(targetAgentType);
+        
+        if (!agent) {
+          logger.error(`❌ Agent ${targetAgentType} not found in registry`);
+          return null;
+        }
+        
+        return {
+          agent: agent,
+          task: {
+            id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: 'natural_language_command',
+            command: command,
+            context: context
+          }
+        };
+      }
+    }
+    
     const commandLower = command.toLowerCase();
     
     // Mapeo básico de comandos a agentes (después mejoraremos con IA)
     const commandMappings = [
       {
-        keywords: ['blog', 'post', 'contenido', 'artículo', 'optimizar', 'seo', 'tags'],
-        agentType: 'BlogAgent',
+        keywords: ['seo_chat', 'seo_optimization', 'technical_audit', 'keyword_research', 'schema_optimization'],
+        agentType: 'SEOAgent',
         priority: 1
+      },
+      {
+        keywords: ['blog', 'post', 'contenido', 'artículo', 'crear', 'publicar', 'tags'],
+        agentType: 'BlogAgent',
+        priority: 2
       },
       {
         keywords: ['usuario', 'user', 'perfil', 'rol', 'moderación'],
         agentType: 'UserAgent',
-        priority: 2
+        priority: 3
       },
       {
         keywords: ['cms', 'página', 'imagen', 'gestión', 'backup'],
         agentType: 'CMSAgent',
-        priority: 3
+        priority: 4
       }
     ];
 
@@ -225,6 +260,16 @@ class AgentOrchestrator extends EventEmitter {
   async executeTask(taskAssignment) {
     const { agent, task } = taskAssignment;
     
+    // Validar que el agente existe
+    if (!agent) {
+      logger.error(`❌ Cannot execute task ${task?.id || 'unknown'}: Agent is null or undefined`);
+      return {
+        success: false,
+        error: 'Agent not found or not available',
+        taskId: task?.id
+      };
+    }
+    
     try {
       this.metrics.totalTasks++;
       this.processingTasks.set(task.id, {
@@ -271,11 +316,21 @@ class AgentOrchestrator extends EventEmitter {
    * Encontrar agente por tipo
    */
   findAgentByType(agentType) {
+    logger.info(`🔍 Searching for agent type: ${agentType}`);
+    logger.info(`📋 Available agents: ${Array.from(this.agents.keys()).join(', ')}`);
+    logger.info(`✅ Active agents: ${Array.from(this.activeAgents).join(', ')}`);
+    
     for (const [agentId, agent] of this.agents) {
-      if (agent.constructor.name === agentType && this.activeAgents.has(agentId)) {
+      const agentClassName = agent.constructor.name;
+      logger.info(`   Checking agent: ${agentId} (${agentClassName}) - Active: ${this.activeAgents.has(agentId)}`);
+      
+      if (agentClassName === agentType && this.activeAgents.has(agentId)) {
+        logger.info(`✅ Found matching agent: ${agentId}`);
         return agent;
       }
     }
+    
+    logger.warn(`⚠️  No matching agent found for type: ${agentType}`);
     return null;
   }
 

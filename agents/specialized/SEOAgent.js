@@ -21,6 +21,12 @@ export class SEOAgent extends BaseAgent {
       'SEOAgent',
       'Agente especializado en SEO técnico y análisis de rendimiento avanzado',
       [
+        'natural_language_command', // Comandos de lenguaje natural
+        'chat_interaction',         // Interacciones de chat
+        'content_optimization',     // Optimización de contenido
+        'content_analysis',         // Análisis específico de contenido
+        'generate_structure',       // Generación de estructura
+        'content_review',          // Revisión completa de contenido
         'technical_seo_audit',      // Auditoría SEO técnica
         'keyword_research',         // Investigación de keywords
         'competitor_analysis',      // Análisis de competencia
@@ -426,6 +432,24 @@ Mi expertise abarca desde auditorías técnicas básicas hasta análisis competi
       
       // Ejecutar según el tipo de tarea
       switch (task.type) {
+        case 'natural_language_command':
+          return await this.handleNaturalLanguageCommand(task, context);
+          
+        case 'chat_interaction':
+          return await this.handleChatInteraction(task, context);
+          
+        case 'content_optimization':
+          return await this.optimizeContent(task, context);
+
+        case 'content_analysis':
+          return await this.analyzeContent(task, context);
+
+        case 'generate_structure':
+          return await this.generateContentStructure(task, context);
+
+        case 'content_review':
+          return await this.reviewContent(task, context);
+          
         case 'technical_audit':
         case 'technical_seo_audit':
           return await this.performTechnicalAudit(task, context);
@@ -657,6 +681,553 @@ Mi expertise abarca desde auditorías técnicas básicas hasta análisis competi
   }
 
   /**
+   * Manejar interacción de chat con el SEO Agent
+   */
+  async handleChatInteraction(task, context) {
+    try {
+      logger.info('🗨️ SEOAgent handling chat interaction');
+
+      const { message, context: chatContext } = task;
+      
+      if (!message) {
+        throw new Error('Message is required for chat interaction');
+      }
+
+      // Configurar el prompt para la interacción de chat
+      const systemPrompt = `Eres un especialista en SEO avanzado. Proporciona respuestas técnicas precisas y actionables sobre optimización para motores de búsqueda.
+
+Contexto del chat: ${JSON.stringify(chatContext || {})}
+
+Responde de manera profesional y técnica, enfocándote en:
+- Análisis SEO técnico
+- Recomendaciones específicas
+- Mejores prácticas de optimización
+- Métricas y KPIs relevantes`;
+
+      const fullPrompt = `${systemPrompt}\n\nUsuario: ${message}`;
+
+      // Llamar a OpenAI
+      const response = await openaiService.generateCompletion(fullPrompt, {
+        maxTokens: this.config.maxTokens || 1000,
+        temperature: 0.7,
+        timeout: this.config.timeout
+      });
+
+      const result = {
+        success: true,
+        taskType: 'chat_interaction',
+        response: response, // response ya es string
+        usage: null, // No disponible en este método
+        timestamp: new Date().toISOString(),
+        processingTime: null // No disponible en este método
+      };
+
+      logger.success('✅ SEOAgent chat interaction completed');
+      return result;
+
+    } catch (error) {
+      logger.error('❌ Error in SEOAgent chat interaction:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Manejar comandos de lenguaje natural del SEO Agent
+   */
+  async handleNaturalLanguageCommand(task, context) {
+    try {
+      logger.info('🗨️ SEOAgent handling natural language command');
+
+      const { command } = task;
+      
+      if (!command) {
+        throw new Error('Command is required for natural language processing');
+      }
+
+      // Extraer el mensaje del comando SEO_CHAT
+      let message = command;
+      if (command.startsWith('SEO_CHAT:')) {
+        message = command.replace('SEO_CHAT:', '').trim();
+      }
+
+      // Configurar el prompt para comandos de lenguaje natural
+      const systemPrompt = `Eres un especialista en SEO avanzado y marketing digital. Ayudas a usuarios a optimizar su contenido y estrategias SEO.
+
+Proporciona respuestas prácticas y específicas sobre:
+- Estrategias de contenido SEO
+- Optimización técnica
+- Análisis de palabras clave
+- Mejores prácticas de posicionamiento
+- Recomendaciones personalizadas
+
+Contexto: ${JSON.stringify(context || {})}`;
+
+      const fullPrompt = `${systemPrompt}\n\nUsuario: ${message}`;
+
+      // Llamar a OpenAI
+      const response = await openaiService.generateCompletion(fullPrompt, {
+        maxTokens: this.config.maxTokens || 1000,
+        temperature: 0.7,
+        timeout: this.config.timeout
+      });
+
+      const result = {
+        success: true,
+        taskType: 'natural_language_command',
+        command: command,
+        response: response, // response ya es string
+        usage: null, // No disponible en este método
+        timestamp: new Date().toISOString(),
+        processingTime: null // No disponible en este método
+      };
+
+      logger.success('✅ SEOAgent natural language command completed');
+      return result;
+
+    } catch (error) {
+      logger.error('❌ Error in SEOAgent natural language command:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Optimizar contenido para SEO
+   */
+  async optimizeContent(task, context) {
+    try {
+      logger.info('📝 SEOAgent optimizing content');
+
+      const { content, title, optimize = true } = task;
+      
+      if (!content) {
+        throw new Error('Content is required for optimization');
+      }
+
+      // Configurar el prompt para optimización de contenido
+      const systemPrompt = `Eres un experto en optimización de contenido SEO. Tu tarea es analizar y optimizar contenido para mejorar su rendimiento en motores de búsqueda.
+
+Analiza el siguiente contenido y proporciona:
+1. Análisis SEO del contenido actual
+2. Recomendaciones de optimización
+3. Sugerencias de palabras clave
+4. Mejoras en estructura y legibilidad
+5. Optimización de meta datos
+
+${optimize ? 'IMPORTANTE: Proporciona una versión optimizada del contenido.' : 'IMPORTANTE: Solo proporciona análisis y recomendaciones, NO modifiques el contenido.'}`;
+
+      const contentPrompt = `
+Título: ${title || 'Sin título'}
+Contenido: ${content}
+
+Contexto adicional: ${JSON.stringify(context || {})}`;
+
+      const fullPrompt = `${systemPrompt}\n\n${contentPrompt}`;
+
+      // Llamar a OpenAI
+      const response = await openaiService.generateCompletion(fullPrompt, {
+        maxTokens: this.config.maxTokens || 2000,
+        temperature: 0.5,
+        timeout: this.config.timeout
+      });
+
+      const result = {
+        success: true,
+        taskType: 'content_optimization',
+        originalContent: content,
+        originalTitle: title,
+        optimized: optimize,
+        analysis: response, // response ya es string
+        usage: null, // No disponible en este método
+        timestamp: new Date().toISOString(),
+        processingTime: null // No disponible en este método
+      };
+
+      logger.success('✅ SEOAgent content optimization completed');
+      return result;
+
+    } catch (error) {
+      logger.error('❌ Error in SEOAgent content optimization:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Analizar contenido SEO específico
+   */
+  async analyzeContent(task, context) {
+    try {
+      logger.info('📊 SEOAgent analyzing content');
+
+      const { content, title, keywords, description } = task;
+      
+      if (!content || !title) {
+        throw new Error('Content and title are required for analysis');
+      }
+
+      // Configurar el prompt para análisis SEO específico
+      const systemPrompt = `Eres un analista SEO experto. Analiza el siguiente contenido y proporciona un análisis detallado en formato JSON.
+
+Tu análisis debe incluir:
+1. Puntuación SEO general (0-100)
+2. Análisis de palabras clave
+3. Evaluación de meta tags  
+4. Legibilidad y estructura
+5. Recomendaciones específicas
+6. Keywords sugeridas
+
+Responde SOLO con JSON válido con esta estructura:
+{
+  "seo_score": 85,
+  "keyword_analysis": {
+    "primary_keywords": ["keyword1", "keyword2"],
+    "keyword_density": 2.5,
+    "keyword_distribution": "good"
+  },
+  "meta_analysis": {
+    "title_score": 90,
+    "description_score": 75
+  },
+  "readability": {
+    "score": 80,
+    "level": "medium"
+  },
+  "recommendations": [
+    "Añadir más subtítulos H2",
+    "Mejorar meta descripción"
+  ],
+  "suggested_keywords": ["nueva_keyword1", "nueva_keyword2"]
+}`;
+
+      const contentPrompt = `
+Título: ${title}
+${description ? `Descripción: ${description}` : ''}
+${keywords ? `Keywords objetivo: ${JSON.stringify(keywords)}` : ''}
+
+Contenido a analizar:
+${content}`;
+
+      const fullPrompt = `${systemPrompt}\n\n${contentPrompt}`;
+
+      // Llamar a OpenAI
+      const response = await openaiService.generateCompletion(fullPrompt, {
+        maxTokens: this.config.maxTokens || 1500,
+        temperature: 0.3,
+        timeout: this.config.timeout
+      });
+
+      // Intentar parsear JSON response
+      let analysisData;
+      try {
+        analysisData = JSON.parse(response);
+      } catch (parseError) {
+        // Si no es JSON válido, crear estructura básica
+        analysisData = {
+          seo_score: 75,
+          analysis_text: response,
+          recommendations: ['Revisar análisis completo en respuesta'],
+          suggested_keywords: []
+        };
+      }
+
+      const result = {
+        success: true,
+        taskType: 'content_analysis',
+        originalContent: content,
+        originalTitle: title,
+        analysis: analysisData,
+        timestamp: new Date().toISOString()
+      };
+
+      logger.success('✅ SEOAgent content analysis completed');
+      return result;
+
+    } catch (error) {
+      logger.error('❌ Error in SEOAgent content analysis:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generar estructura de contenido SEO optimizada
+   */
+  async generateContentStructure(task, context) {
+    try {
+      logger.info('🏗️ SEOAgent generating content structure');
+
+      const { topic, keywords, targetAudience } = task;
+      
+      if (!topic) {
+        throw new Error('Topic is required for structure generation');
+      }
+
+      // Configurar el prompt para generación de estructura
+      const systemPrompt = `Eres un estratega de contenido SEO. Genera una estructura detallada y optimizada para SEO para el tema especificado.
+
+Proporciona una estructura completa con:
+1. Título SEO optimizado
+2. Meta descripción 
+3. Estructura de encabezados (H1, H2, H3)
+4. Puntos clave para cada sección
+5. Keywords a incluir en cada parte
+6. Call-to-actions sugeridos
+
+Responde en formato JSON estructurado:
+{
+  "title": "Título SEO optimizado",
+  "meta_description": "Meta descripción atractiva",
+  "structure": [
+    {
+      "heading": "H1: Título principal",
+      "level": 1,
+      "content_points": ["Punto 1", "Punto 2"],
+      "keywords": ["keyword1", "keyword2"]
+    }
+  ],
+  "call_to_actions": ["CTA 1", "CTA 2"],
+  "estimated_word_count": 1500
+}`;
+
+      const contentPrompt = `
+Tema: ${topic}
+${keywords ? `Keywords objetivo: ${JSON.stringify(keywords)}` : ''}
+${targetAudience ? `Audiencia objetivo: ${targetAudience}` : ''}
+
+Contexto adicional: ${JSON.stringify(context || {})}`;
+
+      const fullPrompt = `${systemPrompt}\n\n${contentPrompt}`;
+
+      // Llamar a OpenAI
+      const response = await openaiService.generateCompletion(fullPrompt, {
+        maxTokens: this.config.maxTokens || 2000,
+        temperature: 0.4,
+        timeout: this.config.timeout
+      });
+
+      // Intentar parsear JSON response
+      let structureData;
+      try {
+        structureData = JSON.parse(response);
+      } catch (parseError) {
+        // Si no es JSON válido, crear estructura básica
+        structureData = {
+          title: `${topic} - Guía Completa`,
+          meta_description: `Descubre todo sobre ${topic}. Guía completa y actualizada.`,
+          structure_text: response,
+          estimated_word_count: 1200
+        };
+      }
+
+      const result = {
+        success: true,
+        taskType: 'generate_structure',
+        topic: topic,
+        structure: structureData,
+        timestamp: new Date().toISOString()
+      };
+
+      logger.success('✅ SEOAgent structure generation completed');
+      return result;
+
+    } catch (error) {
+      logger.error('❌ Error in SEOAgent structure generation:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Revisar contenido completo SEO 
+   */
+  async reviewContent(task, context) {
+    try {
+      logger.info('🔍 SEOAgent reviewing content');
+
+      const { content, title, description, keywords } = task;
+      
+      if (!content || !title) {
+        throw new Error('Content and title are required for review');
+      }
+
+      // Configurar el prompt para revisión completa
+      const systemPrompt = `Eres un auditor SEO profesional. Realiza una revisión completa y detallada del contenido proporcionado.
+
+Tu revisión debe incluir un checklist detallado con items específicos verificables.
+
+Responde SOLO con JSON válido en este formato exacto:
+{
+  "overall_score": 82,
+  "checklist": [
+    {
+      "id": "title_length",
+      "category": "Meta Tags",
+      "item": "Longitud del título",
+      "status": "pass",
+      "message": "El título tiene 55 caracteres, dentro del rango óptimo (50-60)",
+      "priority": "high"
+    },
+    {
+      "id": "meta_description",
+      "category": "Meta Tags",
+      "item": "Meta descripción presente",
+      "status": "fail",
+      "message": "No se proporcionó meta descripción. Es crítico para CTR en resultados de búsqueda",
+      "priority": "high"
+    }
+  ],
+  "critical_issues": [
+    "Meta descripción faltante - reduce CTR significativamente",
+    "Sin enlaces internos - pierde potencial de PageRank"
+  ],
+  "warnings": [
+    "Densidad de keywords baja - considerar aumentarla al 1-2%",
+    "Pocos encabezados H2 - mejorar estructura"
+  ],
+  "recommendations": [
+    "Agregar meta descripción de 150-160 caracteres",
+    "Incluir al menos 3-5 enlaces internos relevantes",
+    "Optimizar densidad de keyword principal"
+  ],
+  "seo_summary": {
+    "title_optimization": 85,
+    "content_quality": 78,
+    "keywords_usage": 65,
+    "meta_tags": 40,
+    "readability": 82,
+    "structure": 70
+  }
+}
+
+Estados posibles: "pass", "warning", "fail"
+Prioridades posibles: "high", "medium", "low"
+Categorías sugeridas: "Meta Tags", "Contenido", "Keywords", "Estructura", "Enlaces", "Legibilidad", "Técnico"`;
+
+      const contentPrompt = `
+Título: ${title}
+${description ? `Descripción: ${description}` : 'Sin meta descripción'}
+${keywords && keywords.length > 0 ? `Keywords objetivo: ${JSON.stringify(keywords)}` : 'Sin keywords definidas'}
+
+Contenido a revisar (${content.length} caracteres):
+${content.substring(0, 3000)}${content.length > 3000 ? '...' : ''}
+
+Analiza exhaustivamente y proporciona un checklist detallado con al menos 8-12 items específicos cubriendo todas las áreas SEO.`;
+
+      const fullPrompt = `${systemPrompt}\n\n${contentPrompt}`;
+
+      // Llamar a OpenAI
+      const response = await openaiService.generateCompletion(fullPrompt, {
+        maxTokens: 2500,
+        temperature: 0.2,
+        timeout: this.config.timeout
+      });
+
+      // Intentar parsear JSON response
+      let reviewData;
+      try {
+        // Limpiar respuesta si tiene markdown
+        let cleanResponse = response.trim();
+        if (cleanResponse.startsWith('```json')) {
+          cleanResponse = cleanResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+        }
+        
+        reviewData = JSON.parse(cleanResponse);
+        
+        // Validar estructura mínima
+        if (!reviewData.checklist || !Array.isArray(reviewData.checklist)) {
+          throw new Error('Invalid checklist structure');
+        }
+        
+        // Asegurar que todos los campos requeridos existen
+        reviewData = {
+          overall_score: reviewData.overall_score || 75,
+          checklist: reviewData.checklist || [],
+          critical_issues: reviewData.critical_issues || [],
+          warnings: reviewData.warnings || [],
+          recommendations: reviewData.recommendations || [],
+          seo_summary: reviewData.seo_summary || {
+            title_optimization: 75,
+            content_quality: 75,
+            keywords_usage: 75,
+            meta_tags: 75,
+            readability: 75,
+            structure: 75
+          }
+        };
+        
+      } catch (parseError) {
+        logger.warn('⚠️ Failed to parse review JSON, creating fallback structure:', parseError.message);
+        
+        // Estructura de fallback si el parsing falla
+        reviewData = {
+          overall_score: 70,
+          checklist: [
+            {
+              id: 'title_present',
+              category: 'Meta Tags',
+              item: 'Título presente',
+              status: title ? 'pass' : 'fail',
+              message: title ? 'El título está presente' : 'Falta el título',
+              priority: 'high'
+            },
+            {
+              id: 'meta_description_present',
+              category: 'Meta Tags',
+              item: 'Meta descripción presente',
+              status: description ? 'pass' : 'fail',
+              message: description ? 'Meta descripción presente' : 'Falta meta descripción',
+              priority: 'high'
+            },
+            {
+              id: 'content_length',
+              category: 'Contenido',
+              item: 'Longitud del contenido',
+              status: content.length >= 300 ? 'pass' : 'warning',
+              message: `Contenido tiene ${content.length} caracteres. Mínimo recomendado: 300+`,
+              priority: 'medium'
+            },
+            {
+              id: 'keywords_defined',
+              category: 'Keywords',
+              item: 'Keywords definidas',
+              status: keywords && keywords.length > 0 ? 'pass' : 'warning',
+              message: keywords && keywords.length > 0 ? `${keywords.length} keywords definidas` : 'No hay keywords definidas',
+              priority: 'medium'
+            }
+          ],
+          critical_issues: !description ? ['Meta descripción faltante'] : [],
+          warnings: content.length < 300 ? ['Contenido muy corto'] : [],
+          recommendations: [
+            'Revisar análisis completo',
+            'Optimizar elementos básicos de SEO',
+            'Agregar keywords relevantes'
+          ],
+          seo_summary: {
+            title_optimization: title ? 80 : 0,
+            content_quality: 70,
+            keywords_usage: keywords && keywords.length > 0 ? 75 : 50,
+            meta_tags: description ? 80 : 40,
+            readability: 70,
+            structure: 70
+          },
+          review_text: response
+        };
+      }
+
+      const result = {
+        success: true,
+        taskType: 'content_review',
+        ...reviewData,
+        timestamp: new Date().toISOString()
+      };
+
+      logger.success('✅ SEOAgent content review completed');
+      return result;
+
+    } catch (error) {
+      logger.error('❌ Error in SEOAgent content review:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Manejar comandos genéricos de SEO
    */
   async handleGenericSEOCommand(task, context) {
@@ -669,8 +1240,7 @@ Mi expertise abarca desde auditorías técnicas básicas hasta análisis competi
       const fullPrompt = `${taskConfig.systemPrompt}\n\n${taskConfig.userPrompt}\n\nTarea específica: ${JSON.stringify(task)}\nContexto: ${JSON.stringify(context)}`;
 
       // Llamar a OpenAI con configuración específica
-      const response = await openaiService.generateCompletion({
-        prompt: fullPrompt,
+      const response = await openaiService.generateCompletion(fullPrompt, {
         maxTokens: taskConfig.maxTokens || this.config.maxTokens,
         temperature: taskConfig.temperature || this.config.temperature,
         timeout: this.config.timeout
@@ -679,10 +1249,10 @@ Mi expertise abarca desde auditorías técnicas básicas hasta análisis competi
       const result = {
         success: true,
         taskType: task.type,
-        response: response.content,
-        usage: response.usage,
+        response: response, // response ya es string
+        usage: null, // No disponible en este método
         timestamp: new Date().toISOString(),
-        processingTime: response.processingTime
+        processingTime: null // No disponible en este método
       };
 
       logger.success(`✅ SEOAgent generic command completed: ${task.type}`);
@@ -690,6 +1260,105 @@ Mi expertise abarca desde auditorías técnicas básicas hasta análisis competi
 
     } catch (error) {
       logger.error(`❌ Error in SEOAgent generic command (${task.type}):`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener configuración actual del SEOAgent
+   */
+  async getConfiguration() {
+    try {
+      logger.info('📋 Getting SEOAgent configuration');
+
+      const configuration = {
+        agentInfo: {
+          name: this.name,
+          description: this.description,
+          capabilities: this.capabilities,
+          status: this.status
+        },
+        config: this.config,
+        advancedConfig: this.advancedConfig,
+        personality: this.advancedConfig?.personality,
+        contextConfig: this.advancedConfig?.contextConfig,
+        responseConfig: this.advancedConfig?.responseConfig,
+        promptConfig: this.advancedConfig?.promptConfig,
+        trainingConfig: this.advancedConfig?.trainingConfig
+      };
+
+      logger.success('✅ SEOAgent configuration retrieved');
+      return configuration;
+
+    } catch (error) {
+      logger.error('❌ Error getting SEOAgent configuration:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualizar configuración del SEOAgent
+   */
+  async updateConfiguration(newConfig) {
+    try {
+      logger.info('⚙️ Updating SEOAgent configuration');
+
+      // Validar configuración básica
+      if (newConfig.config) {
+        this.config = { ...this.config, ...newConfig.config };
+      }
+
+      // Actualizar configuración avanzada
+      if (newConfig.advancedConfig) {
+        this.advancedConfig = { ...this.advancedConfig, ...newConfig.advancedConfig };
+      }
+
+      // Actualizar configuraciones específicas
+      if (newConfig.personality) {
+        this.advancedConfig.personality = { ...this.advancedConfig.personality, ...newConfig.personality };
+      }
+
+      if (newConfig.promptConfig) {
+        this.advancedConfig.promptConfig = { ...this.advancedConfig.promptConfig, ...newConfig.promptConfig };
+      }
+
+      // Guardar en base de datos si es necesario
+      if (newConfig.saveToDatabase !== false) {
+        try {
+          const dbConfig = await AgentConfig.findOne({ agentName: 'seo' });
+          if (dbConfig) {
+            await AgentConfig.updateOne(
+              { agentName: 'seo' },
+              {
+                personality: this.advancedConfig.personality,
+                contextConfig: this.advancedConfig.contextConfig,
+                responseConfig: this.advancedConfig.responseConfig,
+                promptConfig: this.advancedConfig.promptConfig,
+                trainingConfig: this.advancedConfig.trainingConfig
+              }
+            );
+            logger.success('✅ SEOAgent configuration saved to database');
+          }
+        } catch (dbError) {
+          logger.warn('⚠️ Could not save to database:', dbError.message);
+        }
+      }
+
+      const result = {
+        success: true,
+        message: 'SEOAgent configuration updated successfully',
+        updatedConfig: {
+          config: this.config,
+          advancedConfig: this.advancedConfig
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      logger.success('✅ SEOAgent configuration updated');
+      return result;
+
+    } catch (error) {
+      logger.error('❌ Error updating SEOAgent configuration:', error);
       throw error;
     }
   }

@@ -5,7 +5,7 @@
 
 import express from 'express';
 import { requireAuth, requireAnyRole } from '../middleware/clerkAuth.js';
-import { requireAdmin, requireModerator, requireUser } from '../middleware/roleAuth.js';
+import { requireAdmin, requireModerator, requireUser, requireSuperAdmin } from '../middleware/roleAuth.js';
 import rateLimit from 'express-rate-limit';
 import {
   getAgentStatus,
@@ -391,7 +391,7 @@ router.post('/config/:agentName/reset',
 // Obtener configuración del SEOAgent
 router.get('/config/SEOAgent',
   requireAuth,
-  requireAdmin,
+  ...requireSuperAdmin,
   async (req, res, next) => {
     try {
       const AgentConfig = (await import('../models/AgentConfig.js')).default;
@@ -414,7 +414,7 @@ router.get('/config/SEOAgent',
 // Actualizar entrenamiento del SEOAgent
 router.put('/config/SEOAgent/training',
   requireAuth,
-  requireAdmin,
+  ...requireSuperAdmin,
   async (req, res, next) => {
     try {
       const { trainingConfig } = req.body;
@@ -440,7 +440,7 @@ router.put('/config/SEOAgent/training',
 // Probar el SEOAgent
 router.post('/seo/test',
   requireAuth,
-  requireAdmin,
+  ...requireSuperAdmin,
   aiCommandLimiter,
   async (req, res, next) => {
     try {
@@ -466,7 +466,7 @@ router.post('/seo/test',
 // Ejecutar tarea específica del SEOAgent
 router.post('/seo/execute',
   requireAuth,
-  requireAnyRole(['admin', 'moderator']),
+  requireAnyRole(['admin', 'super_admin', 'moderator']),
   aiCommandLimiter,
   async (req, res, next) => {
     try {
@@ -485,6 +485,292 @@ router.post('/seo/execute',
       });
     } catch (error) {
       next(error);
+    }
+  }
+);
+
+// Chat con SEOAgent (similar al BlogAgent)
+router.post('/seo/chat',
+  requireAuth,
+  requireAnyRole(['admin', 'super_admin', 'moderator']),
+  aiCommandLimiter,
+  async (req, res, next) => {
+    try {
+      const { message, context } = req.body;
+      const { SEOAgent } = await import('../agents/specialized/SEOAgent.js');
+      
+      const seoAgent = new SEOAgent();
+      
+      // Simular chat procesando el mensaje como comando
+      const result = await seoAgent.executeTask({
+        type: 'chat_interaction',
+        message,
+        context: context || {}
+      });
+
+      res.json({
+        success: true,
+        result: result.response || result,
+        data: result.response || result
+      });
+    } catch (error) {
+      console.error('SEO Agent chat error:', error);
+      res.json({
+        success: false,
+        error: error.message || 'Error procesando mensaje con SEO Agent'
+      });
+    }
+  }
+);
+
+// Optimizar contenido SEO (endpoint específico)
+router.post('/seo/optimize',
+  requireAuth,
+  requireAnyRole(['admin', 'super_admin', 'moderator']),
+  aiCommandLimiter,
+  async (req, res, next) => {
+    try {
+      const { content, title, optimize = true } = req.body;
+      const { SEOAgent } = await import('../agents/specialized/SEOAgent.js');
+      
+      const seoAgent = new SEOAgent();
+      const result = await seoAgent.executeTask({
+        type: 'content_optimization',
+        content,
+        title,
+        optimize
+      });
+
+      res.json({
+        success: true,
+        result,
+        data: result
+      });
+    } catch (error) {
+      console.error('SEO optimization error:', error);
+      res.json({
+        success: false,
+        error: error.message || 'Error optimizando contenido SEO'
+      });
+    }
+  }
+);
+
+// Analizar contenido SEO específico
+router.post('/seo/analyze',
+  requireAuth,
+  requireAnyRole(['admin', 'super_admin', 'moderator']),
+  aiCommandLimiter,
+  async (req, res, next) => {
+    try {
+      const { content, title, keywords, description } = req.body;
+      const { SEOAgent } = await import('../agents/specialized/SEOAgent.js');
+      
+      const seoAgent = new SEOAgent();
+      const result = await seoAgent.executeTask({
+        type: 'content_analysis',
+        content,
+        title,
+        keywords,
+        description
+      });
+
+      res.json({
+        success: true,
+        result,
+        data: result
+      });
+    } catch (error) {
+      console.error('SEO analysis error:', error);
+      res.json({
+        success: false,
+        error: error.message || 'Error analizando contenido SEO'
+      });
+    }
+  }
+);
+
+// Generar estructura de contenido SEO
+router.post('/seo/structure',
+  requireAuth,
+  requireAnyRole(['admin', 'super_admin', 'moderator']),
+  aiCommandLimiter,
+  async (req, res, next) => {
+    try {
+      const { topic, keywords, targetAudience } = req.body;
+      const { SEOAgent } = await import('../agents/specialized/SEOAgent.js');
+      
+      const seoAgent = new SEOAgent();
+      const result = await seoAgent.executeTask({
+        type: 'generate_structure',
+        topic,
+        keywords,
+        targetAudience
+      });
+
+      res.json({
+        success: true,
+        result,
+        data: result
+      });
+    } catch (error) {
+      console.error('SEO structure generation error:', error);
+      res.json({
+        success: false,
+        error: error.message || 'Error generando estructura SEO'
+      });
+    }
+  }
+);
+
+// Revisar contenido completo SEO
+router.post('/seo/review',
+  requireAuth,
+  requireAnyRole(['admin', 'super_admin', 'moderator']),
+  aiCommandLimiter,
+  async (req, res, next) => {
+    try {
+      const { content, title, description, keywords } = req.body;
+      const { SEOAgent } = await import('../agents/specialized/SEOAgent.js');
+      
+      const seoAgent = new SEOAgent();
+      const result = await seoAgent.executeTask({
+        type: 'content_review',
+        content,
+        title,
+        description,
+        keywords
+      });
+
+      res.json({
+        success: true,
+        result,
+        data: result
+      });
+    } catch (error) {
+      console.error('SEO review error:', error);
+      res.json({
+        success: false,
+        error: error.message || 'Error revisando contenido SEO'
+      });
+    }
+  }
+);
+
+// Analizar keywords específico
+router.post('/seo/keywords',
+  requireAuth,
+  requireAnyRole(['admin', 'super_admin', 'moderator']),
+  aiCommandLimiter,
+  async (req, res, next) => {
+    try {
+      const { content, targetKeywords } = req.body;
+      const { SEOAgent } = await import('../agents/specialized/SEOAgent.js');
+      
+      const seoAgent = new SEOAgent();
+      const result = await seoAgent.executeTask({
+        type: 'keyword_research',
+        content,
+        keywords: targetKeywords
+      });
+
+      res.json({
+        success: true,
+        result,
+        data: result
+      });
+    } catch (error) {
+      console.error('SEO keywords analysis error:', error);
+      res.json({
+        success: false,
+        error: error.message || 'Error analizando keywords SEO'
+      });
+    }
+  }
+);
+
+// Analizar competencia
+router.post('/seo/competitors',
+  requireAuth,
+  requireAnyRole(['admin', 'super_admin', 'moderator']),
+  aiCommandLimiter,
+  async (req, res, next) => {
+    try {
+      const { keywords, industry, competitors } = req.body;
+      const { SEOAgent } = await import('../agents/specialized/SEOAgent.js');
+      
+      const seoAgent = new SEOAgent();
+      const result = await seoAgent.executeTask({
+        type: 'competitor_analysis',
+        keywords,
+        industry,
+        competitors
+      });
+
+      res.json({
+        success: true,
+        result,
+        data: result
+      });
+    } catch (error) {
+      console.error('SEO competitors analysis error:', error);
+      res.json({
+        success: false,
+        error: error.message || 'Error analizando competencia SEO'
+      });
+    }
+  }
+);
+
+// Obtener configuración SEO
+router.get('/seo/config',
+  requireAuth,
+  requireAnyRole(['admin', 'super_admin']),
+  async (req, res, next) => {
+    try {
+      const { SEOAgent } = await import('../agents/specialized/SEOAgent.js');
+      
+      const seoAgent = new SEOAgent();
+      const config = await seoAgent.getConfiguration();
+
+      res.json({
+        success: true,
+        result: config,
+        data: config
+      });
+    } catch (error) {
+      console.error('SEO config get error:', error);
+      res.json({
+        success: false,
+        error: error.message || 'Error obteniendo configuración SEO'
+      });
+    }
+  }
+);
+
+// Actualizar configuración SEO
+router.post('/seo/config',
+  requireAuth,
+  requireAnyRole(['admin', 'super_admin']),
+  async (req, res, next) => {
+    try {
+      const { config } = req.body;
+      const { SEOAgent } = await import('../agents/specialized/SEOAgent.js');
+      
+      const seoAgent = new SEOAgent();
+      const result = await seoAgent.updateConfiguration(config);
+
+      res.json({
+        success: true,
+        result,
+        data: result
+      });
+    } catch (error) {
+      console.error('SEO config update error:', error);
+      res.json({
+        success: false,
+        error: error.message || 'Error actualizando configuración SEO'
+      });
     }
   }
 );

@@ -102,7 +102,7 @@ export const getAgentStatus = async (req, res) => {
  */
 export const processCommand = async (req, res) => {
   try {
-    const { command, context = {} } = req.body;
+    const { command, context = {}, target } = req.body;
     
     // Validación básica
     if (!command || typeof command !== 'string') {
@@ -126,7 +126,8 @@ export const processCommand = async (req, res) => {
       ...context,
       user: req.user || null,
       timestamp: new Date(),
-      source: 'api'
+      source: 'api',
+      targetAgent: target // Agregar target al contexto
     };
     
     // Procesar comando con el orquestador
