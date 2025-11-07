@@ -29,23 +29,10 @@ const BlogPostSchema = new mongoose.Schema({
     enum: ['html', 'markdown'],
     default: 'html'
   },
+  // ✅ SIMPLIFICADO: featuredImage como STRING (igual que Media Library)
   featuredImage: {
-    url: {
-      type: String,
-      default: ''
-    },
-    cloudinaryId: {
-      type: String,
-      default: ''
-    },
-    alt: {
-      type: String,
-      default: ''
-    },
-    caption: {
-      type: String,
-      default: ''
-    }
+    type: String,
+    default: ''
   },
   author: {
     type: mongoose.Schema.Types.ObjectId,

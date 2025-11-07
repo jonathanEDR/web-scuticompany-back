@@ -45,7 +45,7 @@ const imageSchema = new mongoose.Schema({
   // Metadatos y organización
   category: {
     type: String,
-    enum: ['hero', 'logo', 'service', 'gallery', 'icon', 'banner', 'avatar', 'thumbnail', 'other'],
+    enum: ['hero', 'logo', 'service', 'gallery', 'icon', 'banner', 'avatar', 'thumbnail', 'blog', 'other'],
     default: 'other',
     index: true
   },
@@ -81,7 +81,7 @@ const imageSchema = new mongoose.Schema({
   usedIn: [{
     model: {
       type: String,
-      enum: ['Page', 'Servicio', 'User'],
+      enum: ['Page', 'Servicio', 'User', 'BlogPost'],
       required: true
     },
     documentId: {

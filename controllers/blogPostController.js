@@ -687,25 +687,9 @@ export const updatePost = async (req, res) => {
     // Actualizar otros campos
     if (excerpt !== undefined) post.excerpt = excerpt;
     
-    // ✅ Manejar featuredImage correctamente
+    // ✅ SIMPLIFICADO: featuredImage como STRING (igual que Media Library)
     if (featuredImage !== undefined) {
-      if (typeof featuredImage === 'string') {
-        // Si es un string vacío, establecer como null
-        if (featuredImage === '' || !featuredImage) {
-          post.featuredImage = null;
-        } else {
-          // Si es una URL, convertir a objeto
-          post.featuredImage = {
-            url: featuredImage,
-            alt: post.title || 'Imagen destacada'
-          };
-        }
-      } else if (featuredImage && typeof featuredImage === 'object') {
-        // Si ya es un objeto, usarlo directamente
-        post.featuredImage = featuredImage;
-      } else {
-        post.featuredImage = null;
-      }
+      post.featuredImage = featuredImage || '';
     }
     
     if (status !== undefined) post.status = status;
@@ -770,7 +754,6 @@ export const updatePost = async (req, res) => {
     if (allowComments !== undefined) post.allowComments = allowComments;
     
     await post.save();
-    
         
     // Popular para respuesta
     await post.populate('author', 'firstName lastName email');

@@ -18,17 +18,24 @@ const uploadsDir = path.join(__dirname, '../uploads');
 export const uploadImage = async (req, res) => {
   try {
     // ============================================
-    // LOGGING INICIAL PARA DEBUGGING
+    // LOGGING INICIAL PARA DEBUGGING - MEJORADO
     // ============================================
     logger.info('📤 Upload request iniciado', {
       hasFile: !!req.files?.image,
       userId: req.user?.clerkId || req.user?.id,
+      userRole: req.user?.role,
       fileInfo: req.files?.image ? {
         name: req.files.image.name,
         size: req.files.image.size,
         mimetype: req.files.image.mimetype
       } : null,
-      cloudinaryConfigured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY)
+      cloudinaryConfigured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY),
+      environment: process.env.NODE_ENV,
+      requestHeaders: {
+        authorization: !!req.headers.authorization,
+        contentType: req.headers['content-type'],
+        userAgent: req.headers['user-agent']
+      }
     });
 
     // Verificar archivos y autenticación
@@ -50,10 +57,39 @@ export const uploadImage = async (req, res) => {
         message: 'Usuario no autenticado correctamente'
       });
     }
+
+    // ============================================
+    // VERIFICAR CONFIGURACIÓN DE CLOUDINARY
+    // ============================================
+    const cloudinaryConfig = {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET
+    };
+
+    const missingConfig = Object.entries(cloudinaryConfig)
+      .filter(([key, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingConfig.length > 0) {
+      logger.error('❌ Configuración de Cloudinary incompleta:', {
+        missing: missingConfig,
+        environment: process.env.NODE_ENV
+      });
+      return res.status(503).json({
+        success: false,
+        message: 'Servicio de almacenamiento de imágenes no configurado correctamente',
+        error: process.env.NODE_ENV === 'development' ? `Missing: ${missingConfig.join(', ')}` : undefined
+      });
+    }
     
     // Validar tipo de archivo
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(imageFile.mimetype)) {
+      logger.warn('❌ Tipo de archivo no permitido:', {
+        provided: imageFile.mimetype,
+        allowed: allowedTypes
+      });
       return res.status(400).json({
         success: false,
         message: 'Tipo de archivo no permitido. Solo se permiten: JPG, PNG, GIF, WEBP'
@@ -62,6 +98,11 @@ export const uploadImage = async (req, res) => {
 
     // Validar tamaño (max 5MB)
     if (imageFile.size > 5 * 1024 * 1024) {
+      logger.warn('❌ Archivo demasiado grande:', {
+        size: imageFile.size,
+        maxSize: 5 * 1024 * 1024,
+        sizeFormatted: `${(imageFile.size / 1024 / 1024).toFixed(2)}MB`
+      });
       return res.status(400).json({
         success: false,
         message: 'El archivo es demasiado grande. Máximo 5MB'
@@ -69,26 +110,44 @@ export const uploadImage = async (req, res) => {
     }
 
     // ============================================
-    // SUBIR A CLOUDINARY CON LOGS
+    // SUBIR A CLOUDINARY CON LOGS DETALLADOS
     // ============================================
-    logger.info('☁️ Iniciando upload a Cloudinary...');
+    logger.info('☁️ Iniciando upload a Cloudinary...', {
+      fileName: imageFile.name,
+      fileSize: `${(imageFile.size / 1024 / 1024).toFixed(2)}MB`,
+      mimeType: imageFile.mimetype
+    });
     
     const uploadResult = await new Promise((resolve, reject) => {
+      // Configuración mejorada para el upload
+      const uploadOptions = {
+        folder: 'web-scuti',
+        resource_type: 'image',
+        transformation: [
+          { width: 2000, height: 2000, crop: 'limit' },
+          { quality: 'auto:best' }
+        ],
+        timeout: 60000 // 60 segundos timeout
+      };
+
+      logger.info('☁️ Configuración de upload:', uploadOptions);
+
       const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'web-scuti',
-          resource_type: 'image',
-          transformation: [
-            { width: 2000, height: 2000, crop: 'limit' },
-            { quality: 'auto:best' }
-          ]
-        },
+        uploadOptions,
         (error, result) => {
           if (error) {
-            logger.error('❌ Error en Cloudinary upload:', {
+            logger.error('❌ Error detallado en Cloudinary upload:', {
               error: error.message,
               code: error.http_code,
-              details: error
+              name: error.name,
+              stack: error.stack,
+              details: error,
+              fileName: imageFile.name,
+              fileSize: imageFile.size,
+              config: {
+                cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+                api_key: process.env.CLOUDINARY_API_KEY ? '***CONFIGURADO***' : 'NO_CONFIGURADO'
+              }
             });
             reject(error);
           } else {
@@ -97,14 +156,37 @@ export const uploadImage = async (req, res) => {
               url: result.secure_url,
               size: result.bytes,
               format: result.format,
-              dimensions: `${result.width}x${result.height}`
+              dimensions: `${result.width}x${result.height}`,
+              uploadTime: result.created_at
             });
             resolve(result);
           }
         }
       );
 
-      uploadStream.end(imageFile.data);
+      // Añadir timeout manual por si acaso
+      const timeoutId = setTimeout(() => {
+        logger.error('❌ Timeout en upload de Cloudinary después de 60 segundos');
+        reject(new Error('Timeout: El upload tardó demasiado tiempo'));
+      }, 60000);
+
+      uploadStream.on('finish', () => {
+        clearTimeout(timeoutId);
+      });
+
+      uploadStream.on('error', (error) => {
+        clearTimeout(timeoutId);
+        logger.error('❌ Error en stream de upload:', error);
+        reject(error);
+      });
+
+      try {
+        uploadStream.end(imageFile.data);
+      } catch (streamError) {
+        clearTimeout(timeoutId);
+        logger.error('❌ Error al enviar datos al stream:', streamError);
+        reject(streamError);
+      }
     });
 
     // Obtener metadatos adicionales del body (si existen)
@@ -160,35 +242,74 @@ export const uploadImage = async (req, res) => {
     logger.error('💥 Error crítico en upload de imagen:', {
       error: error.message,
       stack: error.stack,
+      name: error.name,
       userId: req.user?.clerkId || req.user?.id,
+      userRole: req.user?.role,
       fileName: req.files?.image?.name,
+      fileSize: req.files?.image?.size,
+      environment: process.env.NODE_ENV,
       cloudinaryConfig: {
         cloudName: process.env.CLOUDINARY_CLOUD_NAME ? '✅ CONFIGURADO' : '❌ NO CONFIGURADO',
         apiKey: process.env.CLOUDINARY_API_KEY ? '✅ CONFIGURADO' : '❌ NO CONFIGURADO',
         apiSecret: process.env.CLOUDINARY_API_SECRET ? '✅ CONFIGURADO' : '❌ NO CONFIGURADO'
+      },
+      requestInfo: {
+        url: req.url,
+        method: req.method,
+        headers: {
+          'content-type': req.headers['content-type'],
+          'authorization': !!req.headers.authorization,
+          'user-agent': req.headers['user-agent']
+        }
       }
     });
 
     // Determinar tipo de error para respuesta más específica
     let statusCode = 500;
     let message = 'Error interno del servidor al subir la imagen';
+    let detailedError = error.message;
 
-    if (error.message.includes('Invalid image file')) {
+    // Errores específicos de Cloudinary
+    if (error.message.includes('Invalid image file') || error.message.includes('Unsupported format')) {
       statusCode = 400;
       message = 'Formato de imagen no válido';
-    } else if (error.message.includes('File too large')) {
+    } else if (error.message.includes('File too large') || error.message.includes('File size too large')) {
       statusCode = 413;
       message = 'El archivo es demasiado grande';
-    } else if (error.message.includes('Cloudinary')) {
+    } else if (error.message.includes('Cloudinary') || error.name === 'CloudinaryError') {
       statusCode = 503;
       message = 'Error en el servicio de almacenamiento de imágenes';
+      detailedError = `Cloudinary Error: ${error.message}`;
+    } else if (error.message.includes('Timeout') || error.code === 'ECONNABORTED') {
+      statusCode = 504;
+      message = 'Tiempo de espera agotado al subir la imagen';
+    } else if (error.message.includes('Network') || error.code === 'ECONNRESET') {
+      statusCode = 503;
+      message = 'Error de conectividad con el servicio de almacenamiento';
+    } else if (error.message.includes('Authentication') || error.message.includes('Unauthorized')) {
+      statusCode = 401;
+      message = 'Error de autenticación con el servicio de almacenamiento';
+    } else if (error.message.includes('Invalid signature') || error.message.includes('Invalid timestamp')) {
+      statusCode = 401;
+      message = 'Error de configuración del servicio de almacenamiento';
     }
 
-    res.status(statusCode).json({
+    // Respuesta de error mejorada
+    const errorResponse = {
       success: false,
       message: message,
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+      errorCode: statusCode,
+      timestamp: new Date().toISOString()
+    };
+
+    // Incluir detalles adicionales en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      errorResponse.detailedError = detailedError;
+      errorResponse.errorName = error.name;
+      errorResponse.cloudinaryConfigured = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+    }
+
+    res.status(statusCode).json(errorResponse);
   }
 };
 
