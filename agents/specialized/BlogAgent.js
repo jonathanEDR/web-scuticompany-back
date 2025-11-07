@@ -2323,6 +2323,530 @@ CONTINUACIÓN:`;
       return [];
     }
   }
+
+  /**
+   * ==========================================
+   * 🧠 MÉTODOS PARA PROCESAMIENTO DE PATRONES #...#
+   * Sistema avanzado de sugerencias contextuales
+   * ==========================================
+   */
+
+  /**
+   * Procesar patrón contextual y generar sugerencia específica
+   * @param {Object} patternData - Datos del patrón detectado
+   * @returns {Object} - Sugerencia generada
+   */
+  async processContextPattern(patternData) {
+    try {
+      const { patternType, contextText, selectedText, surroundingContext, modifiers } = patternData;
+
+      logger.info(`🧠 Processing context pattern: ${patternType} - "${contextText}"`);
+
+      // Determinar qué método usar según el tipo de patrón
+      switch (patternType) {
+        case 'expand':
+          return await this.expandContent({ text: selectedText, context: surroundingContext, modifiers });
+        
+        case 'summarize':
+          return await this.summarizeContent({ text: selectedText, context: surroundingContext, modifiers });
+        
+        case 'rewrite':
+          return await this.rewriteContent({ text: selectedText, context: surroundingContext, modifiers });
+        
+        case 'continue':
+          return await this.continueContent({ text: selectedText, context: surroundingContext, modifiers });
+        
+        case 'examples':
+          return await this.addExamples({ text: selectedText, context: surroundingContext, modifiers });
+        
+        case 'seo':
+          return await this.optimizeForSEO({ text: selectedText, context: surroundingContext, modifiers });
+        
+        case 'tone':
+          return await this.adjustTone({ text: selectedText, tone: modifiers?.tone, context: surroundingContext });
+        
+        case 'format':
+          return await this.reformatContent({ text: selectedText, format: modifiers?.format, context: surroundingContext });
+        
+        case 'data':
+          return await this.addDataAndStats({ text: selectedText, context: surroundingContext, modifiers });
+        
+        case 'technical':
+          return await this.addTechnicalDetails({ text: selectedText, context: surroundingContext, modifiers });
+        
+        case 'creative':
+          return await this.makeCreative({ text: selectedText, context: surroundingContext, modifiers });
+        
+        default:
+          return await this.customPatternProcessing({ text: selectedText, instruction: contextText, context: surroundingContext });
+      }
+    } catch (error) {
+      logger.error('❌ Error processing context pattern:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Expandir contenido con más detalles
+   */
+  async expandContent({ text, context, modifiers }) {
+    const userInput = {
+      content: text,
+      surrounding_context: context?.before || '',
+      modifiers: JSON.stringify(modifiers || {}),
+      instruction: 'Expandir y desarrollar con más detalles'
+    };
+
+    // Usar task prompt si está disponible, sino prompt inline
+    let prompt = this.getTaskSpecificPrompt('pattern_expand', userInput);
+    
+    if (!prompt) {
+      prompt = `Eres un experto escritor de contenido técnico.
+
+TAREA: Expandir el siguiente texto con más detalles, ejemplos y explicaciones profundas.
+
+TEXTO A EXPANDIR:
+"${text}"
+
+CONTEXTO PREVIO:
+${context?.before || 'No hay contexto previo'}
+
+INSTRUCCIONES:
+- Mantén el mensaje central pero agrega 2-3 veces más contenido
+- Incluye detalles técnicos relevantes
+- Agrega ejemplos concretos cuando sea apropiado
+- Mantén el tono y estilo profesional
+- Asegúrate de que fluya naturalmente con el contexto
+
+${modifiers ? `MODIFICADORES: ${JSON.stringify(modifiers)}` : ''}
+
+GENERA el texto expandido:`;
+    }
+
+    // Llamada correcta: primer parámetro es string, segundo es config
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: modifiers?.creativity || 0.7,
+      maxTokens: 800
+    });
+
+    return {
+      success: true,
+      result: response,  // response es directamente el string
+      patternType: 'expand',
+      originalText: text,
+      confidence: 0.85
+    };
+  }
+
+  /**
+   * Resumir contenido de forma concisa
+   */
+  async summarizeContent({ text, context, modifiers }) {
+    const userInput = {
+      content: text,
+      length: modifiers?.length || 'breve',
+      format: modifiers?.format || 'párrafo'
+    };
+
+    let prompt = this.getTaskSpecificPrompt('pattern_summarize', userInput);
+    
+    if (!prompt) {
+      prompt = `Eres un experto en síntesis y resumen de contenido.
+
+TAREA: Crear un resumen conciso y efectivo del siguiente texto.
+
+TEXTO A RESUMIR:
+"${text}"
+
+INSTRUCCIONES:
+- Resume los puntos clave (30-50% del original)
+- Mantén la esencia del mensaje
+- Usa lenguaje claro y directo
+- ${modifiers?.format === 'puntos' ? 'Presenta en formato de lista con bullets' : 'Usa formato de párrafo'}
+- ${modifiers?.length === 'corto' ? 'Máximo 2-3 oraciones' : modifiers?.length === 'medio' ? 'Máximo 4-5 oraciones' : 'Resumen completo pero conciso'}
+
+GENERA el resumen:`;
+    }
+
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: 0.4,
+      maxTokens: 400
+    });
+
+    return {
+      success: true,
+      result: response,
+      patternType: 'summarize',
+      originalText: text,
+      confidence: 0.9
+    };
+  }
+
+  /**
+   * Reescribir contenido mejorando redacción
+   */
+  async rewriteContent({ text, context, modifiers }) {
+    const userInput = {
+      content: text,
+      style: modifiers?.style || 'profesional',
+      tone: modifiers?.tone || 'neutral'
+    };
+
+    let prompt = this.getTaskSpecificPrompt('pattern_rewrite', userInput);
+    
+    if (!prompt) {
+      prompt = `Eres un editor profesional especializado en mejorar redacción.
+
+TAREA: Reescribir el siguiente texto mejorando claridad, fluidez y estilo.
+
+TEXTO ORIGINAL:
+"${text}"
+
+INSTRUCCIONES:
+- Mantén el mismo significado pero mejora la estructura
+- Usa vocabulario más preciso y variado
+- Elimina redundancias
+- Mejora la coherencia y fluidez
+- Tono: ${modifiers?.tone || 'profesional y claro'}
+- Estilo: ${modifiers?.style || 'formal pero accesible'}
+
+GENERA la versión mejorada:`;
+    }
+
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: 0.6,
+      maxTokens: 600
+    });
+
+    return {
+      success: true,
+      result: response,
+      patternType: 'rewrite',
+      originalText: text,
+      confidence: 0.85
+    };
+  }
+
+  /**
+   * Continuar contenido de forma natural
+   */
+  async continueContent({ text, context, modifiers }) {
+    const userInput = {
+      content: text,
+      preceding_context: context?.before || '',
+      tone: modifiers?.tone || 'coherente'
+    };
+
+    let prompt = this.getTaskSpecificPrompt('pattern_continue', userInput);
+    
+    if (!prompt) {
+      prompt = `Eres un escritor experto en continuar narrativas y contenido técnico.
+
+TAREA: Continuar el siguiente texto de forma natural y coherente.
+
+CONTEXTO PREVIO:
+${context?.before || 'Inicio del documento'}
+
+TEXTO BASE:
+"${text}"
+
+INSTRUCCIONES:
+- Identifica la dirección natural del contenido
+- Continúa con información complementaria relevante
+- Mantén consistencia en tono: ${modifiers?.tone || 'profesional'}
+- Asegura transición fluida
+- Aporta valor agregado al contenido
+
+GENERA la continuación (2-3 párrafos):`;
+    }
+
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: 0.8,
+      maxTokens: 600
+    });
+
+    return {
+      success: true,
+      result: response,
+      patternType: 'continue',
+      originalText: text,
+      confidence: 0.8
+    };
+  }
+
+  /**
+   * Agregar ejemplos prácticos
+   */
+  async addExamples({ text, context, modifiers }) {
+    const userInput = {
+      content: text,
+      example_count: modifiers?.count || 3
+    };
+
+    let prompt = this.getTaskSpecificPrompt('pattern_examples', userInput);
+    
+    if (!prompt) {
+      prompt = `Eres un instructor experto en crear ejemplos prácticos y relevantes.
+
+TAREA: Agregar ejemplos concretos al siguiente concepto.
+
+CONCEPTO/TEXTO:
+"${text}"
+
+INSTRUCCIONES:
+- Proporciona ${modifiers?.count || '2-3'} ejemplos prácticos claros
+- Los ejemplos deben ser relevantes y aplicables
+- Usa casos reales cuando sea posible
+- Estructura: Ejemplo + breve explicación
+- Integra los ejemplos de forma natural
+
+GENERA los ejemplos:`;
+    }
+
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: 0.75,
+      maxTokens: 700
+    });
+
+    return {
+      success: true,
+      result: response,
+      patternType: 'examples',
+      originalText: text,
+      confidence: 0.85
+    };
+  }
+
+  /**
+   * Optimizar para SEO
+   */
+  async optimizeForSEO({ text, context, modifiers }) {
+    const userInput = {
+      content: text,
+      target_keywords: modifiers?.keywords || []
+    };
+
+    let prompt = this.getTaskSpecificPrompt('pattern_seo', userInput);
+    
+    if (!prompt) {
+      prompt = `Eres un especialista en SEO y optimización de contenido.
+
+TAREA: Optimizar el siguiente texto para SEO manteniendo legibilidad.
+
+TEXTO ORIGINAL:
+"${text}"
+
+INSTRUCCIONES:
+- Identifica oportunidades para palabras clave relevantes
+- Mejora estructura para SEO (subtítulos, párrafos cortos)
+- Mantén naturalidad y legibilidad
+- Agrega variaciones de palabras clave
+- Mejora meta-relevancia
+
+GENERA versión optimizada para SEO:`;
+    }
+
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: 0.6,
+      maxTokens: 600
+    });
+
+    return {
+      success: true,
+      result: response,
+      patternType: 'seo',
+      originalText: text,
+      confidence: 0.8
+    };
+  }
+
+  /**
+   * Ajustar tono del contenido
+   */
+  async adjustTone({ text, tone, context }) {
+    const prompt = `Ajusta el tono del siguiente texto a: ${tone}
+
+TEXTO:
+"${text}"
+
+NUEVO TONO: ${tone}
+
+Reescribe manteniendo el contenido pero con el tono solicitado:`;
+
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: 0.7,
+      maxTokens: 500
+    });
+
+    return {
+      success: true,
+      result: response,
+      patternType: 'tone',
+      originalText: text,
+      confidence: 0.85
+    };
+  }
+
+  /**
+   * Reformatear contenido
+   */
+  async reformatContent({ text, format, context }) {
+    const formatInstructions = {
+      lista: 'Convierte en una lista con bullets bien estructurada',
+      tabla: 'Organiza la información en formato de tabla',
+      puntos: 'Divide en puntos numerados claros',
+      párrafo: 'Reorganiza en párrafos bien estructurados'
+    };
+
+    const prompt = `${formatInstructions[format] || 'Reorganiza el contenido'}:
+
+TEXTO:
+"${text}"
+
+FORMATO DESEADO: ${format}
+
+Genera el contenido reformateado:`;
+
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: 0.5,
+      maxTokens: 500
+    });
+
+    return {
+      success: true,
+      result: response,
+      patternType: 'format',
+      originalText: text,
+      confidence: 0.9
+    };
+  }
+
+  /**
+   * Agregar datos y estadísticas
+   */
+  async addDataAndStats({ text, context, modifiers }) {
+    const prompt = `Agrega datos, estadísticas y cifras relevantes al siguiente texto:
+
+TEXTO:
+"${text}"
+
+CONTEXTO:
+${context?.before || 'Sin contexto adicional'}
+
+INSTRUCCIONES:
+- Sugiere qué tipo de datos serían relevantes
+- Proporciona ejemplos de estadísticas aplicables
+- Integra de forma natural en el texto
+- Menciona fuentes sugeridas
+
+Genera versión mejorada con datos:`;
+
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: 0.6,
+      maxTokens: 600
+    });
+
+    return {
+      success: true,
+      result: response,
+      patternType: 'data',
+      originalText: text,
+      confidence: 0.75
+    };
+  }
+
+  /**
+   * Agregar detalles técnicos
+   */
+  async addTechnicalDetails({ text, context, modifiers }) {
+    const prompt = `Agrega detalles técnicos y profundidad al siguiente texto:
+
+TEXTO:
+"${text}"
+
+INSTRUCCIONES:
+- Añade especificaciones técnicas relevantes
+- Incluye terminología precisa
+- Agrega detalles de implementación
+- Mantén claridad para audiencia técnica
+
+Genera versión con más detalle técnico:`;
+
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: 0.65,
+      maxTokens: 700
+    });
+
+    return {
+      success: true,
+      result: response,
+      patternType: 'technical',
+      originalText: text,
+      confidence: 0.8
+    };
+  }
+
+  /**
+   * Hacer contenido más creativo
+   */
+  async makeCreative({ text, context, modifiers }) {
+    const prompt = `Transforma el siguiente texto en algo más creativo e innovador:
+
+TEXTO:
+"${text}"
+
+INSTRUCCIONES:
+- Usa metáforas y analogías creativas
+- Presenta ideas desde ángulos únicos
+- Mantén el contenido pero hazlo más engaging
+- Tono creativo pero profesional
+
+Genera versión creativa:`;
+
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: 0.9,
+      maxTokens: 600
+    });
+
+    return {
+      success: true,
+      result: response,
+      patternType: 'creative',
+      originalText: text,
+      confidence: 0.75
+    };
+  }
+
+  /**
+   * Procesamiento personalizado para patrones custom
+   */
+  async customPatternProcessing({ text, instruction, context }) {
+    const prompt = `Procesa el siguiente texto según la instrucción dada:
+
+TEXTO:
+"${text}"
+
+INSTRUCCIÓN DEL USUARIO:
+"${instruction}"
+
+CONTEXTO:
+${context?.before || 'Sin contexto adicional'}
+
+Aplica la instrucción y genera el resultado:`;
+
+    const response = await openaiService.generateCompletion(prompt, {
+      temperature: 0.7,
+      maxTokens: 700
+    });
+
+    return {
+      success: true,
+      result: response,
+      patternType: 'custom',
+      originalText: text,
+      confidence: 0.7
+    };
+  }
 }
 
 export default BlogAgent;

@@ -59,6 +59,30 @@ const agentConfigSchema = new mongoose.Schema({
     autoOptimization: {
       type: Boolean,
       default: true
+    },
+    
+    // Control de sugerencias automáticas en el editor
+    autoSuggestions: {
+      type: Boolean,
+      default: true
+    },
+    suggestionDebounceMs: {
+      type: Number,
+      default: 800,
+      min: 300,
+      max: 3000
+    },
+    suggestionMinLength: {
+      type: Number,
+      default: 10,
+      min: 5,
+      max: 50
+    },
+    suggestionContextLength: {
+      type: Number,
+      default: 200,
+      min: 100,
+      max: 500
     }
   },
   

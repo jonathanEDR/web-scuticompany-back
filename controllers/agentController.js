@@ -990,6 +990,89 @@ export const generateContent = async (req, res) => {
   }
 };
 
+/**
+ * 🧠 Procesar patrón contextual #...#
+ * Endpoint para el sistema avanzado de sugerencias con patrones
+ */
+export const processContextPattern = async (req, res) => {
+  try {
+    await initializeAgents();
+
+    const { 
+      patternType, 
+      contextText, 
+      selectedText, 
+      surroundingContext, 
+      modifiers 
+    } = req.body;
+
+    // Validaciones
+    if (!patternType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Pattern type is required'
+      });
+    }
+
+    if (!selectedText && !contextText) {
+      return res.status(400).json({
+        success: false,
+        error: 'Selected text or context text is required'
+      });
+    }
+
+    logger.info(`🧠 Processing context pattern: ${patternType} - "${contextText || selectedText.substring(0, 50)}..."`);
+
+    // Obtener el BlogAgent
+    const agent = await AgentOrchestrator.getAgent('BlogAgent');
+    
+    if (!agent) {
+      return res.status(500).json({
+        success: false,
+        error: 'BlogAgent not available'
+      });
+    }
+
+    // Procesar el patrón
+    const startTime = Date.now();
+    
+    const result = await agent.processContextPattern({
+      patternType,
+      contextText: contextText || '',
+      selectedText: selectedText || contextText,
+      surroundingContext: surroundingContext || {},
+      modifiers: modifiers || {}
+    });
+
+    const processingTime = Date.now() - startTime;
+
+    logger.info(`✅ Pattern processed successfully in ${processingTime}ms`);
+
+    res.json({
+      success: true,
+      data: {
+        result: result.result,
+        patternType: result.patternType,
+        originalText: result.originalText,
+        confidence: result.confidence,
+        metadata: {
+          processingTime,
+          timestamp: new Date().toISOString(),
+          modifiersApplied: modifiers || {}
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('❌ Error processing context pattern:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error procesando patrón contextual',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
 export default {
   getAgentStatus,
   processCommand,
@@ -1006,5 +1089,6 @@ export default {
   updateAgentConfig,
   resetAgentConfig,
   chatWithBlogAgent,
-  generateContent
+  generateContent,
+  processContextPattern
 };

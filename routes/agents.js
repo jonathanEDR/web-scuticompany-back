@@ -23,7 +23,8 @@ import {
   updateAgentConfig,
   resetAgentConfig,
   chatWithBlogAgent,
-  generateContent
+  generateContent,
+  processContextPattern
 } from '../controllers/agentController.js';
 
 import { testAgentConfiguration } from '../controllers/testController.js';
@@ -161,6 +162,18 @@ router.post('/blog/generate-content',
   aiCommandLimiter,
   ...requireUser,
   generateContent
+);
+
+/**
+ * POST /api/agents/blog/process-pattern
+ * Procesar patrón contextual #...#
+ * Sistema avanzado de sugerencias con patrones
+ * Requiere: Usuario autenticado
+ */
+router.post('/blog/process-pattern',
+  aiCommandLimiter,
+  ...requireUser,
+  processContextPattern
 );
 
 /**
