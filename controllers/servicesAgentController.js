@@ -56,6 +56,8 @@ export const chatWithServicesAgent = async (req, res) => {
     // Extraer sessionId del context y pasar el resto por separado
     const { sessionId, previousMessages, ...restContext } = context || {};
     
+    logger.info(`🔑 [CONTROLLER] Session ID: ${sessionId || 'NONE'}`);
+    
     const result = await agent.chat(message, sessionId, {
       userId,
       previousMessages,
@@ -240,6 +242,56 @@ export const analyzeServiceWithAgent = async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error.message || 'Error al analizar servicio'
+    });
+  }
+};
+
+/**
+ * 🆕 Generar contenido específico para servicio
+ * POST /api/servicios/:id/agent/generate-content
+ * Auth: requireAuth + requireUser
+ */
+export const generateContentWithAgent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { contentType, style } = req.body;
+    const userId = req.auth?.userId;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID de servicio requerido'
+      });
+    }
+
+    if (!contentType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Tipo de contenido requerido (full_description, short_description, features, benefits, faq)'
+      });
+    }
+
+    // Verificar que el servicio existe
+    const service = await Servicio.findById(id);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        error: 'Servicio no encontrado'
+      });
+    }
+
+    logger.info(`📝 Generate content ${contentType} for service ${id} from user ${userId}`);
+
+    const agent = await getServicesAgent();
+    const result = await agent.generateContent(id, contentType, style || 'formal');
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    logger.error('Error generating content with agent:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Error al generar contenido'
     });
   }
 };
@@ -474,6 +526,7 @@ export default {
   createServiceWithAgent,
   editServiceWithAgent,
   analyzeServiceWithAgent,
+  generateContentWithAgent, // 🆕
   analyzePortfolio,
   suggestPricing,
   analyzePricing,

@@ -273,16 +273,56 @@ class ServicesGenerator {
    * Verificar que la categoría existe
    */
   async verifyCategory(categoriaInput) {
-    // Puede ser ID o slug
-    let categoria;
-    
-    if (mongoose.Types.ObjectId.isValid(categoriaInput)) {
-      categoria = await Categoria.findById(categoriaInput);
-    } else {
-      categoria = await Categoria.findOne({ slug: categoriaInput });
+    if (!categoriaInput) {
+      logger.warn('⚠️ [VERIFY_CATEGORY] No category input provided');
+      return null;
     }
 
-    return categoria;
+    let categoria;
+    
+    logger.info(`🔍 [VERIFY_CATEGORY] Looking for: "${categoriaInput}"`);
+    
+    // 1. Buscar por ObjectId
+    if (mongoose.Types.ObjectId.isValid(categoriaInput)) {
+      categoria = await Categoria.findById(categoriaInput);
+      if (categoria) {
+        logger.success(`✅ [VERIFY_CATEGORY] Found by ID: ${categoria.nombre}`);
+        return categoria;
+      }
+    }
+    
+    // 2. Buscar por slug (case-insensitive)
+    categoria = await Categoria.findOne({ 
+      slug: categoriaInput.toLowerCase(),
+      activo: true 
+    });
+    if (categoria) {
+      logger.success(`✅ [VERIFY_CATEGORY] Found by slug: ${categoria.nombre}`);
+      return categoria;
+    }
+    
+    // 3. Buscar por nombre (case-insensitive, fuzzy)
+    const nombreLower = categoriaInput.toLowerCase().trim();
+    const categorias = await Categoria.find({ activo: true });
+    
+    for (const cat of categorias) {
+      const catNombreLower = cat.nombre.toLowerCase();
+      
+      // Coincidencia exacta
+      if (catNombreLower === nombreLower) {
+        logger.success(`✅ [VERIFY_CATEGORY] Found by exact name: ${cat.nombre}`);
+        return cat;
+      }
+      
+      // Coincidencia parcial (fuzzy)
+      if (catNombreLower.includes(nombreLower) || nombreLower.includes(catNombreLower)) {
+        logger.success(`✅ [VERIFY_CATEGORY] Found by fuzzy name match: ${cat.nombre}`);
+        return cat;
+      }
+    }
+    
+    logger.warn(`⚠️ [VERIFY_CATEGORY] No match found for: "${categoriaInput}"`);
+    return null;
   }
 
   /**
@@ -291,6 +331,9 @@ class ServicesGenerator {
   async enrichServiceData(serviceData, categoria, context) {
     const enriched = { ...serviceData };
     const aiGenerated = [];
+
+    logger.info('🔍 [ENRICH] Starting service enrichment...');
+    logger.info(`📊 [ENRICH] Input data: titulo=${!!enriched.titulo}, descripcion=${!!enriched.descripcion}, descripcionCorta=${!!enriched.descripcionCorta}`);
 
     // Generar título si no existe o es muy corto
     if (!enriched.titulo || enriched.titulo.length < 5) {
@@ -312,13 +355,50 @@ class ServicesGenerator {
       logger.info('📝 Generating description with AI...');
       const descPrompt = this.buildDescriptionPrompt(enriched, categoria);
       enriched.descripcion = await this.callAI(descPrompt, 'description');
+      
+      // 🆕 Validar y recortar si es necesario
+      if (enriched.descripcion.length > 900) {
+        logger.warn(`⚠️ Description too long (${enriched.descripcion.length} chars), trimming to 900 chars`);
+        enriched.descripcion = enriched.descripcion.substring(0, 897) + '...';
+      }
+      
       aiGenerated.push('descripcion');
     }
 
     // Generar descripción corta si no existe
     if (!enriched.descripcionCorta && enriched.descripcion) {
-      enriched.descripcionCorta = enriched.descripcion.substring(0, 150) + '...';
+      enriched.descripcionCorta = enriched.descripcion.substring(0, 147) + '...';
       aiGenerated.push('descripcionCorta');
+    }
+
+    // 🆕 Si tenemos descripcionCorta pero NO descripcion, expandir la corta
+    if (enriched.descripcionCorta && (!enriched.descripcion || enriched.descripcion.length < 100)) {
+      logger.info('📝 Expanding short description with AI...');
+      const expandPrompt = `Expande esta descripción corta en una descripción completa y profesional:
+
+"${enriched.descripcionCorta}"
+
+Servicio: ${enriched.titulo}
+Categoría: ${categoria.nombre}
+
+La descripción expandida debe:
+- Elaborar los puntos mencionados en la descripción corta
+- Agregar detalles técnicos y beneficios específicos
+- Ser profesional y atractiva
+- Tener MÁXIMO 600 caracteres
+- Mantener el mismo tono y mensaje
+
+Genera solo la descripción expandida, sin títulos.`;
+      
+      enriched.descripcion = await this.callAI(expandPrompt, 'description_expansion');
+      
+      // Validar longitud
+      if (enriched.descripcion.length > 900) {
+        logger.warn(`⚠️ Expanded description too long (${enriched.descripcion.length} chars), trimming to 900 chars`);
+        enriched.descripcion = enriched.descripcion.substring(0, 897) + '...';
+      }
+      
+      aiGenerated.push('descripcion');
     }
 
     // Generar características si no existen
@@ -340,6 +420,11 @@ class ServicesGenerator {
     }
 
     enriched.aiGenerated = aiGenerated;
+    
+    logger.success('✅ [ENRICH] Service enrichment completed');
+    logger.info(`📊 [ENRICH] Final lengths: titulo=${enriched.titulo?.length || 0}, descripcion=${enriched.descripcion?.length || 0}, descripcionCorta=${enriched.descripcionCorta?.length || 0}`);
+    logger.info(`🤖 [ENRICH] AI generated fields: ${aiGenerated.join(', ')}`);
+    
     return enriched;
   }
 
@@ -579,15 +664,19 @@ Genera SOLO el título, sin explicaciones.`;
 
 Servicio: ${serviceData.titulo}
 Categoría: ${categoria.nombre}
+${serviceData.descripcionCorta ? `Resumen: ${serviceData.descripcionCorta}` : ''}
 ${serviceData.targetAudience ? `Audiencia: ${serviceData.targetAudience}` : ''}
 ${serviceData.requirements ? `Requisitos: ${serviceData.requirements}` : ''}
 
 La descripción debe:
 - Ser clara y profesional
-- Destacar el valor y beneficios
-- Tener entre 150-300 palabras
+- Destacar el valor y beneficios principales
+- Tener MÁXIMO 600 caracteres (aproximadamente 100-120 palabras)
 - Usar tono profesional pero cercano
 - Incluir palabras clave relevantes para SEO
+- Ser concisa y directa al punto
+
+IMPORTANTE: La descripción NO debe exceder 600 caracteres.
 
 Genera solo la descripción, sin títulos ni formato adicional.`;
   }
@@ -751,6 +840,169 @@ Genera un array JSON con 3 paquetes siguiendo esta estructura:
         incluido: true
       }));
     }
+  }
+
+  /**
+   * 🆕 GENERAR CONTENIDO ESPECÍFICO para un servicio existente
+   * Tipos: full_description, short_description, features, benefits, faq
+   * Estilos: formal, casual, technical
+   */
+  async generateSpecificContent(serviceId, contentType, style = 'formal') {
+    try {
+      logger.info(`📝 [GENERATE_CONTENT] Generating ${contentType} with ${style} style for service ${serviceId}`);
+
+      // Obtener el servicio
+      const servicio = await Servicio.findById(serviceId).populate('categoria');
+      if (!servicio) {
+        throw new Error('Servicio no encontrado');
+      }
+
+      logger.info(`✅ [GENERATE_CONTENT] Service found: ${servicio.titulo}`);
+
+      // Construir prompt según el tipo de contenido y estilo
+      const prompt = this.buildContentPrompt(servicio, contentType, style);
+      
+      logger.info(`💬 [GENERATE_CONTENT] Prompt built, calling AI...`);
+
+      // Llamar a la IA
+      const content = await this.callAI(prompt, contentType);
+
+      logger.success(`✅ [GENERATE_CONTENT] Content generated successfully (${content.length} chars)`);
+
+      return {
+        success: true,
+        data: {
+          type: contentType,
+          style: style,
+          content: content,
+          service: {
+            id: servicio._id,
+            titulo: servicio.titulo,
+            categoria: servicio.categoria?.nombre
+          }
+        },
+        metadata: {
+          contentLength: content.length,
+          generatedAt: new Date()
+        }
+      };
+
+    } catch (error) {
+      logger.error('❌ [GENERATE_CONTENT] Error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * 🆕 Construir prompt según tipo de contenido y estilo
+   */
+  buildContentPrompt(servicio, contentType, style) {
+    const categoria = servicio.categoria?.nombre || 'Servicio';
+    const tituloServicio = servicio.titulo;
+    const descripcionActual = servicio.descripcion || servicio.descripcionCorta || '';
+
+    // Mapeo de estilos
+    const styleDescriptions = {
+      formal: 'profesional, corporativo y estructurado',
+      casual: 'amigable, cercano y conversacional',
+      technical: 'técnico, detallado y específico con terminología especializada'
+    };
+
+    const styleDesc = styleDescriptions[style] || styleDescriptions.formal;
+
+    // Plantillas por tipo de contenido
+    const templates = {
+      full_description: `Genera una descripción completa y detallada para el siguiente servicio.
+
+**Servicio:** ${tituloServicio}
+**Categoría:** ${categoria}
+**Contexto actual:** ${descripcionActual}
+
+**Estilo requerido:** ${styleDesc}
+
+**Requisitos:**
+- Extensión: 300-500 palabras
+- Estructura clara con introducción, desarrollo y conclusión
+- Incluir propuesta de valor
+- Destacar diferenciadores
+- Llamado a la acción al final
+- Estilo: ${styleDesc}
+
+Genera SOLO el texto de la descripción, sin títulos ni formato adicional.`,
+
+      short_description: `Genera una descripción corta y atractiva para el siguiente servicio.
+
+**Servicio:** ${tituloServicio}
+**Categoría:** ${categoria}
+**Descripción actual:** ${descripcionActual}
+
+**Estilo requerido:** ${styleDesc}
+
+**Requisitos:**
+- Extensión: 80-120 palabras
+- Impacto inmediato
+- Destacar el beneficio principal
+- Lenguaje claro y persuasivo
+- Estilo: ${styleDesc}
+
+Genera SOLO el texto de la descripción corta, sin títulos.`,
+
+      features: `Genera una lista de características principales para el siguiente servicio.
+
+**Servicio:** ${tituloServicio}
+**Categoría:** ${categoria}
+**Descripción:** ${descripcionActual}
+
+**Estilo requerido:** ${styleDesc}
+
+**Requisitos:**
+- 6-8 características concretas
+- Cada una debe ser específica y relevante
+- Formato: lista con viñetas
+- Enfoque en capacidades y funcionalidades
+- Estilo: ${styleDesc}
+
+Genera SOLO la lista de características en formato de viñetas (- Característica).`,
+
+      benefits: `Genera una lista de beneficios clave para el siguiente servicio.
+
+**Servicio:** ${tituloServicio}
+**Categoría:** ${categoria}
+**Descripción:** ${descripcionActual}
+
+**Estilo requerido:** ${styleDesc}
+
+**Requisitos:**
+- 5-7 beneficios principales
+- Enfoque en resultados y valor para el cliente
+- Cada beneficio debe responder "¿Qué gano con esto?"
+- Formato: lista con viñetas
+- Estilo: ${styleDesc}
+
+Genera SOLO la lista de beneficios en formato de viñetas (- Beneficio).`,
+
+      faq: `Genera una lista de preguntas frecuentes (FAQ) para el siguiente servicio.
+
+**Servicio:** ${tituloServicio}
+**Categoría:** ${categoria}
+**Descripción:** ${descripcionActual}
+
+**Estilo requerido:** ${styleDesc}
+
+**Requisitos:**
+- 5-8 preguntas frecuentes relevantes
+- Cada pregunta con su respuesta clara y concisa
+- Cubrir: qué incluye, cómo funciona, tiempo de entrega, precios, soporte
+- Formato: **Pregunta:** seguido de respuesta
+- Estilo: ${styleDesc}
+
+Genera SOLO las preguntas con sus respuestas en el formato especificado.`
+    };
+
+    return templates[contentType] || templates.full_description;
   }
 
   /**

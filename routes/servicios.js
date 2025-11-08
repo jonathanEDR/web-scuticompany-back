@@ -36,6 +36,7 @@ import {
   createServiceWithAgent,
   editServiceWithAgent,
   analyzeServiceWithAgent,
+  generateContentWithAgent, // 🆕
   analyzePortfolio,
   suggestPricing,
   analyzePricing,
@@ -149,6 +150,7 @@ router.patch('/:id/restaurar', requireAuth, canManageServices, restaurarServicio
 // Rutas de AI Agent por servicio específico
 router.post('/:id/agent/edit', requireAuth, canEditService, aiCommandLimiter, editServiceWithAgent);
 router.post('/:id/agent/analyze', requireAuth, ...requireUser, agentLimiter, analyzeServiceWithAgent);
+router.post('/:id/agent/generate-content', requireAuth, ...requireUser, agentLimiter, generateContentWithAgent); // 🆕
 router.post('/:id/agent/analyze-pricing', requireAuth, ...requireUser, agentLimiter, analyzePricing);
 
 // ============================================

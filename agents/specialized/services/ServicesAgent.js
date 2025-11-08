@@ -352,6 +352,18 @@ export class ServicesAgent extends BaseAgent {
   }
 
   /**
+   * 🆕 Generar contenido específico para un servicio
+   */
+  async generateContent(serviceId, contentType, style = 'formal') {
+    if (!this.generator) {
+      throw new Error('Generator not initialized. Agent must be activated first.');
+    }
+
+    logger.info(`📝 Generating ${contentType} content for service ${serviceId}...`);
+    return await this.generator.generateSpecificContent(serviceId, contentType, style);
+  }
+
+  /**
    * Analizar servicio
    */
   async analyzeService(serviceId, options = {}) {
