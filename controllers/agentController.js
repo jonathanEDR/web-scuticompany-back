@@ -6,6 +6,7 @@
 import AgentOrchestrator from '../agents/core/AgentOrchestrator.js';
 import BlogAgent from '../agents/specialized/BlogAgent.js';
 import seoAgent from '../agents/specialized/SEOAgent.js';
+import ServicesAgent from '../agents/specialized/services/ServicesAgent.js';
 import openaiService from '../agents/services/OpenAIService.js';
 import AgentConfig from '../models/AgentConfig.js';
 import logger from '../utils/logger.js';
@@ -42,14 +43,26 @@ const initializeAgents = async () => {
     } else {
       logger.error('❌ Failed to register SEOAgent:', seoRegistrationResult.error);
     }
+
+    // Crear y registrar ServicesAgent
+    const servicesAgent = new ServicesAgent();
+    const servicesRegistrationResult = await AgentOrchestrator.registerAgent(servicesAgent);
+    
+    if (servicesRegistrationResult.success) {
+      logger.success('✅ Agent ServicesAgent registered and activated');
+      logger.info('📊 ServicesAgent registered with services management configuration');
+    } else {
+      logger.error('❌ Failed to register ServicesAgent:', servicesRegistrationResult.error);
+    }
     
     // Marcar sistema como inicializado si al menos un agente fue registrado
-    if (blogRegistrationResult.success || seoRegistrationResult.success) {
+    if (blogRegistrationResult.success || seoRegistrationResult.success || servicesRegistrationResult.success) {
       logger.success('✅ Agent system initialized successfully');
       isInitialized = true;
     } else {
       logger.error('❌ Failed to initialize agent system: No agents registered');
     }
+
     
   } catch (error) {
     logger.error('❌ Error initializing agents:', error);
@@ -82,7 +95,10 @@ export const getAgentStatus = async (req, res) => {
           'seo_analysis', 
           'tag_generation',
           'performance_analysis',
-          'natural_language_processing'
+          'natural_language_processing',
+          'services_management',
+          'pricing_optimization',
+          'portfolio_analysis'
         ]
       }
     });
