@@ -126,9 +126,15 @@ const authLimiter = rateLimit({
   skip: () => process.env.NODE_ENV === 'development' // Deshabilitar en desarrollo
 });
 
-// Aplicar rate limiting general (deshabilitado en desarrollo)
+// Aplicar rate limiting general (deshabilitado en desarrollo y para rutas de agent)
 if (process.env.NODE_ENV === 'production') {
-  app.use('/api/', limiter);
+  app.use('/api/', (req, res, next) => {
+    // Skip rate limiting para rutas de agent (tienen su propio limiter)
+    if (req.path.includes('/agent/') || req.path.includes('/agents')) {
+      return next();
+    }
+    limiter(req, res, next);
+  });
 }
 
 app.use(express.json());
