@@ -1,5 +1,37 @@
 import express from 'express';
 
+// ============================================
+// MIDDLEWARES
+// ============================================
+
+// Middlewares de autenticación y autorización
+import { requireAuth } from '../middleware/clerkAuth.js';
+import {
+  canViewAllPosts,
+  canCreateBlogPosts,
+  canEditOwnBlogPosts,
+  canDeleteOwnBlogPosts,
+  canPublishBlogPosts,
+  canDuplicateBlogPosts,
+  canManageBlogCategories,
+  canManageBlogTags,
+  checkPostOwnership
+} from '../middleware/blogAuth.js';
+
+// ✅ Middlewares de cache HTTP
+import {
+  cachePublicPosts,
+  cachePostDetail,
+  cacheFeaturedPosts,
+  cacheTaxonomy,
+  cacheSEOFiles,
+  noCache
+} from '../middleware/httpCache.js';
+
+// ============================================
+// CONTROLADORES
+// ============================================
+
 // Controladores
 import {
   getAllPublishedPosts,
@@ -106,19 +138,19 @@ const router = express.Router();
 // RUTAS DE POSTS
 // ========================================
 
-// Rutas admin de posts (deben ir ANTES de las rutas públicas)
-router.get('/admin/posts', ...canViewAllPosts, getAllAdminPosts);
-router.get('/admin/posts/:id', ...canViewAllPosts, getPostById);
-router.get('/admin/cache-stats', ...canViewAllPosts, getCacheStats); // ✅ Estadísticas de caché
-router.post('/admin/invalidate-cache', ...canManageBlogCategories, invalidateCache); // ✅ Invalidar caché manualmente
+// Rutas admin de posts (deben ir ANTES de las rutas públicas) - SIN CACHE
+router.get('/admin/posts', noCache, ...canViewAllPosts, getAllAdminPosts);
+router.get('/admin/posts/:id', noCache, ...canViewAllPosts, getPostById);
+router.get('/admin/cache-stats', noCache, ...canViewAllPosts, getCacheStats);
+router.post('/admin/invalidate-cache', noCache, ...canManageBlogCategories, invalidateCache);
 
-// Rutas públicas de posts
-router.get('/posts', getAllPublishedPosts);
-router.get('/posts/featured', getFeaturedPosts);
-router.get('/posts/popular', getPopularPosts);
-router.get('/posts/search', searchPosts);
-router.get('/posts/user/:username', getPostsByUser);
-router.get('/posts/:slug', getPostBySlug);
+// ✅ Rutas públicas de posts - CON CACHE HTTP
+router.get('/posts', cachePublicPosts, getAllPublishedPosts);
+router.get('/posts/featured', cacheFeaturedPosts, getFeaturedPosts);
+router.get('/posts/popular', cacheFeaturedPosts, getPopularPosts);
+router.get('/posts/search', cachePublicPosts, searchPosts);
+router.get('/posts/user/:username', cachePublicPosts, getPostsByUser);
+router.get('/posts/:slug', cachePostDetail, getPostBySlug);
 
 // Rutas protegidas de posts
 router.post('/posts', ...canCreateBlogPosts, createPost);
@@ -138,10 +170,10 @@ router.post('/posts/:id/bookmark', requireAuth, toggleBookmark);
 // RUTAS DE CATEGORÍAS
 // ========================================
 
-// Rutas públicas de categorías
-router.get('/categories', getAllCategories);
-router.get('/categories/:slug', getCategoryBySlug);
-router.get('/categories/:slug/posts', getCategoryPosts);
+// ✅ Rutas públicas de categorías - CON CACHE
+router.get('/categories', cacheTaxonomy, getAllCategories);
+router.get('/categories/:slug', cacheTaxonomy, getCategoryBySlug);
+router.get('/categories/:slug/posts', cachePublicPosts, getCategoryPosts);
 
 // Rutas protegidas de categorías
 router.post('/categories', ...canManageBlogCategories, createCategory);
@@ -153,11 +185,11 @@ router.put('/categories/reorder', ...canManageBlogCategories, reorderCategories)
 // RUTAS DE TAGS
 // ========================================
 
-// Rutas públicas de tags
-router.get('/tags', getAllTags);
-router.get('/tags/popular', getPopularTags);
-router.get('/tags/:slug', getTagBySlug);
-router.get('/tags/:slug/posts', getTagPosts);
+// ✅ Rutas públicas de tags - CON CACHE
+router.get('/tags', cacheTaxonomy, getAllTags);
+router.get('/tags/popular', cacheTaxonomy, getPopularTags);
+router.get('/tags/:slug', cacheTaxonomy, getTagBySlug);
+router.get('/tags/:slug/posts', cachePublicPosts, getTagPosts);
 
 // Rutas protegidas de tags
 router.post('/tags', ...canManageBlogTags, createTag);
@@ -178,21 +210,21 @@ router.delete('/tags/:id', ...canManageBlogTags, deleteTag);
 // RUTAS DE SEO - Sprint 2 ✅
 // ========================================
 
-// Sitemaps (públicos para crawlers)
-router.get('/sitemap.xml', getSitemap);
-router.get('/sitemap-images.xml', getImageSitemap);
-router.get('/sitemap-news.xml', getNewsSitemap);
-router.get('/sitemap-stats', getSitemapStatistics); // Debug/monitoreo
+// ✅ Sitemaps (públicos para crawlers) - CON CACHE LARGO
+router.get('/sitemap.xml', cacheSEOFiles, getSitemap);
+router.get('/sitemap-images.xml', cacheSEOFiles, getImageSitemap);
+router.get('/sitemap-news.xml', cacheSEOFiles, getNewsSitemap);
+router.get('/sitemap-stats', noCache, getSitemapStatistics); // Debug/monitoreo
 
-// RSS/Atom Feeds (públicos para lectores)
-router.get('/feed.xml', getRSSFeed);
-router.get('/feed.atom', getAtomFeed);
-router.get('/feed.json', getJSONFeed);
-router.get('/feed/category/:slug', getCategoryFeed);
-router.get('/feed-stats', getFeedStatistics); // Debug/monitoreo
+// ✅ RSS/Atom Feeds (públicos para lectores) - CON CACHE
+router.get('/feed.xml', cacheSEOFiles, getRSSFeed);
+router.get('/feed.atom', cacheSEOFiles, getAtomFeed);
+router.get('/feed.json', cacheSEOFiles, getJSONFeed);
+router.get('/feed/category/:slug', cacheSEOFiles, getCategoryFeed);
+router.get('/feed-stats', noCache, getFeedStatistics); // Debug/monitoreo
 
-// Robots.txt (público para crawlers)
-router.get('/robots.txt', getRobotsTxt);
+// ✅ Robots.txt (público para crawlers) - CON CACHE
+router.get('/robots.txt', cacheSEOFiles, getRobotsTxt);
 
 // Schema.org JSON-LD por post
 router.get('/schema/:slug', getPostSchemas);
