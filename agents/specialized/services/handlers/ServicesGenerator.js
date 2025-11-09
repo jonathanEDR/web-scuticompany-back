@@ -333,7 +333,6 @@ class ServicesGenerator {
     const aiGenerated = [];
 
     logger.info('🔍 [ENRICH] Starting service enrichment...');
-    logger.info(`📊 [ENRICH] Input data: titulo=${!!enriched.titulo}, descripcion=${!!enriched.descripcion}, descripcionCorta=${!!enriched.descripcionCorta}`);
 
     // Generar título si no existe o es muy corto
     if (!enriched.titulo || enriched.titulo.length < 5) {
@@ -341,7 +340,6 @@ class ServicesGenerator {
       const titlePrompt = this.buildTitlePrompt(enriched, categoria);
       enriched.titulo = await this.callAI(titlePrompt, 'title');
       
-      // Si aún no hay título válido, usar fallback
       if (!enriched.titulo || enriched.titulo.length < 5) {
         enriched.titulo = `${categoria.nombre} - ${new Date().getTime()}`;
         logger.warn('⚠️ Using fallback title:', enriched.titulo);
@@ -356,9 +354,7 @@ class ServicesGenerator {
       const descPrompt = this.buildDescriptionPrompt(enriched, categoria);
       enriched.descripcion = await this.callAI(descPrompt, 'description');
       
-      // 🆕 Validar y recortar si es necesario
       if (enriched.descripcion.length > 900) {
-        logger.warn(`⚠️ Description too long (${enriched.descripcion.length} chars), trimming to 900 chars`);
         enriched.descripcion = enriched.descripcion.substring(0, 897) + '...';
       }
       
@@ -371,7 +367,7 @@ class ServicesGenerator {
       aiGenerated.push('descripcionCorta');
     }
 
-    // 🆕 Si tenemos descripcionCorta pero NO descripcion, expandir la corta
+    // Si tenemos descripcionCorta pero NO descripcion, expandir la corta
     if (enriched.descripcionCorta && (!enriched.descripcion || enriched.descripcion.length < 100)) {
       logger.info('📝 Expanding short description with AI...');
       const expandPrompt = `Expande esta descripción corta en una descripción completa y profesional:
@@ -392,9 +388,7 @@ Genera solo la descripción expandida, sin títulos.`;
       
       enriched.descripcion = await this.callAI(expandPrompt, 'description_expansion');
       
-      // Validar longitud
       if (enriched.descripcion.length > 900) {
-        logger.warn(`⚠️ Expanded description too long (${enriched.descripcion.length} chars), trimming to 900 chars`);
         enriched.descripcion = enriched.descripcion.substring(0, 897) + '...';
       }
       
@@ -406,7 +400,8 @@ Genera solo la descripción expandida, sin títulos.`;
       logger.info('⭐ Generating features with AI...');
       const featuresPrompt = this.buildFeaturesPrompt(enriched, categoria);
       const features = await this.callAI(featuresPrompt, 'features');
-      enriched.caracteristicas = this.parseArrayResponse(features);
+      const cleanedFeatures = this.cleanAIResponse(features);
+      enriched.caracteristicas = this.parseArrayResponse(cleanedFeatures);
       aiGenerated.push('caracteristicas');
     }
 
@@ -415,15 +410,14 @@ Genera solo la descripción expandida, sin títulos.`;
       logger.info('💡 Generating benefits with AI...');
       const benefitsPrompt = this.buildBenefitsPrompt(enriched, categoria);
       const benefits = await this.callAI(benefitsPrompt, 'benefits');
-      enriched.beneficios = this.parseArrayResponse(benefits);
+      const cleanedBenefits = this.cleanAIResponse(benefits);
+      enriched.beneficios = this.parseArrayResponse(cleanedBenefits);
       aiGenerated.push('beneficios');
     }
 
     enriched.aiGenerated = aiGenerated;
     
     logger.success('✅ [ENRICH] Service enrichment completed');
-    logger.info(`📊 [ENRICH] Final lengths: titulo=${enriched.titulo?.length || 0}, descripcion=${enriched.descripcion?.length || 0}, descripcionCorta=${enriched.descripcionCorta?.length || 0}`);
-    logger.info(`🤖 [ENRICH] AI generated fields: ${aiGenerated.join(', ')}`);
     
     return enriched;
   }
@@ -668,38 +662,77 @@ ${serviceData.descripcionCorta ? `Resumen: ${serviceData.descripcionCorta}` : ''
 ${serviceData.targetAudience ? `Audiencia: ${serviceData.targetAudience}` : ''}
 ${serviceData.requirements ? `Requisitos: ${serviceData.requirements}` : ''}
 
-La descripción debe:
-- Ser clara y profesional
-- Destacar el valor y beneficios principales
+REQUISITOS ESTRICTOS:
+- Descripción en UN SOLO PÁRRAFO continuo (sin saltos de línea)
 - Tener MÁXIMO 600 caracteres (aproximadamente 100-120 palabras)
+- Ser clara, profesional y atractiva
+- Destacar el valor y beneficios principales
 - Usar tono profesional pero cercano
 - Incluir palabras clave relevantes para SEO
-- Ser concisa y directa al punto
 
-IMPORTANTE: La descripción NO debe exceder 600 caracteres.
+PROHIBIDO:
+❌ NO dividas en múltiples párrafos
+❌ NO agregues "RECOMENDACIÓN:" ni sugerencias
+❌ NO agregues análisis del servicio
+❌ NO agregues títulos o subtítulos
+❌ NO excedas 600 caracteres
 
-Genera solo la descripción, sin títulos ni formato adicional.`;
+FORMATO REQUERIDO:
+La descripción debe ser un texto continuo sin saltos de línea, similar a:
+"En [nombre servicio], ofrecemos [propuesta de valor]. Nos especializamos en [qué hacemos] para [beneficio principal]. [Características clave]. [Resultado esperado]."
+
+Genera SOLO la descripción en un párrafo continuo, sin formato adicional.`;
   }
 
   buildFeaturesPrompt(serviceData, categoria) {
-    return `Lista las características técnicas principales de este servicio:
+    return `GENERA EXACTAMENTE UNA LISTA con viñetas para ${serviceData.titulo}.
 
 Servicio: ${serviceData.titulo}
-Descripción: ${serviceData.descripcion || 'No proporcionada'}
+Descripción: ${serviceData.descripcionCorta || 'No proporcionada'}
 Categoría: ${categoria.nombre}
 
-Genera 5-7 características específicas y medibles.
-Formato: una característica por línea, sin viñetas ni numeración.`;
+RESPONDE SOLO CON ESTA ESTRUCTURA:
+- Característica específica del servicio
+- Otra característica específica del servicio  
+- Tercera característica específica del servicio
+- Cuarta característica específica del servicio
+- Quinta característica específica del servicio
+
+OBLIGATORIO:
+✅ CADA línea debe comenzar con guión (-)
+✅ Máximo 80 caracteres por línea
+✅ 5-7 características
+✅ Descripción DIRECTA (sin "Primera", "Segunda", etc.)
+✅ SIN párrafos largos
+✅ SIN doble salto de línea
+✅ SIN texto extra
+
+RESPONDE SOLO con la lista de viñetas, nada más. NO agregues explicaciones.`;
   }
 
   buildBenefitsPrompt(serviceData, categoria) {
-    return `Lista los beneficios clave que obtiene el cliente con este servicio:
+    return `GENERA EXACTAMENTE UNA LISTA con viñetas para ${serviceData.titulo}.
 
 Servicio: ${serviceData.titulo}
-Descripción: ${serviceData.descripcion || 'No proporcionada'}
+Descripción: ${serviceData.descripcionCorta || 'No proporcionada'}
+Categoría: ${categoria.nombre}
 
-Genera 4-6 beneficios enfocados en el valor para el cliente.
-Formato: un beneficio por línea, sin viñetas ni numeración.`;
+RESPONDE SOLO CON ESTA ESTRUCTURA:
+- Beneficio específico del servicio
+- Otro beneficio específico del servicio
+- Tercer beneficio específico del servicio
+- Cuarto beneficio específico del servicio
+
+OBLIGATORIO:
+✅ CADA línea debe comenzar con guión (-)
+✅ Máximo 80 caracteres por línea
+✅ 4-6 beneficios
+✅ Descripción DIRECTA (sin "Primer", "Segundo", etc.)
+✅ SIN párrafos largos
+✅ SIN doble salto de línea
+✅ SIN texto extra
+
+RESPONDE SOLO con la lista de viñetas, nada más. NO agregues explicaciones.`;
   }
 
   buildServiceGenerationPrompt(requirements) {
@@ -789,26 +822,186 @@ Genera un array JSON con 3 paquetes siguiendo esta estructura:
   }
 
   /**
-   * Parsear respuesta de array
+   * 🆕 Limpiar respuesta del agente de IA
+   * Remueve recomendaciones, análisis y otros contenidos no deseados
+   */
+  cleanAIResponse(text) {
+    if (!text) return '';
+    
+    // Si el texto es JSON válido, devolverlo sin modificar
+    const trimmed = text.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        JSON.parse(trimmed);
+        return text;
+      } catch (e) {
+        // No es JSON válido, continuar con la limpieza normal
+      }
+    }
+    
+    let cleaned = text;
+    
+    // Remover secciones de recomendación
+    const recommendationPatterns = [
+      /💡\s*RECOMENDACIÓN:?.*/gi,
+      /RECOMENDACIÓN:?.*/gi,
+      /💡\s*Sugerencia:?.*/gi,
+      /Sugerencia:?.*/gi,
+      /💡\s*Consejo:?.*/gi,
+      /Consejo:?.*/gi,
+      /\n\nRecomendaciones?:.*/gis,
+      /\n\nNota:.*/gis,
+      /\n\nSugerencias?:.*/gis,
+    ];
+    
+    for (const pattern of recommendationPatterns) {
+      cleaned = cleaned.replace(pattern, '');
+    }
+    
+    // Remover párrafos que empiezan con emoji de recomendación
+    cleaned = cleaned.split('\n\n')
+      .filter(paragraph => {
+        const trimmed = paragraph.trim();
+        if (/^[💡📝✨🎯⚠️]/.test(trimmed)) {
+          return false;
+        }
+        if (/^(Recomendación|Sugerencia|Consejo|Nota|Tip|Importante):/i.test(trimmed)) {
+          return false;
+        }
+        return true;
+      })
+      .join('\n\n');
+    
+    // Limpiar espacios múltiples
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+    
+    return cleaned;
+  }
+
+  /**
+   * 🆕 Parsear respuesta de array con soporte para párrafos y listas
+   * 
+   * Estrategia SIMPLIFICADA:
+   * 1. Intenta parsear como JSON (estructura {"caracteristicas": [...]} o {"beneficios": [...]})
+   * 2. Si tiene viñetas/numeración → parsear como lista (cada item = 1 bloque)
+   * 3. Si tiene párrafos (doble \n\n) → cada párrafo = 1 bloque
+   * 4. Si tiene saltos simples → unir todo en 1 bloque
    */
   parseArrayResponse(text) {
     if (!text) return [];
     
-    // Intentar parsear como JSON primero
+    // 1️⃣ Intentar parsear como JSON primero
     try {
       const parsed = JSON.parse(text);
+      // Si es objeto con "caracteristicas" o "beneficios" o "features" o "benefits"
+      if (parsed.caracteristicas && Array.isArray(parsed.caracteristicas)) {
+        logger.info('✅ [PARSER] JSON detected: caracteristicas');
+        return parsed.caracteristicas;
+      }
+      if (parsed.beneficios && Array.isArray(parsed.beneficios)) {
+        logger.info('✅ [PARSER] JSON detected: beneficios');
+        return parsed.beneficios;
+      }
+      if (parsed.features && Array.isArray(parsed.features)) {
+        return parsed.features;
+      }
+      if (parsed.benefits && Array.isArray(parsed.benefits)) {
+        return parsed.benefits;
+      }
+      // Si es un array directo
       if (Array.isArray(parsed)) return parsed;
     } catch (e) {
-      // No es JSON, parsear como texto
+      // No es JSON válido, continuar con parsing de texto
     }
 
-    // Dividir por líneas y limpiar
+    // Limpiar el texto
+    const cleaned = text.trim();
+
+    // Detectar si es una lista con viñetas/números
+    const lines = cleaned.split('\n');
+    const linesWithMarkers = lines.filter(line => 
+      /^[-•*]\s+/.test(line.trim()) || /^\d+[\.)]\s+/.test(line.trim())
+    ).length;
+    
+    // Si más del 40% de las líneas tienen marcadores, es una lista
+    const hasMultipleListItems = linesWithMarkers >= 2 && linesWithMarkers / lines.length > 0.4;
+    
+    if (hasMultipleListItems) {
+      return this.parseListFormat(cleaned);
+    }
+
+    // Si tiene doble salto de línea → separar por párrafos
+    if (cleaned.includes('\n\n')) {
+      return this.parseParagraphFormat(cleaned, '\n\n');
+    }
+
+    // Si solo tiene saltos simples → unir todo en un bloque
+    const singleBlock = cleaned.replace(/\n+/g, ' ').trim();
+    return singleBlock ? [singleBlock] : [];
+  }
+
+  /**
+   * 🆕 Parsear formato de lista con viñetas o números
+   * Ejemplos:
+   * - Item 1
+   * - Item 2
+   * 1. Item A
+   * 2. Item B
+   */
+  parseListFormat(text) {
+    const items = [];
+    const lines = text.split('\n');
+    let currentItem = '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // Detectar inicio de nuevo item (viñetas o números)
+      const isNewItem = /^[-•*]\s+/.test(trimmed) || /^\d+[\.)]\s+/.test(trimmed);
+      
+      if (isNewItem) {
+        // Guardar item anterior si existe
+        if (currentItem) {
+          items.push(currentItem.trim());
+        }
+        // Iniciar nuevo item (removiendo el marcador)
+        currentItem = trimmed.replace(/^[-•*]\s+/, '').replace(/^\d+[\.)]\s+/, '');
+      } else if (trimmed) {
+        // Continuar item actual (línea de continuación)
+        currentItem += ' ' + trimmed;
+      }
+    }
+
+    // Agregar último item
+    if (currentItem) {
+      items.push(currentItem.trim());
+    }
+
+    return items.slice(0, 10); // Máximo 10 items
+  }
+
+  /**
+   * 🆕 Parsear formato de párrafos separados por salto múltiple
+   * Cada bloque separado por separator se considera un item independiente
+   */
+  parseParagraphFormat(text, separator = '\n\n') {
     return text
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line && line.length > 0)
-      .map(line => line.replace(/^[-•*]\s*/, '')) // Remover viñetas
-      .slice(0, 10); // Máximo 10 items
+      .split(separator)  // Dividir por párrafos
+      .map(paragraph => {
+        // Unir líneas dentro del párrafo con un espacio
+        return paragraph
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 0)
+          .join(' ')
+          .trim();
+      })
+      .filter(block => block.length > 0)
+      .map(block => {
+        // Limpiar marcadores si los hay al inicio
+        return block.replace(/^[-•*]\s*/, '').trim();
+      })
+      .slice(0, 10); // Máximo 10 bloques
   }
 
   parseAIServiceResponse(text) {
@@ -849,7 +1042,7 @@ Genera un array JSON con 3 paquetes siguiendo esta estructura:
    */
   async generateSpecificContent(serviceId, contentType, style = 'formal') {
     try {
-      logger.info(`📝 [GENERATE_CONTENT] Generating ${contentType} with ${style} style for service ${serviceId}`);
+      logger.info(`📝 Generating ${contentType}...`);
 
       // Obtener el servicio
       const servicio = await Servicio.findById(serviceId).populate('categoria');
@@ -857,17 +1050,13 @@ Genera un array JSON con 3 paquetes siguiendo esta estructura:
         throw new Error('Servicio no encontrado');
       }
 
-      logger.info(`✅ [GENERATE_CONTENT] Service found: ${servicio.titulo}`);
-
       // Construir prompt según el tipo de contenido y estilo
       const prompt = this.buildContentPrompt(servicio, contentType, style);
       
-      logger.info(`💬 [GENERATE_CONTENT] Prompt built, calling AI...`);
-
       // Llamar a la IA
       const content = await this.callAI(prompt, contentType);
 
-      logger.success(`✅ [GENERATE_CONTENT] Content generated successfully (${content.length} chars)`);
+      logger.success(`✅ Content generated successfully`);
 
       return {
         success: true,
@@ -888,7 +1077,7 @@ Genera un array JSON con 3 paquetes siguiendo esta estructura:
       };
 
     } catch (error) {
-      logger.error('❌ [GENERATE_CONTENT] Error:', error);
+      logger.error('❌ Error generating content:', error);
       return {
         success: false,
         error: error.message
@@ -996,7 +1185,7 @@ Genera SOLO la lista de beneficios en formato de viñetas (- Beneficio).`,
 - 5-8 preguntas frecuentes relevantes
 - Cada pregunta con su respuesta clara y concisa
 - Cubrir: qué incluye, cómo funciona, tiempo de entrega, precios, soporte
-- Formato: **Pregunta:** seguido de respuesta
+- Formato: Pregunta: seguida de respuesta
 - Estilo: ${styleDesc}
 
 Genera SOLO las preguntas con sus respuestas en el formato especificado.`

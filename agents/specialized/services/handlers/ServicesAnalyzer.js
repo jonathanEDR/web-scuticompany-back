@@ -462,17 +462,34 @@ class ServicesAnalyzer {
    * Generar recomendaciones con IA
    */
   async generateRecommendations(service, analysis) {
-    const prompt = `Analiza este servicio y genera 3-5 recomendaciones concretas de mejora:
+    const prompt = `Como experto en optimización de servicios digitales, analiza este servicio y genera 5 recomendaciones ESPECÍFICAS y ACCIONABLES:
 
-Servicio: ${service.titulo}
-Score General: ${analysis.scores.overall}/100
-Score SEO: ${analysis.scores.seo}/100
-Score Calidad: ${analysis.scores.quality}/100
+SERVICIO: "${service.titulo}"
+CATEGORÍA: ${service.categoria?.nombre || 'No especificada'}
+PRECIO: ${service.precio || 'No definido'}
 
-Problemas identificados:
-${analysis.qualityAnalysis.issues.join('\n')}
+PUNTUACIONES ACTUALES:
+- Score General: ${analysis.scores.overall}/100
+- Score SEO: ${analysis.scores.seo}/100  
+- Score Calidad: ${analysis.scores.quality}/100
+- Score Completitud: ${analysis.scores.completeness}/100
 
-Genera recomendaciones específicas y accionables en formato de lista.`;
+PROBLEMAS DETECTADOS:
+${analysis.qualityAnalysis.issues.length > 0 ? analysis.qualityAnalysis.issues.join('\n') : '- Sin problemas críticos detectados'}
+
+INSTRUCCIONES:
+1. Genera exactamente 5 recomendaciones priorizadas por impacto
+2. Cada recomendación debe ser CONCRETA y ESPECÍFICA para este servicio
+3. Usa verbos de acción: "Agrega", "Optimiza", "Mejora", "Define", "Incluye"
+4. Menciona números específicos cuando sea posible (ej: "añade al menos 3 características")
+5. Enfócate en mejoras que aumenten conversión y ventas
+
+EJEMPLO DE FORMATO (usa este estilo):
+- Optimiza el título SEO incluyendo la palabra clave principal y una propuesta de valor clara
+- Agrega al menos 5 preguntas frecuentes (FAQ) que respondan las dudas más comunes de tus clientes
+- Define una estructura de precios con 3 paquetes (básico, profesional, premium) para aumentar opciones
+
+Genera las 5 recomendaciones ahora:`;
 
     try {
       const aiResponse = await this.callAI(prompt, 'recommendations');
@@ -679,21 +696,130 @@ Genera recomendaciones específicas y accionables en formato de lista.`;
   }
 
   parseRecommendations(text) {
-    return text
+    const lines = text
       .split('\n')
       .filter(line => line.trim().length > 0)
       .map(line => line.replace(/^[-•*\d.]\s*/, '').trim())
       .filter(line => line.length > 10)
       .slice(0, 5);
+    
+    // Convertir strings simples a objetos estructurados para el frontend
+    return lines.map((line, index) => {
+      // Inferir prioridad basada en palabras clave
+      let priority = 'medium';
+      const lowerLine = line.toLowerCase();
+      
+      if (lowerLine.includes('urgente') || lowerLine.includes('crítico') || lowerLine.includes('importante')) {
+        priority = 'high';
+      } else if (lowerLine.includes('opcional') || lowerLine.includes('considera') || lowerLine.includes('podría')) {
+        priority = 'low';
+      }
+      
+      // Inferir tipo basado en palabras clave
+      let type = 'General';
+      if (lowerLine.includes('seo') || lowerLine.includes('posicionamiento')) {
+        type = 'SEO';
+      } else if (lowerLine.includes('precio') || lowerLine.includes('costo')) {
+        type = 'Pricing';
+      } else if (lowerLine.includes('contenido') || lowerLine.includes('descripción')) {
+        type = 'Contenido';
+      } else if (lowerLine.includes('imagen') || lowerLine.includes('visual')) {
+        type = 'Visual';
+      } else if (lowerLine.includes('conversión') || lowerLine.includes('cta')) {
+        type = 'Conversión';
+      }
+      
+      // Inferir impacto
+      const impacts = ['Alto', 'Medio-Alto', 'Medio', 'Medio-Bajo'];
+      const impact = impacts[Math.min(index, impacts.length - 1)];
+      
+      return {
+        type,
+        description: line,
+        impact,
+        priority
+      };
+    });
   }
 
   getFallbackRecommendations(analysis) {
     const recs = [];
-    if (analysis.scores.seo < 60) recs.push('Optimizar SEO (título, descripción, etiquetas)');
-    if (analysis.scores.quality < 60) recs.push('Mejorar calidad del contenido');
-    if (analysis.scores.completeness < 70) recs.push('Completar información del servicio');
-    if (analysis.scores.conversion < 60) recs.push('Mejorar elementos de conversión');
-    return recs;
+    
+    if (analysis.scores.seo < 60) {
+      recs.push({
+        type: 'SEO',
+        description: 'Optimiza el SEO del servicio: agrega un título descriptivo con palabras clave (máx 60 caracteres), una meta descripción atractiva (máx 160 caracteres) y al menos 5 etiquetas relevantes para mejorar el posicionamiento en buscadores',
+        impact: 'Alto',
+        priority: 'high'
+      });
+    }
+    
+    if (analysis.scores.quality < 60) {
+      recs.push({
+        type: 'Contenido',
+        description: 'Mejora la calidad del contenido escribiendo una descripción completa de al menos 300 palabras que explique claramente qué incluye el servicio, cómo funciona y qué beneficios específicos recibirá el cliente',
+        impact: 'Alto',
+        priority: 'high'
+      });
+    }
+    
+    if (analysis.scores.completeness < 70) {
+      recs.push({
+        type: 'Visual',
+        description: 'Completa la información visual del servicio: agrega una imagen profesional de alta calidad (1200x630px), crea una galería con al menos 3 imágenes de ejemplo y considera agregar un video explicativo de 1-2 minutos',
+        impact: 'Medio-Alto',
+        priority: 'medium'
+      });
+    }
+    
+    if (analysis.scores.conversion < 60) {
+      recs.push({
+        type: 'Conversión',
+        description: 'Fortalece los elementos de conversión: define un precio claro y visible, agrega al menos 5 características específicas que destaquen el valor, incluye 3-5 testimonios de clientes y crea un llamado a la acción (CTA) convincente',
+        impact: 'Alto',
+        priority: 'high'
+      });
+    }
+
+    // Recomendaciones adicionales basadas en campos faltantes
+    if (!analysis.scores.seo && !analysis.scores.quality) {
+      recs.push({
+        type: 'General',
+        description: 'Establece una base sólida para tu servicio: define claramente qué problema resuelve, para quién está diseñado y cuál es tu propuesta de valor única que te diferencia de la competencia',
+        impact: 'Medio',
+        priority: 'medium'
+      });
+    }
+
+    // Asegurar que siempre haya al menos 3 recomendaciones útiles
+    if (recs.length < 3) {
+      recs.push({
+        type: 'Contenido',
+        description: 'Añade una sección de Preguntas Frecuentes (FAQ) con al menos 5 preguntas que respondan las dudas más comunes de tus potenciales clientes sobre el servicio, proceso, tiempos y garantías',
+        impact: 'Medio',
+        priority: 'medium'
+      });
+    }
+
+    if (recs.length < 4) {
+      recs.push({
+        type: 'Pricing',
+        description: 'Considera crear diferentes paquetes de servicio (básico, estándar, premium) con precios escalonados para atraer a diferentes segmentos de clientes y aumentar el valor promedio de venta',
+        impact: 'Medio-Alto',
+        priority: 'medium'
+      });
+    }
+
+    if (recs.length < 5) {
+      recs.push({
+        type: 'General',
+        description: 'Actualiza el servicio regularmente: revisa y mejora el contenido cada 3 meses, actualiza las imágenes con trabajos recientes y mantén los precios competitivos según las tendencias del mercado',
+        impact: 'Medio-Bajo',
+        priority: 'low'
+      });
+    }
+    
+    return recs.slice(0, 5); // Asegurar máximo 5 recomendaciones
   }
 
   async callAI(prompt, type = 'general') {

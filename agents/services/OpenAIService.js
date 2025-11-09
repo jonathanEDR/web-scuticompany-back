@@ -94,13 +94,20 @@ class OpenAIService {
         taskContext
       );
 
-      // Verificar caché inteligente
+      // Verificar caché inteligente (deshabilitado para ServicesAgent)
       const cacheKey = this.generateSmartCacheKey(messages, agentName);
-      const cached = this.getFromSmartCache(cacheKey);
-      if (cached) {
-        logger.info('🎯 Using intelligent cached response');
-        this.metrics.cachedResponses++;
-        return cached;
+      let cached = null;
+      
+      // No usar caché para ServicesAgent para garantizar contenido único
+      if (!agentName.includes('ServicesAgent') && !agentName.includes('generator_')) {
+        cached = this.getFromSmartCache(cacheKey);
+        if (cached) {
+          logger.info('🎯 Using intelligent cached response');
+          this.metrics.cachedResponses++;
+          return cached;
+        }
+      } else {
+        logger.info('🚫 Cache disabled for ServicesAgent - generating fresh content');
       }
 
       // Configurar parámetros según perfil del agente
@@ -133,8 +140,13 @@ class OpenAIService {
       // Actualizar contexto y métricas
       await this.updateContextAndMetrics(sessionId, agentName, userMessage, processedResponse, startTime);
 
-      // Guardar en caché inteligente
-      this.saveToSmartCache(cacheKey, processedResponse, agentProfile);
+      // Guardar en caché inteligente (excluir ServicesAgent)
+      if (!agentName.includes('ServicesAgent') && !agentName.includes('generator_')) {
+        this.saveToSmartCache(cacheKey, processedResponse, agentProfile);
+        logger.info('💾 Response cached for future use');
+      } else {
+        logger.info('🚫 Cache save skipped for ServicesAgent');
+      }
 
       return processedResponse;
 
@@ -1095,6 +1107,26 @@ Para análisis completo con IA, por favor intenta nuevamente cuando la conectivi
     });
 
     logger.info(`🧹 Cleaned up cache: removed ${sortedEntries.length} old entries`);
+  }
+
+  /**
+   * 🆕 Limpiar caché específico de servicios después de crear/modificar
+   */
+  clearServicesCache() {
+    let clearedCount = 0;
+    
+    // Buscar y limpiar todas las entradas de caché relacionadas con ServicesAgent
+    for (const [key] of this.cache.entries()) {
+      if (key.includes('ServicesAgent') || key.includes('generator_') || key.includes('features') || key.includes('benefits')) {
+        this.cache.delete(key);
+        this.cachePriority.delete(key);
+        clearedCount++;
+      }
+    }
+    
+    if (clearedCount > 0) {
+      logger.info(`🧹 [SERVICES_CACHE] Cleared ${clearedCount} services cache entries`);
+    }
   }
 
   /**
