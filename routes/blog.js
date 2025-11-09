@@ -118,20 +118,6 @@ import {
   optimizePost
 } from '../controllers/aiSeoController.js';
 
-// Middlewares de autenticación y autorización
-import { requireAuth } from '../middleware/clerkAuth.js';
-import {
-  canViewAllPosts,
-  canCreateBlogPosts,
-  canEditOwnBlogPosts,
-  canDeleteOwnBlogPosts,
-  canPublishBlogPosts,
-  canDuplicateBlogPosts,
-  canManageBlogCategories,
-  canManageBlogTags,
-  checkPostOwnership
-} from '../middleware/blogAuth.js';
-
 const router = express.Router();
 
 // ========================================
