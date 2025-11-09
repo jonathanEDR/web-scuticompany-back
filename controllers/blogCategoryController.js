@@ -306,7 +306,8 @@ export const getCategoryPosts = async (req, res) => {
       status: 'published'
     })
       .populate('author', 'firstName lastName')
-      .populate('tags', 'name slug color')
+      .populate('tags', 'name slug') // ✅ Optimizado: removido color (no crítico en listado)
+      .select('title slug excerpt featuredImage publishedAt readingTime') // ✅ Agregado select para limitar campos
       .sort(sort)
       .skip((page - 1) * limit)
       .limit(parseInt(limit))

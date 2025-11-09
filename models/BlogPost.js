@@ -330,16 +330,103 @@ BlogPostSchema.index({
     excerpt: 5,
     'seo.keywords': 3,
     content: 1
-  }
+  },
+  name: 'blog_post_text_search'
 });
 
-// Índices compuestos para consultas frecuentes
-BlogPostSchema.index({ status: 1, publishedAt: -1 });
-BlogPostSchema.index({ isPublished: 1, publishedAt: -1 });
-BlogPostSchema.index({ category: 1, isPublished: 1, publishedAt: -1 });
-BlogPostSchema.index({ author: 1, status: 1, publishedAt: -1 });
-BlogPostSchema.index({ isFeatured: 1, isPublished: 1, publishedAt: -1 });
-BlogPostSchema.index({ 'analytics.views': -1 });
+// ========================================
+// ÍNDICES COMPUESTOS OPTIMIZADOS
+// ========================================
+
+// 🔥 CRÍTICO: Posts publicados destacados (homepage, sidebar)
+// Query: { isPublished: true, status: 'published', isFeatured: true }
+BlogPostSchema.index({ 
+  isPublished: 1, 
+  status: 1, 
+  isFeatured: 1, 
+  publishedAt: -1 
+}, {
+  name: 'featured_posts_optimized'
+});
+
+// 🔥 CRÍTICO: Posts publicados recientes (listados públicos)
+// Query: { isPublished: true, status: 'published' }
+BlogPostSchema.index({ 
+  isPublished: 1, 
+  status: 1, 
+  publishedAt: -1 
+}, {
+  name: 'published_posts_optimized'
+});
+
+// 🔥 CRÍTICO: Posts por categoría (páginas de categoría)
+// Query: { category: X, isPublished: true, status: 'published' }
+BlogPostSchema.index({ 
+  category: 1, 
+  isPublished: 1, 
+  status: 1, 
+  publishedAt: -1 
+}, {
+  name: 'category_posts_optimized'
+});
+
+// 🔥 CRÍTICO: Posts por tag (páginas de tag)
+// Query: { tags: X, isPublished: true, status: 'published' }
+BlogPostSchema.index({ 
+  tags: 1, 
+  isPublished: 1, 
+  status: 1, 
+  publishedAt: -1 
+}, {
+  name: 'tag_posts_optimized'
+});
+
+// 🔥 CRÍTICO: Posts por autor (perfiles de usuario)
+// Query: { author: X, isPublished: true, status: 'published' }
+BlogPostSchema.index({ 
+  author: 1, 
+  isPublished: 1, 
+  status: 1, 
+  publishedAt: -1 
+}, {
+  name: 'author_posts_optimized'
+});
+
+// ⚡ IMPORTANTE: Posts populares (ordenados por analytics)
+// Query: { isPublished: true, status: 'published', publishedAt: { $gte: date } }
+// Sort: { 'analytics.views': -1, 'analytics.likes': -1 }
+BlogPostSchema.index({ 
+  isPublished: 1, 
+  status: 1, 
+  publishedAt: -1,
+  'analytics.views': -1,
+  'analytics.likes': -1
+}, {
+  name: 'popular_posts_optimized'
+});
+
+// ⚡ IMPORTANTE: Panel admin - todos los posts
+// Query: { author: X } (para editores) o {} (para admins)
+// Sort: { createdAt: -1 }
+BlogPostSchema.index({ 
+  status: 1, 
+  isPublished: 1,
+  createdAt: -1 
+}, {
+  name: 'admin_posts_list'
+});
+
+// 📌 AUXILIAR: Búsqueda por slug (lookup individual)
+// Ya existe índice único en 'slug', no necesita compuesto adicional
+
+// 📌 AUXILIAR: Posts programados (scheduled publishing)
+BlogPostSchema.index({ 
+  scheduledPublishAt: 1, 
+  status: 1 
+}, {
+  name: 'scheduled_posts',
+  sparse: true // Solo documentos con scheduledPublishAt
+});
 
 // ========================================
 // VIRTUALS
@@ -608,7 +695,7 @@ BlogPostSchema.pre('save', function(next) {
   if (!this.seo.ogDescription) {
     this.seo.ogDescription = this.seo.metaDescription;
   }
-  if (!this.seo.ogImage && this.featuredImage.url) {
+  if (!this.seo.ogImage && this.featuredImage && this.featuredImage.url) {
     this.seo.ogImage = this.featuredImage.url;
   }
   
@@ -619,7 +706,7 @@ BlogPostSchema.pre('save', function(next) {
   if (!this.seo.twitterDescription) {
     this.seo.twitterDescription = this.seo.metaDescription;
   }
-  if (!this.seo.twitterImage && this.featuredImage.url) {
+  if (!this.seo.twitterImage && this.featuredImage && this.featuredImage.url) {
     this.seo.twitterImage = this.featuredImage.url;
   }
   

@@ -131,7 +131,10 @@ const createComment = async (req, res) => {
     }
 
     // Buscar el post
-    const post = await BlogPost.findOne({ slug }).populate('author', 'email name');
+    const post = await BlogPost.findOne({ slug })
+      .select('_id allowComments author') // ✅ Optimizado: solo campos necesarios
+      .populate('author', 'email') // ✅ Solo email (para notificaciones)
+      .lean();
     if (!post) {
       return res.status(404).json({
         success: false,

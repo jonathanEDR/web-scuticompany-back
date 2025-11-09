@@ -266,6 +266,21 @@ const servicioSchema = new mongoose.Schema(
       type: String,
       maxlength: 160
     },
+    // Campo SEO unificado (nuevo)
+    seo: {
+      titulo: {
+        type: String,
+        maxlength: 60
+      },
+      descripcion: {
+        type: String,
+        maxlength: 160
+      },
+      palabrasClave: {
+        type: String,
+        maxlength: 500
+      }
+    },
     slug: {
       type: String,
       unique: true,
@@ -366,6 +381,28 @@ servicioSchema.pre('save', async function(next) {
     this.descripcionCorta = this.descripcion.substring(0, 150);
     if (this.descripcion.length > 150) {
       this.descripcionCorta += '...';
+    }
+  }
+  
+  // ✅ Sincronizar campos SEO nuevos con los antiguos (retrocompatibilidad)
+  if (this.isModified('seo')) {
+    if (this.seo?.titulo) {
+      this.metaTitle = this.seo.titulo;
+    }
+    if (this.seo?.descripcion) {
+      this.metaDescription = this.seo.descripcion;
+    }
+  }
+  // También sincronizar en sentido inverso si se usan los campos antiguos
+  if (this.isModified('metaTitle') || this.isModified('metaDescription')) {
+    if (!this.seo) {
+      this.seo = {};
+    }
+    if (this.metaTitle && !this.seo.titulo) {
+      this.seo.titulo = this.metaTitle;
+    }
+    if (this.metaDescription && !this.seo.descripcion) {
+      this.seo.descripcion = this.metaDescription;
     }
   }
   

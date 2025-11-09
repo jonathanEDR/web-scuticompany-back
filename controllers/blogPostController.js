@@ -6,6 +6,7 @@ import { generatePostSlug } from '../utils/slugGenerator.js';
 import { calculateReadingTime } from '../utils/readingTimeCalculator.js';
 import { generatePostMetaTags, validatePostSEO } from '../utils/seoGenerator.js';
 import { generateArticleSchema } from '../utils/schemaGenerator.js';
+import postCacheService from '../services/postCacheService.js';
 
 /**
  * @desc    Obtener todos los posts publicados (público)
@@ -39,7 +40,7 @@ export const getAllPublishedPosts = async (req, res) => {
     }
     
     let postsQuery = BlogPost.find(query)
-      .populate('author', 'firstName lastName email')
+      .populate('author', 'firstName lastName') // ✅ Removido email (no necesario en listado público)
       .populate('category', 'name slug color')
       .populate('tags', 'name slug color')
       .sort(sortBy)
@@ -168,7 +169,7 @@ export const getPostBySlug = async (req, res) => {
     const { incrementViews = 'true' } = req.query;
     
     const post = await BlogPost.findOne({ slug, isPublished: true, status: 'published' })
-      .populate('author', 'firstName lastName email bio avatar website social role')
+      .populate('author', 'firstName lastName bio avatar') // ✅ Optimizado: removidos campos innecesarios (email, website, social, role)
       .populate('category', 'name slug color description')
       .populate('tags', 'name slug color')
       .lean();
@@ -256,17 +257,8 @@ export const getFeaturedPosts = async (req, res) => {
   try {
     const { limit = 5 } = req.query;
     
-    const posts = await BlogPost.find({
-      isPublished: true,
-      status: 'published',
-      isFeatured: true
-    })
-      .populate('author', 'firstName lastName')
-      .populate('category', 'name slug color')
-      .populate('tags', 'name slug color')
-      .sort('-publishedAt')
-      .limit(parseInt(limit))
-      .lean();
+    // ✅ Usar caché para posts destacados
+    const posts = await postCacheService.getFeaturedPosts(parseInt(limit));
     
     res.json({
       success: true,
@@ -293,7 +285,8 @@ export const getPopularPosts = async (req, res) => {
   try {
     const { limit = 5, days = 30 } = req.query;
     
-    const posts = await BlogPost.getPopularPosts(parseInt(limit), parseInt(days));
+    // ✅ Usar caché para posts populares
+    const posts = await postCacheService.getPopularPosts(parseInt(limit), parseInt(days));
     
     res.json({
       success: true,
@@ -380,6 +373,15 @@ export const createPost = async (req, res) => {
       });
     }
     
+    // Validar que category es un ObjectId válido
+    if (!category.match(/^[0-9a-fA-F]{24}$/)) {
+      console.error(`❌ [createPost] ID de categoría inválido: ${category}`);
+      return res.status(400).json({
+        success: false,
+        message: `ID de categoría inválido: ${category}. Debe ser un ObjectId de MongoDB de 24 caracteres hexadecimales.`
+      });
+    }
+    
     // Obtener autor del usuario autenticado
     const userId = req.auth.userId;
     const user = await User.findOne({ clerkId: userId });
@@ -394,6 +396,7 @@ export const createPost = async (req, res) => {
     // Verificar que la categoría existe
     const categoryExists = await BlogCategory.findById(category);
     if (!categoryExists) {
+      console.error(`❌ [createPost] Categoría no encontrada con ID: ${category}`);
       return res.status(404).json({
         success: false,
         message: 'Categoría no encontrada'
@@ -518,6 +521,9 @@ export const createPost = async (req, res) => {
       await post.publish();
     }
     
+    // ✅ Invalidar caché de posts
+    postCacheService.invalidateOnPostChange();
+    
     // Popular para respuesta
     await post.populate('author', 'firstName lastName email');
     await post.populate('category', 'name slug color');
@@ -530,11 +536,14 @@ export const createPost = async (req, res) => {
     });
     
   } catch (error) {
+    console.error('❌ [createPost] Error completo:', error);
+    console.error('❌ [createPost] Stack trace:', error.stack);
     
     res.status(500).json({
       success: false,
       message: 'Error al crear post',
-      error: error.message
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
@@ -754,6 +763,9 @@ export const updatePost = async (req, res) => {
     if (allowComments !== undefined) post.allowComments = allowComments;
     
     await post.save();
+    
+    // ✅ Invalidar caché de posts
+    postCacheService.invalidateOnPostChange();
         
     // Popular para respuesta
     await post.populate('author', 'firstName lastName email');
@@ -808,6 +820,9 @@ export const deletePost = async (req, res) => {
     
     await post.deleteOne();
     
+    // ✅ Invalidar caché de posts
+    postCacheService.invalidateOnPostChange();
+    
     res.json({
       success: true,
       message: 'Post eliminado exitosamente'
@@ -849,6 +864,10 @@ export const publishPost = async (req, res) => {
     }
     
     await post.publish();
+    
+    // ✅ Invalidar caché de posts
+    postCacheService.invalidateOnPostChange();
+    
     await post.populate('author', 'firstName lastName email');
     await post.populate('category', 'name slug color');
     await post.populate('tags', 'name slug color');
@@ -895,6 +914,10 @@ export const unpublishPost = async (req, res) => {
     }
     
     await post.unpublish();
+    
+    // ✅ Invalidar caché de posts
+    postCacheService.invalidateOnPostChange();
+    
     await post.populate('author', 'firstName lastName email');
     await post.populate('category', 'name slug color');
     await post.populate('tags', 'name slug color');
@@ -1131,16 +1154,17 @@ export const getPostsByUser = async (req, res) => {
     };
     
     const postsQuery = BlogPost.find(query)
-      .populate('author', 'firstName lastName username email profileImage')
+      .populate('author', 'firstName lastName username avatar') // ✅ Optimizado: removidos email y profileImage
       .populate('category', 'name slug color')
       .populate('tags', 'name slug color')
       .select('title slug excerpt featuredImage category tags publishedAt readingTime stats isFeatured')
       .sort(sortBy)
       .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean();
     
     const [posts, totalPosts] = await Promise.all([
-      postsQuery.exec(),
+      postsQuery,
       BlogPost.countDocuments(query)
     ]);
     
@@ -1169,6 +1193,53 @@ export const getPostsByUser = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Obtener estadísticas del caché de posts (Admin)
+ * @route   GET /api/blog/admin/cache-stats
+ * @access  Private/Admin
+ */
+export const getCacheStats = async (req, res) => {
+  try {
+    const stats = postCacheService.getStats();
+    
+    res.json({
+      success: true,
+      data: stats,
+      message: 'Estadísticas del caché obtenidas exitosamente'
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener estadísticas del caché',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Invalidar caché manualmente (Admin)
+ * @route   POST /api/blog/admin/invalidate-cache
+ * @access  Private/Admin
+ */
+export const invalidateCache = async (req, res) => {
+  try {
+    postCacheService.invalidateOnPostChange();
+    
+    res.json({
+      success: true,
+      message: 'Caché invalidado exitosamente'
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al invalidar caché',
+      error: error.message
+    });
+  }
+};
+
 export default {
   getAllPublishedPosts,
   getPostBySlug,
@@ -1183,5 +1254,7 @@ export default {
   duplicatePost,
   toggleLike,
   toggleBookmark,
-  getPostsByUser
+  getPostsByUser,
+  getCacheStats,
+  invalidateCache
 };

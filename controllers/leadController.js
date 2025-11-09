@@ -218,7 +218,7 @@ export const createLead = async (req, res) => {
         const existingUser = await User.findOne({ 
           email: leadEmail,
           role: 'CLIENT' 
-        });
+        }).lean();
         
         if (existingUser && !lead.usuarioRegistrado?.userId) {
           lead.usuarioRegistrado = {
@@ -995,8 +995,8 @@ export const getMisLeads = async (req, res) => {
     // Agregar contador de mensajes no leídos a cada lead
     const leadsConStats = await Promise.all(
       leads.map(async (lead) => {
-        const leadDoc = await Lead.findById(lead._id);
-        const mensajesNoLeidos = leadDoc.contarMensajesNoLeidos(userId);
+        const leadDoc = await Lead.findById(lead._id).lean();
+        const mensajesNoLeidos = leadDoc.contarMensajesNoLeidos ? leadDoc.contarMensajesNoLeidos(userId) : 0;
         return {
           ...lead,
           mensajesNoLeidos

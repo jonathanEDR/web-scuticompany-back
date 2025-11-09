@@ -237,11 +237,18 @@ const leadSchema = new mongoose.Schema({
 // ========================================
 // 📇 ÍNDICES PARA OPTIMIZACIÓN
 // ========================================
-leadSchema.index({ estado: 1, fechaProximoSeguimiento: 1 });
-leadSchema.index({ 'asignadoA.userId': 1, estado: 1 });
-leadSchema.index({ origen: 1, createdAt: -1 });
-leadSchema.index({ tipoServicio: 1, estado: 1 });
-leadSchema.index({ prioridad: 1, estado: 1 });
+// ✅ Índices compound para queries frecuentes
+leadSchema.index({ estado: 1, fechaProximoSeguimiento: 1 }, { name: 'lead_estado_seguimiento' });
+leadSchema.index({ 'asignadoA.userId': 1, estado: 1, createdAt: -1 }, { name: 'lead_asignado_estado_fecha' });
+leadSchema.index({ origen: 1, createdAt: -1 }, { name: 'lead_origen_fecha' });
+leadSchema.index({ tipoServicio: 1, estado: 1, createdAt: -1 }, { name: 'lead_servicio_estado_fecha' });
+leadSchema.index({ prioridad: 1, estado: 1, createdAt: -1 }, { name: 'lead_prioridad_estado_fecha' });
+
+// ✅ Índices adicionales para búsquedas comunes
+leadSchema.index({ activo: 1, 'asignadoA.userId': 1 }, { name: 'lead_activo_asignado' });
+leadSchema.index({ 'usuarioRegistrado.userId': 1, activo: 1 }, { name: 'lead_usuario_activo' });
+leadSchema.index({ createdAt: -1 }, { name: 'lead_fecha_creacion' });
+leadSchema.index({ nombre: 'text', correo: 'text', empresa: 'text' }, { name: 'lead_text_search' });
 
 // ========================================
 // 🔧 MÉTODOS DEL MODELO

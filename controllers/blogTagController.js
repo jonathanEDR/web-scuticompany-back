@@ -293,7 +293,8 @@ export const getTagPosts = async (req, res) => {
     })
       .populate('author', 'firstName lastName')
       .populate('category', 'name slug color')
-      .populate('tags', 'name slug color')
+      .populate('tags', 'name slug') // ✅ Optimizado: removido color
+      .select('title slug excerpt featuredImage publishedAt readingTime category') // ✅ Agregado select
       .sort(sort)
       .skip((page - 1) * limit)
       .limit(parseInt(limit))

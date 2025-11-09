@@ -162,6 +162,9 @@ export const getServicio = async (req, res) => {
  */
 export const createServicio = async (req, res) => {
   try {
+    // ✅ Debug: Verificar datos SEO recibidos al crear
+    console.log('📥 Backend - Datos SEO recibidos (create):', req.body.seo);
+    
     // Agregar automáticamente el usuario responsable si está autenticado
     const servicioData = {
       ...req.body
@@ -176,6 +179,9 @@ export const createServicio = async (req, res) => {
     // Si se proporciona slug y ya existe, el middleware agregará timestamp
 
     const servicio = await Servicio.create(servicioData);
+    
+    // ✅ Debug: Verificar datos SEO guardados al crear
+    console.log('💾 Backend - Datos SEO guardados (create):', servicio.seo);
     
     res.status(201).json({
       success: true,
@@ -208,7 +214,6 @@ export const createServicio = async (req, res) => {
  */
 export const updateServicio = async (req, res) => {
   try {
-    
     const servicio = await Servicio.findByIdAndUpdate(
       req.params.id,
       req.body,

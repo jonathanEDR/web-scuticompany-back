@@ -17,7 +17,9 @@ import {
   duplicatePost,
   toggleLike,
   toggleBookmark,
-  getPostsByUser
+  getPostsByUser,
+  getCacheStats,
+  invalidateCache
 } from '../controllers/blogPostController.js';
 
 import {
@@ -107,6 +109,8 @@ const router = express.Router();
 // Rutas admin de posts (deben ir ANTES de las rutas públicas)
 router.get('/admin/posts', ...canViewAllPosts, getAllAdminPosts);
 router.get('/admin/posts/:id', ...canViewAllPosts, getPostById);
+router.get('/admin/cache-stats', ...canViewAllPosts, getCacheStats); // ✅ Estadísticas de caché
+router.post('/admin/invalidate-cache', ...canManageBlogCategories, invalidateCache); // ✅ Invalidar caché manualmente
 
 // Rutas públicas de posts
 router.get('/posts', getAllPublishedPosts);

@@ -8,7 +8,7 @@ import logger from '../utils/logger.js';
  * 🔧 Helper: Verificar acceso al lead
  */
 const verificarAccesoLead = async (leadId, userId, role) => {
-  const lead = await Lead.findById(leadId);
+  const lead = await Lead.findById(leadId).lean();
   
   if (!lead) {
     throw new Error('Lead no encontrado');
