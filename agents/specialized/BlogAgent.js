@@ -794,9 +794,15 @@ Enfoque: ROI medible + crecimiento sostenible de audiencia técnica.`,
       
       let post;
       if (postId) {
-        post = await BlogPost.findById(postId).populate('category tags');
+        post = await BlogPost.findById(postId)
+          .populate('category', 'name slug')
+          .populate('tags', 'name slug')
+          .lean(); // ✅ Optimizado: Libera memoria inmediatamente
       } else if (slug) {
-        post = await BlogPost.findOne({ slug }).populate('category tags');
+        post = await BlogPost.findOne({ slug })
+          .populate('category', 'name slug')
+          .populate('tags', 'name slug')
+          .lean(); // ✅ Optimizado: Libera memoria inmediatamente
       } else if (content) {
         // Crear objeto temporal para análisis
         post = { content, title: 'Análisis temporal' };
@@ -926,22 +932,41 @@ Responde en formato JSON con: { seo: [], engagement: [], structure: [], readabil
     try {
       const { postId, slug, category, limit = 10 } = this.extractParameters(task, context);
 
+      // ✅ Límite máximo de seguridad para prevenir consultas masivas
+      const safeLimit = Math.min(parseInt(limit) || 10, 50);
+
       let posts;
       if (postId) {
-        posts = [await BlogPost.findById(postId).populate('category tags author')];
+        posts = [await BlogPost.findById(postId)
+          .populate('category', 'name slug')
+          .populate('tags', 'name slug')
+          .populate('author', 'firstName lastName')
+          .lean()]; // ✅ Optimizado: Libera memoria
       } else if (slug) {
-        posts = [await BlogPost.findOne({ slug }).populate('category tags author')];
+        posts = [await BlogPost.findOne({ slug })
+          .populate('category', 'name slug')
+          .populate('tags', 'name slug')
+          .populate('author', 'firstName lastName')
+          .lean()]; // ✅ Optimizado: Libera memoria
       } else if (category) {
-        const categoryDoc = await BlogCategory.findOne({ slug: category });
+        const categoryDoc = await BlogCategory.findOne({ slug: category }).lean();
         posts = await BlogPost.find({ 
           category: categoryDoc?._id,
           isPublished: true 
-        }).populate('category tags author').limit(limit);
+        })
+        .populate('category', 'name slug')
+        .populate('tags', 'name slug')
+        .populate('author', 'firstName lastName')
+        .limit(safeLimit)
+        .lean(); // ✅ Optimizado: Libera memoria
       } else {
         posts = await BlogPost.find({ isPublished: true })
-          .populate('category tags author')
+          .populate('category', 'name slug')
+          .populate('tags', 'name slug')
+          .populate('author', 'firstName lastName')
           .sort({ createdAt: -1 })
-          .limit(limit);
+          .limit(safeLimit)
+          .lean(); // ✅ Optimizado: Libera memoria
       }
 
       if (!posts?.length) {
@@ -1030,9 +1055,13 @@ Responde en formato JSON con: { seo: [], engagement: [], structure: [], readabil
 
       let post;
       if (postId) {
-        post = await BlogPost.findById(postId);
+        post = await BlogPost.findById(postId)
+          .select('title content tags')
+          .lean(); // ✅ Optimizado: Solo lectura
       } else if (slug) {
-        post = await BlogPost.findOne({ slug });
+        post = await BlogPost.findOne({ slug })
+          .select('title content tags')
+          .lean(); // ✅ Optimizado: Solo lectura
       } else if (content && title) {
         post = { content, title };
       } else {
@@ -1159,9 +1188,15 @@ Responde solo con un array JSON: ["tag1", "tag2", "tag3", ...]`;
 
       let post;
       if (postId) {
-        post = await BlogPost.findById(postId).populate('category tags');
+        post = await BlogPost.findById(postId)
+          .populate('category', 'name slug')
+          .populate('tags', 'name slug')
+          .lean(); // ✅ Optimizado: Solo lectura
       } else if (slug) {
-        post = await BlogPost.findOne({ slug }).populate('category tags');
+        post = await BlogPost.findOne({ slug })
+          .populate('category', 'name slug')
+          .populate('tags', 'name slug')
+          .lean(); // ✅ Optimizado: Solo lectura
       } else {
         throw new Error('No se especificó el post para optimización SEO');
       }
@@ -1308,16 +1343,22 @@ Responde en JSON: {
 
       // Filtrar por categoría si se especifica
       if (category) {
-        const categoryDoc = await BlogCategory.findOne({ slug: category });
+        const categoryDoc = await BlogCategory.findOne({ slug: category })
+          .select('_id')
+          .lean(); // ✅ Optimizado
         if (categoryDoc) {
           query.category = categoryDoc._id;
         }
       }
 
-      // Obtener posts del período
+      // Obtener posts del período (límite de seguridad: máximo 100 posts)
       const posts = await BlogPost.find(query)
-        .populate('category tags author')
-        .sort({ publishedAt: -1 });
+        .populate('category', 'name slug')
+        .populate('tags', 'name slug')
+        .populate('author', 'firstName lastName')
+        .sort({ publishedAt: -1 })
+        .limit(100) // ✅ Límite de seguridad
+        .lean(); // ✅ Optimizado: Libera memoria
 
       // Calcular métricas
       const metrics = {
@@ -1344,7 +1385,10 @@ Responde en JSON: {
       const previousPosts = await BlogPost.find({
         isPublished: true,
         publishedAt: { $gte: previousStartDate, $lt: startDate }
-      });
+      })
+        .select('analytics.views analytics.likes readingTime category publishedAt')
+        .limit(100) // ✅ Límite de seguridad
+        .lean(); // ✅ Optimizado: Libera memoria
 
       const comparison = this.calculateComparison(posts, previousPosts);
 
@@ -1718,9 +1762,13 @@ Responde en JSON: {
     
     let post;
     if (postId) {
-      post = await BlogPost.findById(postId);
+      post = await BlogPost.findById(postId)
+        .select('content title')
+        .lean(); // ✅ Optimizado: Solo lectura
     } else if (slug) {
-      post = await BlogPost.findOne({ slug });
+      post = await BlogPost.findOne({ slug })
+        .select('content title')
+        .lean(); // ✅ Optimizado: Solo lectura
     } else if (content) {
       post = { content };
     }

@@ -575,13 +575,13 @@ BlogPostSchema.statics.getPublishedPosts = async function(options = {}) {
   if (featured !== null) query.isFeatured = featured;
   
   const posts = await this.find(query)
-    .populate('author', 'firstName lastName email')
+    .populate('author', 'firstName lastName')
     .populate('category', 'name slug color')
     .populate('tags', 'name slug color')
     .sort(sortBy)
     .skip((page - 1) * limit)
     .limit(limit)
-    .lean();
+    .lean(); // ✅ Optimizado: Libera memoria inmediatamente
   
   const total = await this.countDocuments(query);
   
@@ -598,7 +598,7 @@ BlogPostSchema.statics.getPublishedPosts = async function(options = {}) {
 
 // Obtener posts relacionados
 BlogPostSchema.statics.getRelatedPosts = async function(postId, limit = 3) {
-  const post = await this.findById(postId);
+  const post = await this.findById(postId).select('category tags').lean();
   
   if (!post) return [];
   
@@ -615,7 +615,7 @@ BlogPostSchema.statics.getRelatedPosts = async function(postId, limit = 3) {
     .populate('category', 'name slug color')
     .sort({ 'analytics.views': -1, publishedAt: -1 })
     .limit(limit)
-    .lean();
+    .lean(); // ✅ Optimizado: Libera memoria inmediatamente
 };
 
 // Obtener posts más populares
@@ -632,7 +632,7 @@ BlogPostSchema.statics.getPopularPosts = async function(limit = 5, days = 30) {
     .populate('category', 'name slug color')
     .sort({ 'analytics.views': -1, 'analytics.likes': -1 })
     .limit(limit)
-    .lean();
+    .lean(); // ✅ Optimizado: Libera memoria inmediatamente
 };
 
 // Búsqueda de texto completo
@@ -653,7 +653,7 @@ BlogPostSchema.statics.searchPosts = async function(searchTerm, options = {}) {
     .sort({ score: { $meta: 'textScore' } })
     .skip((page - 1) * limit)
     .limit(limit)
-    .lean();
+    .lean(); // ✅ Optimizado: Libera memoria inmediatamente
   
   const total = await this.countDocuments({
     $text: { $search: searchTerm },
