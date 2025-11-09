@@ -444,7 +444,7 @@ blogCommentSchema.statics.getPostComments = async function(postId, options = {})
 
   const comments = await this.find(query)
     // Populate author with username and profile image so frontend can link to public profile
-    .populate('author.userId', 'firstName lastName username profileImage')
+    .populate('author.userId', 'firstName lastName username profileImage blogProfile.isPublicProfile blogProfile.avatar')
     .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
     .limit(limit)
     .skip((page - 1) * limit);
@@ -458,7 +458,7 @@ blogCommentSchema.statics.getPostComments = async function(postId, options = {})
       populate: {
         path: 'author.userId',
         // Asegurar los mismos campos de usuario en las respuestas
-        select: 'firstName lastName username profileImage'
+        select: 'firstName lastName username profileImage blogProfile.isPublicProfile blogProfile.avatar'
       }
     });
   }
@@ -479,7 +479,7 @@ blogCommentSchema.statics.getPostComments = async function(postId, options = {})
 // Obtener thread completo (comentario + respuestas anidadas)
 blogCommentSchema.statics.getThread = async function(commentId) {
   const comment = await this.findById(commentId)
-    .populate('author.userId', 'firstName lastName avatar');
+    .populate('author.userId', 'firstName lastName avatar username profileImage blogProfile.isPublicProfile blogProfile.avatar');
 
   if (!comment) {
     return null;
@@ -493,7 +493,7 @@ blogCommentSchema.statics.getThread = async function(commentId) {
       parentComment: parentId,
       status: 'approved'
     })
-      .populate('author.userId', 'firstName lastName avatar')
+      .populate('author.userId', 'firstName lastName avatar username profileImage blogProfile.isPublicProfile blogProfile.avatar')
       .sort({ createdAt: 1 });
 
     // Obtener respuestas de cada respuesta
@@ -556,7 +556,7 @@ blogCommentSchema.statics.getModerationQueue = async function(options = {}) {
 
   // Priorizar reportados
   const comments = await this.find(query)
-    .populate('author.userId', 'firstName lastName email avatar')
+    .populate('author.userId', 'firstName lastName email avatar username profileImage blogProfile.isPublicProfile blogProfile.avatar')
     .populate('post', 'title slug')
     .sort({ isReported: -1, [sortBy]: sortOrder === 'desc' ? -1 : 1 })
     .limit(limit)

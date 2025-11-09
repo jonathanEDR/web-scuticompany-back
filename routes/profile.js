@@ -23,8 +23,9 @@ const router = express.Router();
  * @route   GET /api/profile/public
  * @desc    Listar perfiles públicos con filtros
  * @access  Public
+ * @deprecated - Ruta deshabilitada, solo se usa perfil individual
  */
-router.get('/public', listPublicProfiles);
+// router.get('/public', listPublicProfiles);
 
 /**
  * @route   GET /api/profile/public/:username

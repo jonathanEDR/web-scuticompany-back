@@ -430,6 +430,15 @@ userSchema.virtual('publicUsername').get(function() {
 
 // Método estático para buscar por username público
 userSchema.statics.findByPublicUsername = function(username) {
+  // Verificar si es un ObjectId válido
+  if (mongoose.Types.ObjectId.isValid(username) && username.length === 24) {
+    return this.findOne({ 
+      _id: username,
+      'blogProfile.isPublicProfile': true
+    });
+  }
+  
+  // Búsqueda por username, email o displayName
   return this.findOne({ 
     $or: [
       { username: username },
