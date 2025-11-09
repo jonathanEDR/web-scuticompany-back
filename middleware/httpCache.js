@@ -13,7 +13,6 @@
  * @version 1.0.0
  */
 
-import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 
 /**
