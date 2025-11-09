@@ -297,6 +297,13 @@ servicioSchema.index({ estado: 1, visibleEnWeb: 1 });
 servicioSchema.index({ eliminado: 1 });
 servicioSchema.index({ orden: 1 });
 
+// ✅ Optimización: Índices adicionales para queries frecuentes
+servicioSchema.index({ estado: 1, activo: 1 });  // Para analyzePortfolio
+servicioSchema.index({ categoria: 1, estado: 1 });  // Para búsquedas por categoría
+servicioSchema.index({ responsable: 1, estado: 1 });  // Para filtros por responsable
+servicioSchema.index({ createdAt: -1 });  // Para ordenamientos por fecha
+servicioSchema.index({ activo: 1, visibleEnWeb: 1 });  // Para queries públicas
+
 // Virtual: Paquetes asociados
 servicioSchema.virtual('paquetes', {
   ref: 'PaqueteServicio',

@@ -104,8 +104,8 @@ class ServicesOptimizer {
     try {
       logger.info(`⚡ Optimizing service ${serviceId} (type: ${optimizationType})...`);
 
-      // Obtener servicio
-      const service = await Servicio.findById(serviceId);
+      // Obtener servicio - ✅ Optimización: .lean() para solo lectura
+      const service = await Servicio.findById(serviceId).lean();
       if (!service) {
         throw new Error('Servicio no encontrado');
       }

@@ -284,7 +284,9 @@ class ServicesGenerator {
     
     // 1. Buscar por ObjectId
     if (mongoose.Types.ObjectId.isValid(categoriaInput)) {
-      categoria = await Categoria.findById(categoriaInput);
+      categoria = await Categoria.findById(categoriaInput)
+        .select('nombre slug activo icono color')  // ✅ Optimización: Solo campos necesarios
+        .lean();
       if (categoria) {
         logger.success(`✅ [VERIFY_CATEGORY] Found by ID: ${categoria.nombre}`);
         return categoria;
@@ -295,7 +297,9 @@ class ServicesGenerator {
     categoria = await Categoria.findOne({ 
       slug: categoriaInput.toLowerCase(),
       activo: true 
-    });
+    })
+      .select('nombre slug activo icono color')  // ✅ Optimización
+      .lean();
     if (categoria) {
       logger.success(`✅ [VERIFY_CATEGORY] Found by slug: ${categoria.nombre}`);
       return categoria;
@@ -303,7 +307,9 @@ class ServicesGenerator {
     
     // 3. Buscar por nombre (case-insensitive, fuzzy)
     const nombreLower = categoriaInput.toLowerCase().trim();
-    const categorias = await Categoria.find({ activo: true });
+    const categorias = await Categoria.find({ activo: true })
+      .select('nombre slug activo icono color')  // ✅ Optimización
+      .lean();
     
     for (const cat of categorias) {
       const catNombreLower = cat.nombre.toLowerCase();

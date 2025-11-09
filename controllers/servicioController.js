@@ -78,7 +78,8 @@ export const getServicios = async (req, res) => {
       .skip((options.page - 1) * options.limit)
       .populate('responsable', 'firstName lastName email')
       .populate('categoria', 'nombre descripcion slug icono color')
-      .populate('paquetes');
+      .populate('paquetes')
+      .lean();  // ✅ Optimización: Retorna objetos planos sin overhead Mongoose
 
     const total = await Servicio.countDocuments(filtros);
     
@@ -132,7 +133,7 @@ export const getServicio = async (req, res) => {
       query = query.populate('paquetes');
     }
 
-    const servicio = await query;
+    const servicio = await query.lean();  // ✅ Optimización: .lean() para mejor performance
 
     if (!servicio) {
       return res.status(404).json({
@@ -358,7 +359,11 @@ export const getServiciosPorCategoria = async (req, res) => {
  */
 export const duplicarServicio = async (req, res) => {
   try {
-    const servicioOriginal = await Servicio.findById(req.params.id);
+    // ✅ Optimización: Queries paralelas con Promise.all
+    const [servicioOriginal, paquetesOriginales] = await Promise.all([
+      Servicio.findById(req.params.id).lean(),
+      PaqueteServicio.find({ servicioId: req.params.id }).lean()
+    ]);
 
     if (!servicioOriginal) {
       return res.status(404).json({
@@ -368,7 +373,7 @@ export const duplicarServicio = async (req, res) => {
     }
 
     // Crear copia del servicio
-    const servicioCopia = servicioOriginal.toObject();
+    const servicioCopia = { ...servicioOriginal };
     delete servicioCopia._id;
     delete servicioCopia.createdAt;
     delete servicioCopia.updatedAt;
@@ -382,11 +387,9 @@ export const duplicarServicio = async (req, res) => {
     const nuevoServicio = await Servicio.create(servicioCopia);
 
     // Duplicar paquetes si existen
-    const paquetesOriginales = await PaqueteServicio.find({ servicioId: req.params.id });
-    
     if (paquetesOriginales.length > 0) {
       const nuevosPaquetes = paquetesOriginales.map(paquete => {
-        const paqueteCopia = paquete.toObject();
+        const paqueteCopia = { ...paquete };
         delete paqueteCopia._id;
         delete paqueteCopia.createdAt;
         delete paqueteCopia.updatedAt;
