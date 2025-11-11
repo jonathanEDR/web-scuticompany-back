@@ -29,6 +29,7 @@ import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import { inicializarCategorias } from './utils/categoriaInitializer.js';
 import { inicializarPlantillasMensajes } from './utils/messageInitializer.js';
+import { initializeCacheConfig } from './utils/cacheInitializer.js';
 import logger from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -48,6 +49,8 @@ connectDB().then(async () => {
   await inicializarCategorias();
   // Inicializar plantillas de mensajes por defecto
   await inicializarPlantillasMensajes();
+  // Inicializar configuración de cache para servicios
+  await initializeCacheConfig();
 }).catch(err => {
   logger.error('Error al conectar a la base de datos', err);
 });

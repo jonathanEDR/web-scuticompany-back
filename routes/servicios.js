@@ -31,6 +31,19 @@ import {
   getEstadisticasPaquetes
 } from '../controllers/servicioStatsController.js';
 
+// Importar Cache Management controller
+import {
+  getCacheConfig,
+  toggleCache,
+  configureCacheType,
+  invalidateCache,
+  reactivateCache,
+  getCacheStats,
+  resetCacheStats,
+  configureAutoInvalidation,
+  updateCacheTTL
+} from '../controllers/cacheController.js';
+
 // Importar ServicesAgent controller
 import {
   chatWithServicesAgent,
@@ -103,6 +116,36 @@ const aiCommandLimiter = rateLimit({
 });
 
 const router = express.Router();
+
+// ============================================
+// RUTAS DE GESTIÓN DE CACHE (solo admin)
+// ============================================
+// Obtener configuración actual del cache
+router.get('/cache/config', requireAuth, ...requireModerator, getCacheConfig);
+
+// Activar/desactivar cache global
+router.post('/cache/toggle', requireAuth, ...requireModerator, toggleCache);
+
+// Configurar cache por tipo
+router.put('/cache/configure/:type', requireAuth, ...requireModerator, configureCacheType);
+
+// Invalidar cache manualmente
+router.post('/cache/invalidate', requireAuth, ...requireModerator, invalidateCache);
+
+// Reactivar cache inmediatamente
+router.post('/cache/reactivate', requireAuth, ...requireModerator, reactivateCache);
+
+// Obtener estadísticas de cache
+router.get('/cache/stats', requireAuth, ...requireModerator, getCacheStats);
+
+// Resetear estadísticas de cache
+router.post('/cache/reset-stats', requireAuth, ...requireModerator, resetCacheStats);
+
+// Configurar auto-invalidación
+router.put('/cache/auto-invalidation', requireAuth, ...requireModerator, configureAutoInvalidation);
+
+// Actualizar TTL (Time To Live) del cache
+router.put('/cache/ttl', requireAuth, ...requireModerator, updateCacheTTL);
 
 // ============================================
 // RUTAS DEL SERVICESAGENT (antes de todo)
