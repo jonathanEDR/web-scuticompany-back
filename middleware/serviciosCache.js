@@ -17,36 +17,37 @@ import crypto from 'crypto';
 
 /**
  * Configuración de cache por tipo de ruta de servicios
+ * ⚠️ TODO EL CACHE DESACTIVADO PARA DESARROLLO
  */
 const CACHE_CONFIG = {
   'service-list': {
-    maxAge: 300,        // 5 minutos
-    staleWhileRevalidate: 60,
-    public: true
+    maxAge: 0,        // ❌ SIN CACHE
+    staleWhileRevalidate: 0,
+    public: false
   },
   'service-detail': {
-    maxAge: 600,        // 10 minutos
-    staleWhileRevalidate: 120,
-    public: true
+    maxAge: 0,        // ❌ SIN CACHE
+    staleWhileRevalidate: 0,
+    public: false
   },
   'featured-services': {
-    maxAge: 900,        // 15 minutos
-    staleWhileRevalidate: 180,
-    public: true
+    maxAge: 0,        // ❌ SIN CACHE
+    staleWhileRevalidate: 0,
+    public: false
   },
   'service-categories': {
-    maxAge: 1800,       // 30 minutos
-    staleWhileRevalidate: 300,
-    public: true
+    maxAge: 0,        // ❌ SIN CACHE
+    staleWhileRevalidate: 0,
+    public: false
   },
   'service-packages': {
-    maxAge: 600,        // 10 minutos
-    staleWhileRevalidate: 120,
-    public: true
+    maxAge: 0,        // ❌ SIN CACHE
+    staleWhileRevalidate: 0,
+    public: false
   },
   'service-stats': {
-    maxAge: 1200,       // 20 minutos
-    staleWhileRevalidate: 240,
+    maxAge: 0,        // ❌ SIN CACHE
+    staleWhileRevalidate: 0,
     public: false
   },
   'no-cache': {

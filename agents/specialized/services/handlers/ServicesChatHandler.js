@@ -916,26 +916,40 @@ REGLAS:
         logger.success(`✅ [DB_CREATE] Category matched: ${categoriaObj.nombre}`);
       }
 
-      // 🆕 CREAR SERVICIO DIRECTAMENTE EN BD (SIN PREVIEW)
-      logger.info('💾 [DB_CREATE] Creating service in database...');
+      // 🆕 CREAR SERVICIO USANDO GENERATOR (con enriquecimiento IA)
+      logger.info('💾 [DB_CREATE] Creating service with ServicesGenerator...');
       
       // Usar categoría normalizada (ya validada)
       const categoriaParaServicio = categoriaObj || await Categoria.findOne({ nombre: /desarrollo/i });
 
-      // Crear documento de servicio
-      const nuevoServicio = new Servicio({
+      // Importar y usar el ServicesGenerator
+      const ServicesGenerator = (await import('./ServicesGenerator.js')).default;
+      const generator = new ServicesGenerator(this.config);
+
+      // Preparar datos para el generator (usa categoría como string/ObjectId)
+      const serviceDataForGenerator = {
         titulo: extractedData.titulo,
-        categoria: categoriaParaServicio._id,
+        categoria: categoriaParaServicio._id.toString(), // ObjectId como string
         descripcionCorta: extractedData.descripcionCorta,
         descripcion: extractedData.descripcion,
-        características: [],
-        activo: true,
-        createdAt: new Date(),
-        source: 'direct_creation_from_prompt'
+        userId: context.userId
+      };
+
+      logger.info('🔧 [DB_CREATE] Calling generator with data:', {
+        titulo: serviceDataForGenerator.titulo,
+        categoria: serviceDataForGenerator.categoria,
+        hasDescripcion: !!serviceDataForGenerator.descripcion
       });
 
-      const servicioGuardado = await nuevoServicio.save();
-      await servicioGuardado.populate('categoria');
+      // Crear con enriquecimiento automático
+      const result = await generator.createServiceWithAI(serviceDataForGenerator, context);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error al crear servicio con generator');
+      }
+
+      const servicioGuardado = result.data.service;
+      logger.success(`✅ [DB_CREATE] Service created with ID: ${servicioGuardado._id}`);
 
       logger.success(`✅ [DB_CREATE] Service created successfully`);
 

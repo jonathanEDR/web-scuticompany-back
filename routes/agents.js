@@ -27,6 +27,17 @@ import {
   processContextPattern
 } from '../controllers/agentController.js';
 
+// 🆕 IMPORTACIONES PARA SERVICIOS AGENT (FASE 2)
+import {
+  generateAllBlocks,
+  generateCaracteristicas,
+  generatePrecios,
+  generateContenido,
+  generateFAQ,
+  generateQueIncluye,
+  generateConfiguraciones
+} from '../controllers/servicesAgentController.js';
+
 import { testAgentConfiguration } from '../controllers/testController.js';
 
 const router = express.Router();
@@ -776,6 +787,66 @@ router.post('/seo/config',
 );
 
 // ============================================================================
+
+// ============================================================================
+// 🆕 RUTAS PARA SERVICES AGENT (FASE 2) - GENERACIÓN DE BLOQUES INDIVIDUALES
+// ============================================================================
+
+// 🎯 Generar TODOS los bloques (7 bloques completos)
+router.post('/services/generate-all-blocks', 
+  requireAuth, 
+  requireUser, 
+  aiCommandLimiter,
+  generateAllBlocks
+);
+
+// 🎯 Generar solo CARACTERÍSTICAS Y BENEFICIOS
+router.post('/services/generate-caracteristicas', 
+  requireAuth, 
+  requireUser, 
+  aiCommandLimiter,
+  generateCaracteristicas
+);
+
+// 💰 Generar solo PRECIOS Y COMERCIAL
+router.post('/services/generate-precios', 
+  requireAuth, 
+  requireUser, 
+  aiCommandLimiter,
+  generatePrecios
+);
+
+// 📝 Generar solo CONTENIDO AVANZADO
+router.post('/services/generate-contenido', 
+  requireAuth, 
+  requireUser, 
+  aiCommandLimiter,
+  generateContenido
+);
+
+// ❓ Generar solo FAQ
+router.post('/services/generate-faq', 
+  requireAuth, 
+  requireUser, 
+  aiCommandLimiter,
+  generateFAQ
+);
+
+// ✅ Generar solo QUÉ INCLUYE/NO INCLUYE
+router.post('/services/generate-incluye', 
+  requireAuth, 
+  requireUser, 
+  aiCommandLimiter,
+  generateQueIncluye
+);
+
+// 🔧 Generar solo CONFIGURACIONES
+router.post('/services/generate-configuraciones', 
+  requireAuth, 
+  requireUser, 
+  aiCommandLimiter,
+  generateConfiguraciones
+);
 
 // Middleware para manejar errores específicos de agentes
 router.use((error, req, res, next) => {

@@ -50,7 +50,7 @@ export class SEOAgent extends BaseAgent {
       sitemapFrequency: 'daily',
       backlinkCheckInterval: 'weekly',
       // Configuración OpenAI por defecto (más precisión que creatividad)
-      timeout: 45000,        // Mayor timeout para análisis complejos
+      timeout: 75000,        // Mayor timeout para análisis complejos (aumentado desde 45s)
       maxTokens: 3000,       // Más tokens para reportes detallados
       temperature: 0.3       // Menor creatividad, más precisión técnica
     };

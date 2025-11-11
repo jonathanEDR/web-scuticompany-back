@@ -1,5 +1,36 @@
 import mongoose from 'mongoose';
 
+// 🔧 Schema explícito para subdocumento FAQ (soluciona problemas de serialización)
+const faqSchema = new mongoose.Schema({
+  pregunta: {
+    type: String,
+    required: true
+  },
+  respuesta: {
+    type: String,
+    required: true
+  }
+}, { _id: false });
+
+// 🔧 Schema explícito para subdocumento SEO (soluciona problemas de serialización)
+const seoSchema = new mongoose.Schema({
+  titulo: {
+    type: String,
+    maxlength: 60,
+    default: ''
+  },
+  descripcion: {
+    type: String,
+    maxlength: 160,
+    default: ''
+  },
+  palabrasClave: {
+    type: String,
+    maxlength: 500,
+    default: ''
+  }
+}, { _id: false }); // _id: false para que no genere ID automático en subdocumento
+
 const servicioSchema = new mongoose.Schema(
   {
     // Información básica
@@ -165,16 +196,10 @@ const servicioSchema = new mongoose.Schema(
     noIncluye: [{
       type: String
     }],
-    faq: [{
-      pregunta: {
-        type: String,
-        required: true
-      },
-      respuesta: {
-        type: String,
-        required: true
-      }
-    }],
+    faq: {
+      type: [faqSchema],
+      default: []
+    },
     tecnologias: [{
       type: String
     }],
@@ -266,20 +291,10 @@ const servicioSchema = new mongoose.Schema(
       type: String,
       maxlength: 160
     },
-    // Campo SEO unificado (nuevo)
+    // Campo SEO unificado - ✅ Usa schema explícito para correcta serialización
     seo: {
-      titulo: {
-        type: String,
-        maxlength: 60
-      },
-      descripcion: {
-        type: String,
-        maxlength: 160
-      },
-      palabrasClave: {
-        type: String,
-        maxlength: 500
-      }
+      type: seoSchema,
+      default: () => ({ titulo: '', descripcion: '', palabrasClave: '' })
     },
     slug: {
       type: String,

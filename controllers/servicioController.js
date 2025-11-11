@@ -1,6 +1,7 @@
 import Servicio from '../models/Servicio.js';
 import PaqueteServicio from '../models/PaqueteServicio.js';
 import Categoria from '../models/Categoria.js';
+import { ServiceLogger } from '../utils/serviceLogger.js';
 
 /**
  * @desc    Obtener todos los servicios con filtros avanzados
@@ -101,6 +102,96 @@ export const getServicios = async (req, res) => {
 };
 
 /**
+ * @desc    Obtener todos los servicios (Admin - Sin cache)
+ * @route   GET /api/servicios/admin/list
+ * @access  Private - Admin only
+ */
+export const getServiciosAdmin = async (req, res) => {
+  try {
+    const { 
+      categoria, 
+      destacado, 
+      activo, 
+      estado,
+      visibleEnWeb,
+      etiqueta,
+      precioMin,
+      precioMax,
+      tipoPrecio,
+      departamento,
+      sort = '-createdAt',
+      page = 1,
+      limit = 10,
+      includeDeleted = false
+    } = req.query;
+    
+    // Construir filtros dinámicos (sin restricción de activo/visibleEnWeb para admin)
+    const filtros = {};
+    
+    if (categoria) filtros.categoria = categoria;
+    if (destacado !== undefined) filtros.destacado = destacado === 'true';
+    if (activo !== undefined) filtros.activo = activo === 'true';
+    if (estado) filtros.estado = estado;
+    if (visibleEnWeb !== undefined) filtros.visibleEnWeb = visibleEnWeb === 'true';
+    if (etiqueta) filtros.etiquetas = etiqueta;
+    if (tipoPrecio) filtros.tipoPrecio = tipoPrecio;
+    if (departamento) filtros.departamento = departamento;
+    
+    // Filtros de precio
+    if (precioMin || precioMax) {
+      filtros.$or = [];
+      if (precioMin) {
+        filtros.$or.push(
+          { precio: { $gte: Number(precioMin) } },
+          { precioMin: { $gte: Number(precioMin) } }
+        );
+      }
+      if (precioMax) {
+        filtros.$or.push(
+          { precio: { $lte: Number(precioMax) } },
+          { precioMax: { $lte: Number(precioMax) } }
+        );
+      }
+    }
+
+    // Configurar opciones de paginación
+    const options = {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      sort
+    };
+
+    // Si se incluyen eliminados, agregar opción especial
+    const queryOptions = includeDeleted === 'true' ? { includeDeleted: true } : {};
+
+    const servicios = await Servicio.find(filtros, null, queryOptions)
+      .sort(options.sort)
+      .limit(options.limit)
+      .skip((options.page - 1) * options.limit)
+      .populate('responsable', 'firstName lastName email')
+      .populate('categoria', 'nombre descripcion slug icono color')
+      .populate('paquetes');
+
+    const total = await Servicio.countDocuments(filtros);
+    
+    res.status(200).json({
+      success: true,
+      count: servicios.length,
+      total,
+      page: options.page,
+      pages: Math.ceil(total / options.limit),
+      data: servicios
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener servicios (admin)',
+      error: error.message
+    });
+  }
+};
+
+/**
  * @desc    Obtener un servicio por ID o slug con paquetes
  * @route   GET /api/servicios/:id
  * @access  Public
@@ -109,6 +200,8 @@ export const getServicio = async (req, res) => {
   try {
     const { id } = req.params;
     const { includePaquetes = true, admin = false } = req.query;
+    
+    console.log('🔍 [BACKEND] Obteniendo servicio:', { id, admin, includePaquetes });
     
     // Construir filtros base
     const baseFilter = {
@@ -133,7 +226,8 @@ export const getServicio = async (req, res) => {
       query = query.populate('paquetes');
     }
 
-    const servicio = await query.lean();  // ✅ Optimización: .lean() para mejor performance
+    // ✅ CORRECCIÓN: Sin .lean() para que FAQ y subdocumentos se carguen correctamente
+    const servicio = await query;
 
     if (!servicio) {
       return res.status(404).json({
@@ -142,11 +236,25 @@ export const getServicio = async (req, res) => {
       });
     }
 
+    // 🔍 DEBUG: Ver datos que se van a enviar
+    // ✅ Servicio encontrado - preparando respuesta
+    console.log('✅ [BACKEND] Servicio encontrado:', {
+      _id: servicio._id,
+      titulo: servicio.titulo,
+      arrays: {
+        caracteristicas: servicio.caracteristicas?.length || 0,
+        incluye: servicio.incluye?.length || 0,
+        noIncluye: servicio.noIncluye?.length || 0,
+        faq: servicio.faq?.length || 0
+      }
+    });
+
     res.status(200).json({
       success: true,
       data: servicio
     });
   } catch (error) {
+    console.error('❌ [BACKEND] Error al obtener servicio:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener el servicio',
@@ -162,9 +270,6 @@ export const getServicio = async (req, res) => {
  */
 export const createServicio = async (req, res) => {
   try {
-    // ✅ Debug: Verificar datos SEO recibidos al crear
-    console.log('📥 Backend - Datos SEO recibidos (create):', req.body.seo);
-    
     // Agregar automáticamente el usuario responsable si está autenticado
     const servicioData = {
       ...req.body
@@ -179,9 +284,6 @@ export const createServicio = async (req, res) => {
     // Si se proporciona slug y ya existe, el middleware agregará timestamp
 
     const servicio = await Servicio.create(servicioData);
-    
-    // ✅ Debug: Verificar datos SEO guardados al crear
-    console.log('💾 Backend - Datos SEO guardados (create):', servicio.seo);
     
     res.status(201).json({
       success: true,
@@ -214,31 +316,111 @@ export const createServicio = async (req, res) => {
  */
 export const updateServicio = async (req, res) => {
   try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    console.log('📥 [BACKEND] Actualizando servicio:', { 
+      id, 
+      fieldsToUpdate: Object.keys(updateData),
+      hasAdvancedContent: !!(updateData.descripcionRica || updateData.videoUrl || updateData.galeriaImagenes || updateData.contenidoAdicional),
+      hasSEO: !!updateData.seo 
+    });
+
+    // Verificar que el servicio existe antes de actualizar
+    const existingService = await Servicio.findById(id);
+    if (!existingService) {
+      return res.status(404).json({
+        success: false,
+        message: 'Servicio no encontrado',
+        code: 'SERVICE_NOT_FOUND'
+      });
+    }
+
+    // Preparar datos para actualización con manejo seguro de subdocumentos
+    const safeUpdateData = { ...updateData };
+    
+    // Manejar FAQ de forma segura
+    if (safeUpdateData.faq && Array.isArray(safeUpdateData.faq)) {
+      safeUpdateData.faq = safeUpdateData.faq.filter(item => 
+        item && item.pregunta && item.respuesta
+      );
+    }
+    
+    // Manejar SEO de forma segura
+    if (safeUpdateData.seo && typeof safeUpdateData.seo === 'object') {
+      safeUpdateData.seo = {
+        titulo: safeUpdateData.seo.titulo || '',
+        descripcion: safeUpdateData.seo.descripcion || '',
+        palabrasClave: safeUpdateData.seo.palabrasClave || ''
+      };
+    }
+
+    // Actualizar con transacción para consistencia
     const servicio = await Servicio.findByIdAndUpdate(
-      req.params.id,
-      req.body,
+      id,
+      { 
+        ...safeUpdateData,
+        updatedAt: new Date() // Forzar actualización de timestamp
+      },
       {
         new: true, // Retornar el documento actualizado
-        runValidators: true // Ejecutar validaciones del schema
+        runValidators: true, // Ejecutar validaciones del schema
+        lean: false // Necesario para virtuals y middleware
       }
-    );
+    ).populate('categoria', 'nombre descripcion slug icono color')
+     .populate('responsable', 'firstName lastName email');
 
     if (!servicio) {
       return res.status(404).json({
         success: false,
-        message: 'Servicio no encontrado'
+        message: 'Error al actualizar el servicio',
+        code: 'UPDATE_FAILED'
       });
     }
+
+    // 🔍 DEBUG: Verificar datos guardados
+    console.log('💾 [BACKEND] Servicio actualizado exitosamente:', {
+      _id: servicio._id,
+      titulo: servicio.titulo,
+      updatedAt: servicio.updatedAt
+    });
 
     res.status(200).json({
       success: true,
       message: 'Servicio actualizado exitosamente',
       data: servicio
     });
+
   } catch (error) {
-    res.status(400).json({
+    console.error('❌ [BACKEND] Error al actualizar servicio:', {
+      id: req.params.id,
+      error: error.message,
+      stack: error.stack
+    });
+    
+    // Determinar tipo de error
+    let statusCode = 500;
+    let message = 'Error interno del servidor';
+    let code = 'INTERNAL_ERROR';
+
+    if (error.name === 'ValidationError') {
+      statusCode = 400;
+      message = 'Error de validación';
+      code = 'VALIDATION_ERROR';
+    } else if (error.name === 'CastError') {
+      statusCode = 400;
+      message = 'ID de servicio inválido';
+      code = 'INVALID_ID';
+    } else if (error.code === 11000) {
+      statusCode = 409;
+      message = 'Conflicto: el slug ya existe';
+      code = 'DUPLICATE_SLUG';
+    }
+
+    res.status(statusCode).json({
       success: false,
-      message: 'Error al actualizar el servicio',
+      message,
+      code,
       error: error.message
     });
   }
@@ -364,9 +546,9 @@ export const getServiciosPorCategoria = async (req, res) => {
  */
 export const duplicarServicio = async (req, res) => {
   try {
-    // ✅ Optimización: Queries paralelas con Promise.all
+    // ✅ CORRECCIÓN: Sin .lean() en servicio para copiar subdocumentos (FAQ) correctamente
     const [servicioOriginal, paquetesOriginales] = await Promise.all([
-      Servicio.findById(req.params.id).lean(),
+      Servicio.findById(req.params.id),
       PaqueteServicio.find({ servicioId: req.params.id }).lean()
     ]);
 
@@ -377,8 +559,8 @@ export const duplicarServicio = async (req, res) => {
       });
     }
 
-    // Crear copia del servicio
-    const servicioCopia = { ...servicioOriginal };
+    // Crear copia del servicio - Convertir documento Mongoose a objeto plano
+    const servicioCopia = { ...servicioOriginal.toObject() };
     delete servicioCopia._id;
     delete servicioCopia.createdAt;
     delete servicioCopia.updatedAt;

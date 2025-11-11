@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getServicios,
+  getServiciosAdmin,
   getServicio,
   createServicio,
   updateServicio,
@@ -36,7 +37,9 @@ import {
   createServiceWithAgent,
   editServiceWithAgent,
   analyzeServiceWithAgent,
-  generateContentWithAgent, // 🆕
+  // generateContentWithAgent, // ❌ DEPRECADO - Usar generateCompleteServiceWithAgent
+  generateCompleteServiceWithAgent, // 🚀 PRINCIPAL OPTIMIZADO
+  generateAllContentWithAgent, // 🆕 (Legacy)
   analyzePortfolio,
   suggestPricing,
   analyzePricing,
@@ -56,6 +59,15 @@ import {
   noCache,
   invalidateCacheOnMutation
 } from '../middleware/serviciosCache.js';
+
+// ✅ Middlewares de validación para servicios
+import { 
+  validateServiceUpdate, 
+  validateServiceCreate 
+} from '../middleware/validateServiceData.js';
+
+// ✅ Sistema de logging para servicios
+import { serviceOperationLogger } from '../utils/serviceLogger.js';
 
 // Importar middlewares de autenticación y autorización
 import { requireAuth } from '../middleware/clerkAuth.js';
@@ -117,6 +129,17 @@ router.get('/agent/metrics', requireAuth, ...requireModerator, getAgentMetrics);
 router.get('/agent/status', requireAuth, ...requireUser, getAgentStatus);
 
 // ============================================
+// RUTAS ADMINISTRATIVAS (sin cache)
+// ============================================
+// Listado admin sin cache - debe estar ANTES de las rutas públicas
+router.get('/admin/list', 
+  noCache,
+  requireAuth,
+  canViewServicesStats,
+  getServiciosAdmin
+);
+
+// ============================================
 // RUTAS DE ESTADÍSTICAS Y DASHBOARD
 // ============================================
 router.get('/dashboard', cacheServiceStats, canViewServicesStats, getDashboard);
@@ -143,13 +166,33 @@ router.get('/categoria/:categoria', cacheServiceCategories, getServiciosPorCateg
 // RUTAS CRUD PRINCIPALES
 // ============================================
 router.route('/')
-  .get(cachePublicServices, getServicios)                    // GET /api/servicios - Público con cache
-  .post(noCache, canCreateServices, createServicio); // POST /api/servicios - Sin cache
+  .get(cachePublicServices, getServicios)                              // GET /api/servicios - Público con cache
+  .post(
+    noCache, 
+    canCreateServices, 
+    validateServiceCreate,
+    serviceOperationLogger('create'),
+    createServicio
+  ); // POST /api/servicios - Con validación
 
 router.route('/:id')
-  .get(cacheServiceDetail, getServicio)                     // GET /api/servicios/:id - Público con cache
-  .put(noCache, requireAuth, canEditService, updateServicio)  // PUT /api/servicios/:id - Sin cache
-  .delete(noCache, requireAuth, canDeleteService, deleteServicio); // DELETE /api/servicios/:id - Sin cache
+  .get(cacheServiceDetail, getServicio)                               // GET /api/servicios/:id - Público con cache
+  .put(
+    noCache, 
+    requireAuth, 
+    canEditService, 
+    validateServiceUpdate, 
+    serviceOperationLogger('update'),
+    invalidateCacheOnMutation, 
+    updateServicio
+  )  // PUT /api/servicios/:id - Con validación y cache
+  .delete(
+    noCache, 
+    requireAuth, 
+    canDeleteService,
+    serviceOperationLogger('delete'), 
+    deleteServicio
+  );     // DELETE /api/servicios/:id - Con logging
 
 // ============================================
 // RUTAS DE ACCIONES ESPECIALES POR SERVICIO
@@ -160,10 +203,59 @@ router.delete('/:id/soft', noCache, requireAuth, canDeleteService, softDeleteSer
 router.patch('/:id/restaurar', noCache, requireAuth, canManageServices, restaurarServicio);
 
 // Rutas de AI Agent por servicio específico
-router.post('/:id/agent/edit', noCache, requireAuth, canEditService, aiCommandLimiter, editServiceWithAgent);
-router.post('/:id/agent/analyze', noCache, requireAuth, ...requireUser, agentLimiter, analyzeServiceWithAgent);
-router.post('/:id/agent/generate-content', noCache, requireAuth, ...requireUser, agentLimiter, generateContentWithAgent); // 🆕
-router.post('/:id/agent/analyze-pricing', noCache, requireAuth, ...requireUser, agentLimiter, analyzePricing);
+router.post('/:id/agent/edit', 
+  noCache, 
+  requireAuth, 
+  canEditService, 
+  validateServiceUpdate,
+  serviceOperationLogger('agent_edit'),
+  aiCommandLimiter, 
+  editServiceWithAgent
+);
+router.post('/:id/agent/analyze', 
+  noCache, 
+  requireAuth, 
+  ...requireUser, 
+  serviceOperationLogger('agent_analyze'),
+  agentLimiter, 
+  analyzeServiceWithAgent
+);
+// ❌ ENDPOINT DEPRECADO - Usar /generate-complete en su lugar
+// router.post('/:id/agent/generate-content', 
+//   noCache, 
+//   requireAuth, 
+//   ...requireUser, 
+//   serviceOperationLogger('agent_generate'),
+//   agentLimiter, 
+//   generateContentWithAgent
+// );
+
+// 🚀 ENDPOINT PRINCIPAL OPTIMIZADO - Una sola consulta para todo el contenido
+router.post('/:id/agent/generate-complete', 
+  noCache, 
+  requireAuth, 
+  ...requireUser, 
+  serviceOperationLogger('agent_generate_unified'),
+  agentLimiter, 
+  generateCompleteServiceWithAgent
+);
+// 🔄 Legacy endpoint para compatibilidad (deprecar eventualmente)
+router.post('/:id/agent/generate-all-content', 
+  noCache, 
+  requireAuth, 
+  ...requireUser, 
+  serviceOperationLogger('agent_generate_bulk'),
+  agentLimiter, 
+  generateAllContentWithAgent
+);
+router.post('/:id/agent/analyze-pricing', 
+  noCache, 
+  requireAuth, 
+  ...requireUser, 
+  serviceOperationLogger('agent_pricing'),
+  agentLimiter, 
+  analyzePricing
+);
 
 // ============================================
 // RUTAS DE PAQUETES POR SERVICIO

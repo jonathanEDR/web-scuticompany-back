@@ -14,12 +14,20 @@ class OpenAIService {
   constructor() {
     // NO asignar apiKey aquí - hacerlo dinámicamente en getApiKey()
     this.baseURL = 'https://api.openai.com/v1';
-    this.model = 'gpt-4o'; // Modelo más reciente
+    this.model = 'gpt-3.5-turbo'; // 🔥 CAMBIO: Usar modelo más económico por defecto
+    
+    // 🆕 OPTIMIZACIÓN DE COSTOS: Modelos según complejidad
+    this.modelsByComplexity = {
+      'simple': 'gpt-3.5-turbo',      // $0.50/$1.50 per 1M tokens (barato)
+      'medium': 'gpt-3.5-turbo',      // Para tareas estándar
+      'complex': 'gpt-4o-mini',       // $0.15/$0.60 per 1M tokens (más barato que gpt-4)
+      'premium': 'gpt-4o'             // Solo para casos muy específicos
+    };
     
     // Configuración inteligente por defecto
     this.defaultConfig = {
       temperature: 0.7,
-      max_tokens: 2000,
+      max_tokens: 1500, // 🔥 REDUCIDO: de 2000 a 1500 para ahorrar costos
       top_p: 1,
       frequency_penalty: 0.1,
       presence_penalty: 0.1
@@ -30,6 +38,14 @@ class OpenAIService {
     this.cacheTimeout = 10 * 60 * 1000; // 10 minutos
     this.cachePriority = new Map(); // Prioridad de caché
     
+    // 🆕 Sistema de rate limiting local
+    this.requestQueue = [];
+    this.isProcessingQueue = false;
+    this.lastRequestTime = 0;
+    this.minRequestInterval = 2000; // 2 segundos mínimo entre peticiones
+    this.maxConcurrentRequests = 3; // Máximo 3 peticiones concurrentes
+    this.currentRequests = 0;
+    
     // Métricas y optimización
     this.metrics = {
       totalRequests: 0,
@@ -37,7 +53,9 @@ class OpenAIService {
       tokensSaved: 0,
       averageResponseTime: 0,
       errorRate: 0,
-      costOptimization: 0
+      costOptimization: 0,
+      queuedRequests: 0,
+      rateLimitHits: 0
     };
 
     // Configuración de límites de tokens
@@ -60,6 +78,65 @@ class OpenAIService {
    */
   getApiKey() {
     return process.env.OPENAI_API_KEY;
+  }
+
+  /**
+   * 🆕 Seleccionar modelo óptimo según complejidad para ahorrar costos
+   */
+  selectOptimalModel(contentType, tokenCount = 0) {
+    // Determinar complejidad basada en el tipo de contenido
+    const simpleTypes = ['title', 'short_description', 'simple_features'];
+    const mediumTypes = ['description', 'features', 'benefits', 'faq'];
+    const complexTypes = ['unified_service', 'bulk_content_generation', 'complete_content'];
+    
+    let complexity = 'medium'; // Por defecto
+    
+    if (simpleTypes.includes(contentType)) {
+      complexity = 'simple';
+    } else if (complexTypes.includes(contentType)) {
+      complexity = 'complex';
+    }
+    
+    // Si hay muchos tokens, usar modelo más potente
+    if (tokenCount > 3000) {
+      complexity = 'complex';
+    }
+    
+    const selectedModel = this.modelsByComplexity[complexity];
+    logger.info(`🎯 Selected model: ${selectedModel} (complexity: ${complexity}, type: ${contentType})`);
+    
+    return selectedModel;
+  }
+
+  /**
+   * 🆕 Calcular límite de tokens según modelo para optimizar costos
+   */
+  getOptimalTokenLimit(model, contentType) {
+    const baseLimits = {
+      'gpt-3.5-turbo': 1200,   // Económico pero efectivo
+      'gpt-4o-mini': 1800,     // Mejor calidad, precio medio
+      'gpt-4o': 2500           // Máxima calidad (solo cuando es necesario)
+    };
+    
+    // Ajustar según tipo de contenido
+    const typeMultipliers = {
+      'title': 0.3,                    // Títulos cortos
+      'short_description': 0.5,        // Descripciones breves
+      'description': 0.8,              // Descripciones estándar
+      'features': 1.0,                 // Características normales
+      'benefits': 1.0,                 // Beneficios normales
+      'faq': 1.2,                      // FAQ necesita más espacio
+      'unified_service': 1.5,          // Contenido unificado extenso
+      'bulk_content_generation': 1.8   // Generación masiva
+    };
+    
+    const baseLimit = baseLimits[model] || baseLimits['gpt-3.5-turbo'];
+    const multiplier = typeMultipliers[contentType] || 1.0;
+    const optimalLimit = Math.round(baseLimit * multiplier);
+    
+    logger.info(`💰 Optimal token limit: ${optimalLimit} (base: ${baseLimit}, multiplier: ${multiplier}x)`);
+    
+    return optimalLimit;
   }
 
   /**
@@ -94,11 +171,23 @@ class OpenAIService {
         taskContext
       );
 
-      // Verificar caché inteligente (deshabilitado para ServicesAgent)
+      // Verificar caché inteligente (deshabilitado para ServicesAgent, pero habilitado en rate limits)
       const cacheKey = this.generateSmartCacheKey(messages, agentName);
       let cached = null;
       
-      // No usar caché para ServicesAgent para garantizar contenido único
+      // Estrategia especial: usar caché temporal si hemos tenido rate limits recientes
+      const hasRecentRateLimits = this.metrics.rateLimitHits > 0 && Date.now() - this.lastRequestTime < 300000; // 5 minutos
+      
+      if (hasRecentRateLimits && agentName.includes('ServicesAgent')) {
+        cached = this.getFromSmartCache(cacheKey);
+        if (cached) {
+          logger.info('🎯 Using emergency cache due to recent rate limits');
+          this.metrics.cachedResponses++;
+          return cached;
+        }
+      }
+      
+      // No usar caché para ServicesAgent para garantizar contenido único (excepto en emergencias)
       if (!agentName.includes('ServicesAgent') && !agentName.includes('generator_')) {
         cached = this.getFromSmartCache(cacheKey);
         if (cached) {
@@ -106,7 +195,7 @@ class OpenAIService {
           this.metrics.cachedResponses++;
           return cached;
         }
-      } else {
+      } else if (!hasRecentRateLimits) {
         logger.info('🚫 Cache disabled for ServicesAgent - generating fresh content');
       }
 
@@ -140,10 +229,17 @@ class OpenAIService {
       // Actualizar contexto y métricas
       await this.updateContextAndMetrics(sessionId, agentName, userMessage, processedResponse, startTime);
 
-      // Guardar en caché inteligente (excluir ServicesAgent)
-      if (!agentName.includes('ServicesAgent') && !agentName.includes('generator_')) {
+      // Guardar en caché inteligente (incluir ServicesAgent si hay rate limits)
+      const shouldCache = !agentName.includes('ServicesAgent') && !agentName.includes('generator_') || 
+                          (agentName.includes('ServicesAgent') && this.metrics.rateLimitHits > 0);
+      
+      if (shouldCache) {
         this.saveToSmartCache(cacheKey, processedResponse, agentProfile);
-        logger.info('💾 Response cached for future use');
+        if (agentName.includes('ServicesAgent')) {
+          logger.info('💾 Emergency cache save for ServicesAgent due to rate limits');
+        } else {
+          logger.info('💾 Response cached for future use');
+        }
       } else {
         logger.info('🚫 Cache save skipped for ServicesAgent');
       }
@@ -453,13 +549,37 @@ class OpenAIService {
     const complexity = taskContext.complexity || 'medium';
     const requiresLatestModel = taskContext.requiresLatestFeatures || false;
     
+    // 🔧 FIX: Usar modelos más económicos para evitar rate limits
     if (requiresLatestModel || complexity === 'high') {
-      return 'gpt-4o';
+      return 'gpt-3.5-turbo'; // Cambiar de gpt-4o a 3.5-turbo
     } else if (complexity === 'medium') {
-      return 'gpt-4-turbo';
+      return 'gpt-3.5-turbo'; // Cambiar de gpt-4-turbo a 3.5-turbo
     } else {
       return 'gpt-3.5-turbo';
     }
+  }
+
+  /**
+   * 🆕 Controlar rate limiting local antes de llamar a OpenAI
+   */
+  async enforceRateLimit() {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      const waitTime = this.minRequestInterval - timeSinceLastRequest;
+      logger.info(`🕐 Rate limiting: waiting ${waitTime}ms before API call`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    this.lastRequestTime = Date.now();
+  }
+
+  /**
+   * 🆕 Verificar si podemos hacer más peticiones concurrentes
+   */
+  canMakeRequest() {
+    return this.currentRequests < this.maxConcurrentRequests;
   }
 
   /**
@@ -471,46 +591,64 @@ class OpenAIService {
       throw new Error('❌ OpenAI API key no configurada. Verifica tu archivo .env');
     }
 
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        logger.info(`🔗 Calling OpenAI API (attempt ${attempt}/${retries})...`);
-        logger.info(`📋 Request config: model=${requestConfig.model}, max_tokens=${requestConfig.max_tokens}`);
-        
-        const response = await axios.post(
-          `${this.baseURL}/chat/completions`,
-          requestConfig,
-          {
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json'
-            },
-            timeout: 45000 // 45 segundos para requests complejos
+    // 🆕 Aplicar rate limiting local
+    await this.enforceRateLimit();
+    this.currentRequests++;
+
+    try {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          logger.info(`🔗 Calling OpenAI API (attempt ${attempt}/${retries})...`);
+          logger.info(`📋 Request config: model=${requestConfig.model}, max_tokens=${requestConfig.max_tokens}`);
+          
+          const response = await axios.post(
+            `${this.baseURL}/chat/completions`,
+            requestConfig,
+            {
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+              },
+              timeout: 75000 // 75 segundos para requests complejos (aumentado desde 45s)
+            }
+          );
+
+          return response.data;
+
+        } catch (error) {
+          logger.error(`❌ API Error (attempt ${attempt}):`, {
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            error: error.response?.data?.error,
+            message: error.message
+          });
+
+          if (attempt === retries) {
+            throw error;
           }
-        );
-
-        return response.data;
-
-      } catch (error) {
-        logger.error(`❌ API Error (attempt ${attempt}):`, {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          error: error.response?.data?.error,
-          message: error.message
-        });
-
-        if (attempt === retries) {
-          throw error;
-        }
-        
-        // Esperar antes del reintento
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        
-        // Reducir tokens si es error de límite
-        if (error.response?.status === 400 && error.response?.data?.error?.code === 'context_length_exceeded') {
-          requestConfig.messages = await this.optimizeMessagesForTokens(requestConfig.messages, requestConfig.model);
-          logger.warn(`⚠️  Reduced token count for retry ${attempt}`);
+          
+          // Manejo específico de rate limits (429)
+          if (error.response?.status === 429) {
+            this.metrics.rateLimitHits++;
+            const retryAfter = error.response?.headers['retry-after'] || (30 * attempt);
+            const waitTime = Math.min(retryAfter * 1000, 120000); // Max 2 minutos
+            logger.warn(`🕐 Rate limit hit, waiting ${waitTime/1000}s before retry ${attempt + 1}...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          } else {
+            // Esperar antes del reintento para otros errores
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          }
+          
+          // Reducir tokens si es error de límite
+          if (error.response?.status === 400 && error.response?.data?.error?.code === 'context_length_exceeded') {
+            requestConfig.messages = await this.optimizeMessagesForTokens(requestConfig.messages, requestConfig.model);
+            logger.warn(`⚠️  Reduced token count for retry ${attempt}`);
+          }
         }
       }
+    } finally {
+      // 🆕 Decrementar contador de peticiones concurrentes
+      this.currentRequests = Math.max(0, this.currentRequests - 1);
     }
   }
 
@@ -882,6 +1020,20 @@ Responde SIEMPRE en formato JSON con esta estructura:
    * Inicializar estrategias de fallback
    */
   initializeFallbackStrategies() {
+    // Estrategia específica para ServicesAgent
+    this.fallbackStrategies.set('ServicesAgent', async (message, context) => {
+      logger.info(`🔧 ServicesAgent fallback activated for content type: ${context.contentType || 'unknown'}`);
+      
+      return {
+        content: 'Contenido generado localmente debido a límites temporales de IA.',
+        fallback: true,
+        agentName: 'ServicesAgent',
+        contentType: context.contentType,
+        useLocalFallback: true,
+        timestamp: new Date()
+      };
+    });
+
     this.fallbackStrategies.set('BlogAgent', async (message, context) => {
       return {
         content: `🔧 **Análisis Básico de Blog**
@@ -1444,6 +1596,38 @@ Para análisis completo con IA, por favor intenta nuevamente cuando la conectivi
     return Object.entries(context)
       .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
       .join('\n');
+  }
+
+  /**
+   * Obtener métricas del servicio con información de rate limiting
+   */
+  getMetrics() {
+    const now = Date.now();
+    const hasRecentRateLimits = this.metrics.rateLimitHits > 0 && (now - this.lastRequestTime) < 300000;
+    
+    return {
+      ...this.metrics,
+      cacheEfficiencyRate: this.metrics.totalRequests > 0 ? 
+        (this.metrics.cachedResponses / this.metrics.totalRequests * 100).toFixed(2) + '%' : '0%',
+      rateLimitRate: this.metrics.totalRequests > 0 ? 
+        (this.metrics.rateLimitHits / this.metrics.totalRequests * 100).toFixed(2) + '%' : '0%',
+      currentConcurrentRequests: this.currentRequests,
+      hasRecentRateLimits,
+      lastRequestAgo: this.lastRequestTime > 0 ? Math.round((now - this.lastRequestTime) / 1000) + 's' : 'never',
+      healthStatus: this.currentRequests < this.maxConcurrentRequests && !hasRecentRateLimits ? 'healthy' : 
+                   hasRecentRateLimits ? 'rate_limited' : 'busy',
+      isAvailable: this.isAvailable()
+    };
+  }
+
+  /**
+   * 🆕 Resetear métricas de rate limiting (útil para testing)
+   */
+  resetRateLimitMetrics() {
+    this.metrics.rateLimitHits = 0;
+    this.lastRequestTime = 0;
+    this.currentRequests = 0;
+    logger.info('📊 Rate limit metrics reset');
   }
 }
 

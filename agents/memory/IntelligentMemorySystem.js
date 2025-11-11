@@ -256,6 +256,39 @@ export class IntelligentMemorySystem {
   }
 
   /**
+   * 🔧 FIX: Función faltante que causaba crashes del servidor
+   */
+  async updatePatternMetrics() {
+    try {
+      console.log('📊 Updating pattern metrics...');
+      
+      // Actualizar métricas de patrones existentes
+      const patterns = await InteractionPattern.find({});
+      
+      for (const pattern of patterns) {
+        // Calcular nueva tasa de éxito basada en interacciones recientes
+        const recentInteractions = pattern.interactions || [];
+        const successfulInteractions = recentInteractions.filter(i => i.success);
+        const newSuccessRate = recentInteractions.length > 0 
+          ? successfulInteractions.length / recentInteractions.length 
+          : pattern.successRate || 0;
+        
+        // Actualizar patrón si hay cambios significativos
+        if (Math.abs(newSuccessRate - (pattern.successRate || 0)) > 0.1) {
+          pattern.successRate = newSuccessRate;
+          pattern.lastUpdated = new Date();
+          await pattern.save();
+        }
+      }
+      
+      console.log(`✅ Updated metrics for ${patterns.length} patterns`);
+    } catch (error) {
+      console.error('❌ Error updating pattern metrics:', error);
+      // No lanzar error para evitar crashes
+    }
+  }
+
+  /**
    * Obtener contexto inteligente para una interacción
    */
   async getIntelligentContext(userId, agentType, taskContext = {}) {
