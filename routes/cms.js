@@ -4,7 +4,8 @@ import {
   getPageBySlug,
   updatePage,
   createPage,
-  initHomePage
+  initHomePage,
+  initAllPages
 } from '../controllers/cmsController.js';
 import { requireAuth } from '../middleware/clerkAuth.js';
 import { canManageContent, canManageSystem } from '../middleware/roleAuth.js';
@@ -38,6 +39,7 @@ router.get('/health', async (req, res) => {
 router.put('/pages/:slug', canManageContent, validateCardStylesMiddleware, updatePage);
 router.post('/pages', canManageContent, validateCardStylesMiddleware, createPage);
 router.post('/pages/init-home', canManageContent, initHomePage);
+router.post('/pages/init-all', canManageContent, initAllPages);
 
 // Forzar re-inicialización de base de datos (solo para admins con permisos de sistema)
 router.post('/init-database', canManageSystem, async (req, res) => {

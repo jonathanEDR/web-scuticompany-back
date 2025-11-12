@@ -581,3 +581,115 @@ export const initHomePage = async (req, res) => {
     });
   }
 };
+
+// @desc    Inicializar todas las páginas públicas faltantes
+// @route   POST /api/cms/pages/init-all
+// @access  Private
+export const initAllPages = async (req, res) => {
+  try {
+    const pagesToCreate = [
+      {
+        pageSlug: 'about',
+        pageName: 'Sobre Nosotros',
+        content: {
+          hero: {
+            title: 'Sobre Nosotros',
+            subtitle: 'Conoce nuestra historia y misión',
+            description: 'SCUTI Company es una empresa líder en desarrollo de software y soluciones tecnológicas innovadoras en Perú.'
+          }
+        },
+        seo: {
+          metaTitle: 'Nosotros - SCUTI Company',
+          metaDescription: 'Conoce más sobre SCUTI Company, nuestra historia, misión y el equipo de expertos en desarrollo de software.',
+          keywords: ['SCUTI', 'nosotros', 'equipo', 'empresa', 'software'],
+          ogTitle: 'Nosotros - SCUTI Company',
+          ogDescription: 'Somos una empresa líder en desarrollo de software en Perú'
+        },
+        isPublished: true,
+        updatedBy: 'system'
+      },
+      {
+        pageSlug: 'services',
+        pageName: 'Servicios',
+        content: {
+          hero: {
+            title: 'Nuestros Servicios',
+            subtitle: 'Soluciones integrales para tu empresa',
+            description: 'Ofrecemos una variedad de servicios especializados en tecnología'
+          }
+        },
+        seo: {
+          metaTitle: 'Servicios - SCUTI Company',
+          metaDescription: 'Descubre nuestros servicios especializados en desarrollo de software, IA y soluciones digitales.',
+          keywords: ['servicios', 'software', 'desarrollo', 'IA', 'soluciones'],
+          ogTitle: 'Servicios - SCUTI Company',
+          ogDescription: 'Servicios profesionales de desarrollo de software'
+        },
+        isPublished: true,
+        updatedBy: 'system'
+      },
+      {
+        pageSlug: 'contact',
+        pageName: 'Contacto',
+        content: {
+          hero: {
+            title: 'Contacto',
+            subtitle: 'Ponte en contacto con nosotros',
+            description: 'Estamos listos para ayudarte con tus proyectos'
+          }
+        },
+        seo: {
+          metaTitle: 'Contacto - SCUTI Company',
+          metaDescription: 'Contacta con SCUTI Company. Estamos aquí para ayudarte con tus proyectos de software.',
+          keywords: ['contacto', 'email', 'teléfono', 'SCUTI'],
+          ogTitle: 'Contacto - SCUTI Company',
+          ogDescription: 'Ponte en contacto con nuestro equipo'
+        },
+        isPublished: true,
+        updatedBy: 'system'
+      }
+    ];
+
+    const results = [];
+    for (const pageData of pagesToCreate) {
+      try {
+        // Verificar si ya existe
+        const existing = await Page.findOne({ pageSlug: pageData.pageSlug });
+        if (existing) {
+          results.push({
+            pageSlug: pageData.pageSlug,
+            status: 'skipped',
+            message: 'Ya existe'
+          });
+          continue;
+        }
+
+        // Crear la página
+        const newPage = await Page.create(pageData);
+        results.push({
+          pageSlug: pageData.pageSlug,
+          status: 'created',
+          message: 'Página creada correctamente'
+        });
+      } catch (err) {
+        results.push({
+          pageSlug: pageData.pageSlug,
+          status: 'error',
+          message: err.message
+        });
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Inicialización de páginas completada',
+      data: results
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al inicializar páginas',
+      error: error.message
+    });
+  }
+};

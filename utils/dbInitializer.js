@@ -314,6 +314,86 @@ export const initializeDatabase = async () => {
       logger.database('FOUND', 'pages', { slug: 'services' });
     }
 
+    // 🆕 Verificar si existe la página About (Nosotros)
+    const aboutPage = await Page.findOne({ pageSlug: 'about' });
+
+    if (!aboutPage) {
+      logger.init('Página About no encontrada, creando configuración por defecto');
+
+      await Page.create({
+        pageSlug: 'about',
+        pageName: 'Sobre Nosotros',
+        content: {
+          hero: {
+            title: 'Sobre Nosotros',
+            subtitle: 'Conoce nuestra historia y misión',
+            description: 'SCUTI Company es una empresa líder en desarrollo de software y soluciones tecnológicas innovadoras en Perú.',
+            backgroundImage: { light: '', dark: '' },
+            backgroundImageAlt: 'About background',
+            styles: {
+              light: { titleColor: '', subtitleColor: '', descriptionColor: '' },
+              dark: { titleColor: '', subtitleColor: '', descriptionColor: '' }
+            }
+          },
+          mission: {
+            title: 'Nuestra Misión',
+            description: 'Transformar empresas a través de la tecnología inteligente, creando soluciones digitales personalizadas que impulsen el crecimiento y la eficiencia.'
+          },
+          vision: {
+            title: 'Nuestra Visión',
+            description: 'Ser la empresa de referencia en desarrollo de software en Latinoamérica, reconocida por la calidad, innovación y impacto de nuestras soluciones.'
+          },
+          values: {
+            title: 'Nuestros Valores',
+            items: [
+              { title: 'Innovación', description: 'Buscamos constantemente nuevas formas de resolver problemas' },
+              { title: 'Calidad', description: 'Entregamos soluciones robustas y bien construidas' },
+              { title: 'Compromiso', description: 'Nos dedicamos al éxito de nuestros clientes' },
+              { title: 'Transparencia', description: 'Mantenemos comunicación clara y honesta' }
+            ]
+          }
+        },
+        seo: {
+          metaTitle: 'Nosotros - SCUTI Company',
+          metaDescription: 'Conoce más sobre SCUTI Company, nuestra historia, misión y el equipo de expertos en desarrollo de software.',
+          keywords: ['SCUTI', 'nosotros', 'equipo', 'empresa', 'software', 'perú'],
+          ogTitle: 'Nosotros - SCUTI Company',
+          ogDescription: 'Somos una empresa líder en desarrollo de software en Perú',
+          ogImage: '',
+          twitterCard: 'summary_large_image'
+        },
+        theme: {
+          default: 'light',
+          lightMode: {
+            primary: '#8B5CF6',
+            secondary: '#06B6D4',
+            background: '#FFFFFF',
+            text: '#1F2937',
+            textSecondary: '#6B7280',
+            cardBg: '#F9FAFB',
+            border: '#E5E7EB'
+          },
+          darkMode: {
+            primary: '#A78BFA',
+            secondary: '#22D3EE',
+            background: '#111827',
+            text: '#F9FAFB',
+            textSecondary: '#D1D5DB',
+            cardBg: '#1F2937',
+            border: '#374151'
+          }
+        },
+        isPublished: true,
+        updatedBy: 'system-init'
+      });
+      
+      logger.success('Página About creada exitosamente');
+      logger.database('CREATE', 'pages', { slug: 'about' });
+    } else {
+      logger.success('Página About encontrada');
+      logger.database('FOUND', 'pages', { slug: 'about' });
+    }
+
     // Verificar existencia de Super Admin
     logger.init('Verificando Super Administrador del sistema');
     const superAdmin = await ensureSuperAdminExists();
