@@ -2,6 +2,7 @@ import Servicio from '../models/Servicio.js';
 import PaqueteServicio from '../models/PaqueteServicio.js';
 import Categoria from '../models/Categoria.js';
 import { ServiceLogger } from '../utils/serviceLogger.js';
+import { manualCacheInvalidation } from '../utils/cacheInvalidator.js';
 
 /**
  * @desc    Obtener todos los servicios con filtros avanzados
@@ -73,6 +74,16 @@ export const getServicios = async (req, res) => {
     // Si se incluyen eliminados, agregar opción especial
     const queryOptions = includeDeleted === 'true' ? { includeDeleted: true } : {};
 
+    console.log('\n');
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('📋 [GET SERVICIOS] Obteniendo lista de servicios');
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('🔍 Filtros:', JSON.stringify(filtros, null, 2));
+    console.log('📄 Página:', options.page, '| Límite:', options.limit);
+    console.log('🔄 Cache-Control Header:', req.get('Cache-Control') || 'No especificado');
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('\n');
+
     const servicios = await Servicio.find(filtros, null, queryOptions)
       .sort(options.sort)
       .limit(options.limit)
@@ -83,6 +94,24 @@ export const getServicios = async (req, res) => {
       .lean();  // ✅ Optimización: Retorna objetos planos sin overhead Mongoose
 
     const total = await Servicio.countDocuments(filtros);
+    
+    console.log('\n');
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('📊 [GET SERVICIOS] Resultados');
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('✅ Total servicios en DB:', total);
+    console.log('📄 Servicios en esta página:', servicios.length);
+    console.log('📄 Páginas totales:', Math.ceil(total / options.limit));
+    console.log('⏰ Timestamp:', new Date().toISOString());
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('\n');
+    
+    // ✅ Agregar headers de cache para que el frontend sepa el estado
+    res.setHeader('X-Cache-Status', 'FRESH');
+    res.setHeader('X-Total-Items', total.toString());
+    res.setHeader('X-Current-Page', options.page.toString());
+    res.setHeader('X-Total-Pages', Math.ceil(total / options.limit).toString());
+    res.setHeader('X-Response-Timestamp', new Date().toISOString());
     
     res.status(200).json({
       success: true,
@@ -285,6 +314,31 @@ export const createServicio = async (req, res) => {
 
     const servicio = await Servicio.create(servicioData);
     
+    console.log('\n');
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('🆕 [CREATE] SERVICIO CREADO EXITOSAMENTE');
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('📝 Título:', servicio.titulo);
+    console.log('🔖 Slug:', servicio.slug);
+    console.log('🆔 ID:', servicio._id);
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('🗑️ INVALIDANDO CACHE AUTOMÁTICAMENTE...');
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('\n');
+    
+    // 🗑️ Invalidar cache automáticamente después de crear servicio
+    const invalidationResult = await manualCacheInvalidation(`CREATE_SERVICE: ${servicio.titulo}`);
+    
+    console.log('\n');
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('🗑️ RESULTADO INVALIDACIÓN DE CACHE');
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('✅ Resultado:', invalidationResult ? 'ÉXITO' : 'FALLÓ');
+    console.log('📝 Servicio:', servicio.titulo);
+    console.log('⏰ Timestamp:', new Date().toISOString());
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log('\n');
+    
     res.status(201).json({
       success: true,
       message: 'Servicio creado exitosamente',
@@ -385,6 +439,12 @@ export const updateServicio = async (req, res) => {
       updatedAt: servicio.updatedAt
     });
 
+    // 🗑️ Invalidar cache automáticamente después de actualizar servicio
+    console.log('🔄 [UPDATE] Iniciando invalidación de cache para servicio actualizado...');
+    setImmediate(async () => {
+      await manualCacheInvalidation(`UPDATE_SERVICE: ${servicio.titulo}`);
+    });
+
     res.status(200).json({
       success: true,
       message: 'Servicio actualizado exitosamente',
@@ -441,6 +501,11 @@ export const deleteServicio = async (req, res) => {
         message: 'Servicio no encontrado'
       });
     }
+
+    // 🗑️ Invalidar cache automáticamente después de eliminar servicio
+    setImmediate(async () => {
+      await manualCacheInvalidation(`DELETE_SERVICE: ${servicio.titulo}`);
+    });
 
     res.status(200).json({
       success: true,
@@ -586,8 +651,13 @@ export const duplicarServicio = async (req, res) => {
         return paqueteCopia;
       });
 
-      await PaqueteServicio.insertMany(nuevosPaquetes);
+    await PaqueteServicio.insertMany(nuevosPaquetes);
     }
+
+    // 🗑️ Invalidar cache automáticamente después de duplicar servicio
+    setImmediate(async () => {
+      await manualCacheInvalidation(`DUPLICATE_SERVICE: ${nuevoServicio.titulo}`);
+    });
 
     res.status(201).json({
       success: true,

@@ -32,18 +32,6 @@ import {
 } from '../controllers/servicioStatsController.js';
 
 // Importar Cache Management controller
-import {
-  getCacheConfig,
-  toggleCache,
-  configureCacheType,
-  invalidateCache,
-  reactivateCache,
-  getCacheStats,
-  resetCacheStats,
-  configureAutoInvalidation,
-  updateCacheTTL
-} from '../controllers/cacheController.js';
-
 // Importar ServicesAgent controller
 import {
   chatWithServicesAgent,
@@ -72,6 +60,9 @@ import {
   noCache,
   invalidateCacheOnMutation
 } from '../middleware/serviciosCache.js';
+
+// ✅ Auto-invalidación de cache para operaciones CRUD  
+import { invalidateServicesCache, autoInvalidateCache } from '../utils/cacheInvalidator.js';
 
 // ✅ Middlewares de validación para servicios
 import { 
@@ -116,36 +107,6 @@ const aiCommandLimiter = rateLimit({
 });
 
 const router = express.Router();
-
-// ============================================
-// RUTAS DE GESTIÓN DE CACHE (solo admin)
-// ============================================
-// Obtener configuración actual del cache
-router.get('/cache/config', requireAuth, ...requireModerator, getCacheConfig);
-
-// Activar/desactivar cache global
-router.post('/cache/toggle', requireAuth, ...requireModerator, toggleCache);
-
-// Configurar cache por tipo
-router.put('/cache/configure/:type', requireAuth, ...requireModerator, configureCacheType);
-
-// Invalidar cache manualmente
-router.post('/cache/invalidate', requireAuth, ...requireModerator, invalidateCache);
-
-// Reactivar cache inmediatamente
-router.post('/cache/reactivate', requireAuth, ...requireModerator, reactivateCache);
-
-// Obtener estadísticas de cache
-router.get('/cache/stats', requireAuth, ...requireModerator, getCacheStats);
-
-// Resetear estadísticas de cache
-router.post('/cache/reset-stats', requireAuth, ...requireModerator, resetCacheStats);
-
-// Configurar auto-invalidación
-router.put('/cache/auto-invalidation', requireAuth, ...requireModerator, configureAutoInvalidation);
-
-// Actualizar TTL (Time To Live) del cache
-router.put('/cache/ttl', requireAuth, ...requireModerator, updateCacheTTL);
 
 // ============================================
 // RUTAS DEL SERVICESAGENT (antes de todo)
@@ -215,8 +176,9 @@ router.route('/')
     canCreateServices, 
     validateServiceCreate,
     serviceOperationLogger('create'),
+    autoInvalidateCache,
     createServicio
-  ); // POST /api/servicios - Con validación
+  ); // POST /api/servicios - Con validación y auto-invalidación
 
 router.route('/:id')
   .get(cacheServiceDetail, getServicio)                               // GET /api/servicios/:id - Público con cache
@@ -226,23 +188,24 @@ router.route('/:id')
     canEditService, 
     validateServiceUpdate, 
     serviceOperationLogger('update'),
-    invalidateCacheOnMutation, 
+    autoInvalidateCache,
     updateServicio
-  )  // PUT /api/servicios/:id - Con validación y cache
+  )  // PUT /api/servicios/:id - Con validación y auto-invalidación
   .delete(
     noCache, 
     requireAuth, 
     canDeleteService,
-    serviceOperationLogger('delete'), 
+    serviceOperationLogger('delete'),
+    autoInvalidateCache,
     deleteServicio
-  );     // DELETE /api/servicios/:id - Con logging
+  );     // DELETE /api/servicios/:id - Con logging y auto-invalidación
 
 // ============================================
 // RUTAS DE ACCIONES ESPECIALES POR SERVICIO
 // ============================================
-router.post('/:id/duplicar', noCache, requireAuth, canDuplicateServices, duplicarServicio);
-router.patch('/:id/estado', noCache, requireAuth, canEditService, cambiarEstado);
-router.delete('/:id/soft', noCache, requireAuth, canDeleteService, softDeleteServicio);
+router.post('/:id/duplicar', noCache, requireAuth, canDuplicateServices, autoInvalidateCache, duplicarServicio);
+router.patch('/:id/estado', noCache, requireAuth, canEditService, autoInvalidateCache, cambiarEstado);
+router.delete('/:id/soft', noCache, requireAuth, canDeleteService, autoInvalidateCache, softDeleteServicio);
 router.patch('/:id/restaurar', noCache, requireAuth, canManageServices, restaurarServicio);
 
 // Rutas de AI Agent por servicio específico
