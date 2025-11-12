@@ -13,23 +13,62 @@ const connectDB = async () => {
     }
 
     const options = {
-      serverSelectionTimeoutMS: 5000, // Timeout después de 5s si no puede conectar
-      socketTimeoutMS: 45000, // Cerrar sockets después de 45s de inactividad
+      // ========================================
+      // 🚀 TIMEOUTS OPTIMIZADOS
+      // ========================================
+      serverSelectionTimeoutMS: 10000,      // 10s para selección de servidor (aumentado de 5s)
+      socketTimeoutMS: 360000,               // 6 minutos para queries largos (aumentado de 45s)
+      connectTimeoutMS: 30000,               // 30s para establecer conexión inicial
+      
+      // ========================================
+      // 💾 POOL DE CONEXIONES OPTIMIZADO
+      // ========================================
+      maxPoolSize: 50,                       // Max 50 conexiones simultáneas (antes no estaba configurado)
+      minPoolSize: 10,                       // Mantener 10 conexiones mínimas activas
+      maxIdleTimeMS: 60000,                  // Cerrar conexiones idle después de 1 minuto
+      
+      // ========================================
+      // 🔄 BUFFERING Y REINTENTOS
+      // ========================================
+      bufferCommands: true,                  // Permitir buffering para evitar errores en inicialización
+      maxConnecting: 5,                      // Max 5 conexiones iniciándose simultáneamente
+      waitQueueTimeoutMS: 10000,             // Timeout de 10s para comandos en cola
+      
+      // ========================================
+      // 📦 COMPRESIÓN (Reduce tráfico de red)
+      // ========================================
+      compressors: ['zlib'],                 // Comprimir datos entre app y MongoDB
+      zlibCompressionLevel: 6,               // Nivel de compresión (1-9, 6 es balance óptimo)
     };
 
     await mongoose.connect(mongoURI, options);
 
     console.log(`MongoDB Connected: ${mongoose.connection.host}`);
+    console.log(`📊 Pool Size: Min ${options.minPoolSize} - Max ${options.maxPoolSize}`);
 
     // Eventos de conexión - solo errores críticos
     mongoose.connection.on('error', (err) => {
       console.error('MongoDB connection error:', err);
     });
 
+    mongoose.connection.on('disconnected', () => {
+      console.warn('⚠️ MongoDB disconnected. Attempting to reconnect...');
+    });
+
+    mongoose.connection.on('reconnected', () => {
+      console.log('✅ MongoDB reconnected successfully');
+    });
+
     // Manejar cierre gracioso
     process.on('SIGINT', async () => {
-      await mongoose.connection.close();
-      process.exit(0);
+      try {
+        await mongoose.connection.close(false);
+        console.log('✓ MongoDB connection closed through app termination');
+        process.exit(0);
+      } catch (err) {
+        console.error('Error closing MongoDB connection:', err);
+        process.exit(1);
+      }
     });
 
   } catch (error) {

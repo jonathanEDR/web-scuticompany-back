@@ -38,25 +38,42 @@ const __dirname = path.dirname(__filename);
 // Configuración
 dotenv.config();
 
-// Conectar a la base de datos e inicializar
-logger.startup('Iniciando Web Scuti Backend Server');
-
-connectDB().then(async () => {
-  logger.success('Conexión a MongoDB establecida');
-  // Inicializar páginas por defecto si no existen
-  initializeDatabase();
-  // Inicializar categorías por defecto si no existen
-  await inicializarCategorias();
-  // Inicializar plantillas de mensajes por defecto
-  await inicializarPlantillasMensajes();
-  // Inicializar configuración de cache para servicios
-  await initializeCacheConfig();
-}).catch(err => {
-  logger.error('Error al conectar a la base de datos', err);
-});
-
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// ========================================
+// 🚀 INICIALIZACIÓN SECUENCIAL
+// ========================================
+// IMPORTANTE: No iniciar servidor hasta que DB esté lista
+let isDbReady = false;
+
+// Función de inicialización asíncrona
+async function initializeServer() {
+  try {
+    logger.startup('Iniciando Web Scuti Backend Server');
+    
+    // 1. Conectar a MongoDB PRIMERO
+    await connectDB();
+    logger.success('Conexión a MongoDB establecida');
+    
+    // 2. Inicializar datos base de datos
+    await initializeDatabase();
+    await inicializarCategorias();
+    await inicializarPlantillasMensajes();
+    await initializeCacheConfig();
+    
+    // 3. Marcar DB como lista
+    isDbReady = true;
+    logger.success('✅ Base de datos y configuraciones inicializadas');
+    
+  } catch (err) {
+    logger.error('❌ Error durante inicialización:', err);
+    process.exit(1); // Salir si no puede inicializar
+  }
+}
+
+// Iniciar proceso de inicialización
+initializeServer();
 
 // IMPORTANTE: Webhooks deben ir ANTES de los middlewares de JSON
 // porque necesitan el raw body para verificar la firma
@@ -110,26 +127,65 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Rate Limiting - Limitar requests por IP
-// Más permisivo en desarrollo para evitar bloqueos
+// ========================================
+// 🚦 RATE LIMITING OPTIMIZADO
+// ========================================
+
+// Rate Limiting General - Para todas las rutas API
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 1000 en dev, 100 en prod
-  message: 'Demasiadas peticiones desde esta IP, por favor intenta de nuevo más tarde.',
+  max: 500, // 500 requests / 15min = ~33/min (más realista que 100)
+  message: {
+    success: false,
+    message: 'Demasiadas peticiones desde esta IP. Intenta de nuevo en 15 minutos.',
+    code: 'RATE_LIMIT_EXCEEDED',
+    retryAfter: 900
+  },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === 'development' // Deshabilitar en desarrollo
+  skip: () => process.env.NODE_ENV === 'development', // Deshabilitar en desarrollo
+  handler: (req, res) => {
+    logger.warn(`Rate limit exceeded for IP: ${req.ip}`);
+    res.status(429).json({
+      success: false,
+      message: 'Demasiadas peticiones. Intenta de nuevo más tarde.',
+      retryAfter: 900
+    });
+  }
 });
 
-// Rate limiting más estricto para rutas de autenticación y upload
+// Rate Limiting para Autenticación (más estricto)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'production' ? 20 : 500, // 500 en dev, 20 en prod
-  message: 'Demasiados intentos, por favor intenta más tarde.',
-  skip: () => process.env.NODE_ENV === 'development' // Deshabilitar en desarrollo
+  max: 30, // 30 intentos / 15min (aumentado de 20)
+  message: {
+    success: false,
+    message: 'Demasiados intentos de autenticación. Intenta más tarde.',
+    code: 'AUTH_RATE_LIMIT'
+  },
+  skipSuccessfulRequests: true, // No contar requests exitosos
+  skip: () => process.env.NODE_ENV === 'development'
 });
 
-// Aplicar rate limiting general (deshabilitado en desarrollo y para rutas de agent)
+// Rate Limiting para Lectura Pública (muy permisivo)
+const publicReadLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 60, // 60 requests/min para lectura pública
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method !== 'GET' || process.env.NODE_ENV === 'development'
+});
+
+// Rate Limiting para Escritura (más restrictivo)
+const writeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100, // 100 writes / 15min
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'GET' || process.env.NODE_ENV === 'development'
+});
+
+// Aplicar rate limiting general solo en producción
 if (process.env.NODE_ENV === 'production') {
   app.use('/api/', (req, res, next) => {
     // Skip rate limiting para rutas de agent (tienen su propio limiter)
@@ -140,17 +196,60 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ========================================
+// 🛡️ MIDDLEWARE DE SEGURIDAD Y LÍMITES
+// ========================================
 
-// Middleware para subir archivos
+// Limitar tamaño de payload JSON (previene ataques de memoria)
+app.use(express.json({ 
+  limit: '2mb', // Max 2MB por request JSON
+  strict: true
+}));
+
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '2mb' 
+}));
+
+// Middleware para subir archivos (configuración mejorada)
 app.use(fileUpload({
   createParentPath: true,
   limits: { 
-    fileSize: 5 * 1024 * 1024 // 5MB max
+    fileSize: 5 * 1024 * 1024,  // 5MB por archivo
+    files: 5                     // Max 5 archivos simultáneos
   },
-  abortOnLimit: true
+  abortOnLimit: true,
+  responseOnLimit: 'El archivo excede el tamaño máximo permitido (5MB)',
+  useTempFiles: true,            // Usar archivos temporales en vez de memoria
+  tempFileDir: '/tmp/',
+  safeFileNames: true,           // Sanitizar nombres de archivo
+  preserveExtension: true
 }));
+
+// ========================================
+// 📊 MONITOREO DE MEMORIA (Middleware)
+// ========================================
+app.use((req, res, next) => {
+  const used = process.memoryUsage();
+  const heapUsedMB = Math.round(used.heapUsed / 1024 / 1024);
+  
+  // Advertencia si el uso de memoria es alto
+  if (heapUsedMB > 400) {
+    logger.warn(`⚠️ High memory usage: ${heapUsedMB}MB`);
+  }
+  
+  // Rechazar requests si la memoria está crítica (>500MB)
+  if (heapUsedMB > 500) {
+    logger.error(`🚨 Critical memory usage: ${heapUsedMB}MB - Rejecting request`);
+    return res.status(503).json({
+      success: false,
+      message: 'Servidor temporalmente sobrecargado. Intenta de nuevo en unos momentos.',
+      code: 'MEMORY_OVERLOAD'
+    });
+  }
+  
+  next();
+});
 
 // Servir archivos estáticos (uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -357,10 +456,60 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   logger.success('Web Scuti Backend Server iniciado correctamente');
 });
 
-// Manejo de cierre gracioso
-process.on('SIGTERM', () => {
-  logger.warn('SIGTERM signal received: closing HTTP server');
+// ========================================
+// 🛡️ GRACEFUL SHUTDOWN MEJORADO
+// ========================================
+const gracefulShutdown = async (signal) => {
+  console.log(`\n📡 ${signal} received: iniciando cierre gracioso del servidor...`);
+  
+  // 1. Dejar de aceptar nuevas conexiones
   server.close(() => {
-    console.log('HTTP server closed');
+    console.log('✓ HTTP server cerrado - no acepta nuevas conexiones');
   });
+  
+  // 2. Timeout de seguridad (forzar cierre después de 30s)
+  const forceShutdownTimeout = setTimeout(() => {
+    console.error('⚠️ Forzando cierre después de timeout (30s)');
+    process.exit(1);
+  }, 30000);
+  
+  try {
+    // 3. Cerrar conexión a MongoDB
+    if (mongoose.connection.readyState === 1) {
+      await mongoose.connection.close(false);
+      console.log('✓ Conexión a MongoDB cerrada correctamente');
+    }
+    
+    // 4. Cerrar otras conexiones (Redis, etc.) cuando se implementen
+    // TODO: Agregar cierre de Redis cuando se implemente
+    // if (redis && redis.status === 'ready') {
+    //   await redis.quit();
+    //   console.log('✓ Conexión a Redis cerrada correctamente');
+    // }
+    
+    // 5. Limpiar timeout y salir limpiamente
+    clearTimeout(forceShutdownTimeout);
+    console.log('✅ Graceful shutdown completado exitosamente');
+    process.exit(0);
+    
+  } catch (error) {
+    console.error('❌ Error durante graceful shutdown:', error);
+    clearTimeout(forceShutdownTimeout);
+    process.exit(1);
+  }
+};
+
+// Manejar señales de terminación
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Manejar errores no capturados
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception:', error);
+  gracefulShutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('unhandledRejection');
 });

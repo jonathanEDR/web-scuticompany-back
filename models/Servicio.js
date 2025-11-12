@@ -319,20 +319,76 @@ const servicioSchema = new mongoose.Schema(
   }
 );
 
-// Índices para mejorar rendimiento de búsquedas
-servicioSchema.index({ titulo: 'text', descripcion: 'text', etiquetas: 'text' });
-servicioSchema.index({ categoria: 1, destacado: -1, activo: 1 });
-servicioSchema.index({ estado: 1, visibleEnWeb: 1 });
-// slug: índice creado automáticamente por unique: true
-servicioSchema.index({ eliminado: 1 });
-servicioSchema.index({ orden: 1 });
+// ========================================
+// ÍNDICES PARA MEJORAR RENDIMIENTO
+// ========================================
 
-// ✅ Optimización: Índices adicionales para queries frecuentes
-servicioSchema.index({ estado: 1, activo: 1 });  // Para analyzePortfolio
-servicioSchema.index({ categoria: 1, estado: 1 });  // Para búsquedas por categoría
-servicioSchema.index({ responsable: 1, estado: 1 });  // Para filtros por responsable
-servicioSchema.index({ createdAt: -1 });  // Para ordenamientos por fecha
-servicioSchema.index({ activo: 1, visibleEnWeb: 1 });  // Para queries públicas
+// Índice de texto completo para búsqueda
+servicioSchema.index({ titulo: 'text', descripcion: 'text', etiquetas: 'text' });
+
+// ========================================
+// ÍNDICES COMPUESTOS OPTIMIZADOS
+// ========================================
+
+// 🔥 CRÍTICO: Servicios públicos activos (listado web público)
+// Query: { activo: true, visibleEnWeb: true, eliminado: false }
+servicioSchema.index({ 
+  activo: 1, 
+  visibleEnWeb: 1, 
+  eliminado: 1,
+  orden: 1,
+  destacado: -1
+}, {
+  name: 'public_services_optimized'
+});
+
+// 🔥 CRÍTICO: Servicios por categoría (páginas de categoría)
+// Query: { categoria: X, activo: true, visibleEnWeb: true }
+servicioSchema.index({ 
+  categoria: 1, 
+  activo: 1,
+  visibleEnWeb: 1,
+  destacado: -1, 
+  orden: 1
+}, {
+  name: 'category_services_optimized'
+});
+
+// 🔥 CRÍTICO: Servicios destacados (homepage)
+// Query: { destacado: true, activo: true, visibleEnWeb: true }
+servicioSchema.index({ 
+  destacado: 1,
+  activo: 1, 
+  visibleEnWeb: 1,
+  orden: 1
+}, {
+  name: 'featured_services_optimized'
+});
+
+// ⚡ IMPORTANTE: Panel admin - filtros comunes
+// Query: { estado: X, eliminado: false }
+servicioSchema.index({ 
+  estado: 1, 
+  eliminado: 1,
+  activo: 1,
+  createdAt: -1 
+}, {
+  name: 'admin_services_list'
+});
+
+// ⚡ IMPORTANTE: Servicios por responsable (asignaciones)
+// Query: { responsable: X, estado: X }
+servicioSchema.index({ 
+  responsable: 1, 
+  estado: 1,
+  eliminado: 1,
+  createdAt: -1
+}, {
+  name: 'responsible_services'
+});
+
+// 📌 AUXILIAR: Servicios no eliminados ordenados
+servicioSchema.index({ eliminado: 1, orden: 1, createdAt: -1 });
 
 // Virtual: Paquetes asociados
 servicioSchema.virtual('paquetes', {

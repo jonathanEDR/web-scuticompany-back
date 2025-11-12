@@ -1,0 +1,119 @@
+# 🧪 Test de Carga Básico - Web Scuti API
+#
+# Este archivo configura Artillery para probar el rendimiento de la API
+# con las optimizaciones implementadas.
+#
+# Instalación: npm install -g artillery
+# Ejecución: artillery run load-test.yml
+#
+config:
+  target: 'http://localhost:5000'
+  phases:
+    # Fase 1: Warm-up (30s)
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm-up - 5 requests/seg"
+    
+    # Fase 2: Carga media (60s)
+    - duration: 60
+      arrivalRate: 20
+      name: "Carga media - 20 requests/seg"
+    
+    # Fase 3: Carga alta (60s)
+    - duration: 60
+      arrivalRate: 50
+      name: "Carga alta - 50 requests/seg"
+    
+    # Fase 4: Spike test (30s)
+    - duration: 30
+      arrivalRate: 100
+      name: "Spike test - 100 requests/seg"
+
+  # Variables de entorno
+  variables:
+    page: 1
+    limit: 10
+
+  # Plugins para métricas adicionales
+  plugins:
+    expect: {}
+
+  # Configuración de timeouts
+  timeout: 30
+
+# Escenarios de prueba
+scenarios:
+  # Escenario 1: Lectura de posts públicos (70%)
+  - name: "Browse blog posts"
+    weight: 70
+    flow:
+      - get:
+          url: "/api/blog/posts?page={{ page }}&limit={{ limit }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: success
+          capture:
+            - json: "$.success"
+              as: "success"
+      
+      - think: 2
+      
+      - get:
+          url: "/api/blog/posts?page=2&limit={{ limit }}"
+          expect:
+            - statusCode: 200
+      
+      - think: 3
+      
+      - get:
+          url: "/api/blog/posts/featured"
+          expect:
+            - statusCode: 200
+
+  # Escenario 2: Lectura de servicios (20%)
+  - name: "Browse services"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/servicios"
+          expect:
+            - statusCode: 200
+            - contentType: json
+      
+      - think: 2
+      
+      - get:
+          url: "/api/servicios/destacados"
+          expect:
+            - statusCode: 200
+      
+      - think: 2
+      
+      - get:
+          url: "/api/categorias"
+          expect:
+            - statusCode: 200
+
+  # Escenario 3: Búsqueda y filtros (10%)
+  - name: "Search and filter"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/blog/posts?search=desarrollo&page=1&limit=10"
+          expect:
+            - statusCode: 200
+      
+      - think: 3
+      
+      - get:
+          url: "/api/servicios?categoria=desarrollo-web"
+          expect:
+            - statusCode: 200
+
+# Métricas esperadas (para referencia)
+# - Response time p50: < 200ms
+# - Response time p95: < 500ms
+# - Response time p99: < 1000ms
+# - Error rate: < 1%
+# - Requests per second: > 50
