@@ -22,6 +22,7 @@ export const getServicios = async (req, res) => {
       precioMax,
       tipoPrecio,
       departamento,
+      search,  // ✨ NUEVO: Parámetro de búsqueda
       sort = '-createdAt',
       page = 1,
       limit = 10,
@@ -38,7 +39,33 @@ export const getServicios = async (req, res) => {
       filtros.visibleEnWeb = true;
     }
     
-    if (categoria) filtros.categoria = categoria;
+    // ✨ NUEVO: Convertir nombre de categoría a ObjectId si es necesario
+    if (categoria) {
+      try {
+        // Si es un ObjectId válido, usarlo directamente
+        if (categoria.match(/^[0-9a-fA-F]{24}$/)) {
+          filtros.categoria = categoria;
+        } else {
+          // Si es un string (nombre), buscar la categoría por nombre
+          const categoriaDoc = await Categoria.findOne({ 
+            $or: [
+              { nombre: categoria },
+              { slug: categoria }
+            ]
+          });
+          
+          if (categoriaDoc) {
+            filtros.categoria = categoriaDoc._id;
+          } else {
+            // Si no encuentra la categoría, no filtrar por ella
+            console.warn(`⚠️ Categoría "${categoria}" no encontrada`);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error procesando categoría: ${error.message}`);
+      }
+    }
+    
     if (destacado !== undefined) filtros.destacado = destacado === 'true';
     if (activo !== undefined && admin === 'true') filtros.activo = activo === 'true';
     if (estado) filtros.estado = estado;
@@ -46,6 +73,15 @@ export const getServicios = async (req, res) => {
     if (etiqueta) filtros.etiquetas = etiqueta;
     if (tipoPrecio) filtros.tipoPrecio = tipoPrecio;
     if (departamento) filtros.departamento = departamento;
+    
+    // ✨ NUEVO: Búsqueda por texto en título y descripción
+    if (search) {
+      filtros.$or = [
+        { titulo: { $regex: search, $options: 'i' } },
+        { descripcion: { $regex: search, $options: 'i' } },
+        { etiquetas: { $regex: search, $options: 'i' } }
+      ];
+    }
     
     // Filtros de precio
     if (precioMin || precioMax) {
@@ -103,6 +139,12 @@ export const getServicios = async (req, res) => {
     console.log('📄 Servicios en esta página:', servicios.length);
     console.log('📄 Páginas totales:', Math.ceil(total / options.limit));
     console.log('⏰ Timestamp:', new Date().toISOString());
+    
+    // 🔍 Debug: Ver slug de cada servicio
+    servicios.forEach((serv, idx) => {
+      console.log(`  ├─ Servicio ${idx + 1}: ID=${serv._id} | SLUG=${serv.slug || 'SIN SLUG'} | TÍTULO=${serv.titulo}`);
+    });
+    
     console.log('════════════════════════════════════════════════════════════════');
     console.log('\n');
     
