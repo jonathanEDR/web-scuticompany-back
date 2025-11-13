@@ -124,27 +124,86 @@ export const requireAuth = async (req, res, next) => {
 };
 
 /**
- * Middleware opcional de autenticaciÃ³n
- * No bloquea la request si no hay token, pero aÃ±ade info si lo hay
+ * Middleware opcional de autenticación
+ * No bloquea la request si no hay token, pero añade info si lo hay
+ * ✅ Permite peticiones sin autenticación
+ * ✅ Detecta y agrega info del usuario si está autenticado
  */
 export const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
+    // Si no hay token, continuar sin usuario
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      // No hay token, continuar sin usuario
       req.user = null;
       req.userId = null;
+      req.isAuthenticated = false;
       return next();
     }
 
-    // Ejecutar autenticación normal
-    await requireAuth(req, res, next);
+    const token = authHeader.split(' ')[1];
+
+    // Intentar validar token con Clerk
+    try {
+      const clerkUser = await verifyToken(token, {
+        secretKey: process.env.CLERK_SECRET_KEY
+      });
+
+      // Buscar usuario en nuestra base de datos
+      const user = await User.findOne({ 
+        clerkId: clerkUser.sub 
+      }).populate('roleAssignedBy', 'firstName lastName email');
+
+      if (user && user.isActive) {
+        // Usuario válido encontrado
+        req.user = {
+          id: user._id,
+          clerkId: user.clerkId,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          username: user.username,
+          role: user.role,
+          permissions: getRolePermissions(user.role),
+          customPermissions: user.customPermissions || [],
+          isActive: user.isActive,
+          dbUser: user
+        };
+        req.userId = user._id;
+        req.isAuthenticated = true;
+        req.auth = {
+          userId: user.clerkId,
+          sessionId: clerkUser.sid || null
+        };
+
+        // Actualizar último login (sin bloquear)
+        User.findByIdAndUpdate(user._id, { 
+          lastLogin: new Date() 
+        }).catch(err => 
+          logger.warn('Error actualizando lastLogin en optionalAuth', err)
+        );
+      } else {
+        // Usuario no encontrado o inactivo
+        req.user = null;
+        req.userId = null;
+        req.isAuthenticated = false;
+      }
+    } catch (tokenError) {
+      // Token inválido, continuar sin usuario
+      logger.debug('Token inválido en optionalAuth, continuando sin autenticación');
+      req.user = null;
+      req.userId = null;
+      req.isAuthenticated = false;
+    }
+
+    next();
 
   } catch (error) {
-    // En caso de error, continuar sin usuario
+    // Error general, continuar sin usuario
+    logger.error('Error en optionalAuth, continuando sin autenticación:', error);
     req.user = null;
     req.userId = null;
+    req.isAuthenticated = false;
     next();
   }
 };

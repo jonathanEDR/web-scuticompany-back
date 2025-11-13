@@ -194,7 +194,7 @@ const leadSchema = new mongoose.Schema({
   // ========================================
   origen: {
     type: String,
-    enum: ['web', 'referido', 'redes_sociales', 'email', 'telefono', 'evento', 'chat', 'otro'],
+    enum: ['web', 'web-authenticated', 'referido', 'redes_sociales', 'email', 'telefono', 'evento', 'chat', 'otro'],
     default: 'web'
   },
   

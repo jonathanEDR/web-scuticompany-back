@@ -10,20 +10,29 @@ import {
   getEstadisticas,
   getContactosPendientes,
   buscarContactos,
-  validateContactCreation
+  validateContactCreation,
+  getCategoriasTipoServicio
 } from '../controllers/contactController.js';
-import { requireAuth, requirePermission } from '../middleware/clerkAuth.js';
+import { requireAuth, requirePermission, optionalAuth } from '../middleware/clerkAuth.js';
 
 const router = express.Router();
 
 /**
- * 🌐 RUTAS PÚBLICAS (SIN AUTENTICACIÓN)
+ * 🌐 RUTAS PÚBLICAS (AUTENTICACIÓN OPCIONAL)
  * Para formulario de contacto del sitio web
+ * Funciona con o sin usuario autenticado
  */
+
+// GET /api/contact/categorias-tipos - Obtener mapeo de categorías a tipos de servicio
+router.get('/categorias-tipos', getCategoriasTipoServicio);
+
+// GET /api/contact/categorias-tipos - Obtener mapeo de categorías (público)
+router.get('/categorias-tipos', getCategoriasTipoServicio);
 
 // POST /api/contact - Crear nuevo contacto desde formulario público
 router.post(
   '/',
+  optionalAuth, // ✅ Detecta auth pero no la requiere
   validateContactCreation,
   createContact
 );

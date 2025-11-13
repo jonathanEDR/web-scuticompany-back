@@ -4,8 +4,185 @@ import { body, validationResult } from 'express-validator';
 import logger from '../utils/logger.js';
 
 /**
- * 📝 VALIDADORES
+ * 🗂️ MAPEO DINÁMICO DE CATEGORÍAS
+ * Obtiene categorías desde la base de datos y las mapea a valores del enum Lead.tipoServicio
  */
+const getCategoriaMapping = async () => {
+  try {
+    // Importar modelo de Categoria dinámicamente para evitar dependencias circulares
+    const { default: Categoria } = await import('../models/Categoria.js');
+    
+    const categorias = await Categoria.find({ activo: true }).select('nombre slug');
+    
+    // Crear mapeo de nombres de categorías a valores de tipoServicio del Lead
+    const mapping = {};
+    
+    categorias.forEach(cat => {
+      const nombre = cat.nombre.toLowerCase();
+      const slug = cat.slug.toLowerCase();
+      
+      // Mapeo basado en el slug de la categoría
+      switch (slug) {
+        case 'desarrollo-web':
+        case 'web':
+          mapping[nombre] = 'web';
+          mapping[slug] = 'web';
+          break;
+        case 'desarrollo-movil':
+        case 'app':
+        case 'aplicacion-movil':
+          mapping[nombre] = 'app';
+          mapping[slug] = 'app';
+          break;
+        case 'ecommerce':
+        case 'tienda-online':
+          mapping[nombre] = 'ecommerce';
+          mapping[slug] = 'ecommerce';
+          break;
+        case 'sistemas':
+        case 'mantenimiento':
+        case 'sistemas-web':
+          mapping[nombre] = 'sistemas';
+          mapping[slug] = 'sistemas';
+          break;
+        case 'consultoria':
+        case 'consulta':
+          mapping[nombre] = 'consultoria';
+          mapping[slug] = 'consultoria';
+          break;
+        case 'diseno':
+        case 'diseño':
+        case 'design':
+          mapping[nombre] = 'diseño';
+          mapping[slug] = 'diseño';
+          break;
+        case 'marketing':
+        case 'marketing-digital':
+          mapping[nombre] = 'marketing';
+          mapping[slug] = 'marketing';
+          break;
+        default:
+          mapping[nombre] = 'otro';
+          mapping[slug] = 'otro';
+      }
+    });
+    
+    // Agregar mapeos adicionales comunes
+    mapping['desarrollo'] = 'web';
+    mapping['desarrollo web'] = 'web';
+    mapping['aplicación móvil'] = 'app';
+    mapping['móvil'] = 'app';
+    mapping['e-commerce'] = 'ecommerce';
+    mapping['tienda online'] = 'ecommerce';
+    mapping['sistema'] = 'sistemas';
+    mapping['consultoría'] = 'consultoria';
+    mapping['consulta'] = 'consultoria';
+    mapping['design'] = 'diseño';
+    mapping['marketing digital'] = 'marketing';
+    mapping['otro'] = 'otro';
+    mapping['otros'] = 'otro';
+    
+    return mapping;
+  } catch (error) {
+    logger.warn('Error obteniendo categorías para mapeo:', error.message);
+    
+    // Fallback: mapeo estático básico
+    return {
+      'desarrollo web': 'web',
+      'desarrollo': 'web',
+      'web': 'web',
+      'aplicación móvil': 'app',
+      'app': 'app',
+      'móvil': 'app',
+      'e-commerce': 'ecommerce',
+      'ecommerce': 'ecommerce',
+      'tienda online': 'ecommerce',
+      'sistemas': 'sistemas',
+      'sistema': 'sistemas',
+      'mantenimiento': 'sistemas',
+      'consultoría': 'consultoria',
+      'consultoria': 'consultoria',
+      'consulta': 'consultoria',
+      'diseño': 'diseño',
+      'design': 'diseño',
+      'marketing': 'marketing',
+      'marketing digital': 'marketing',
+      'otro': 'otro',
+      'otros': 'otro'
+    };
+  }
+};
+
+/**
+ * 🔄 NORMALIZAR TIPO DE SERVICIO
+ * Convierte la categoría del frontend al valor del enum Lead.tipoServicio
+ */
+const normalizeServiceType = async (categoria) => {
+  if (!categoria) return 'otro';
+  
+  const mapping = await getCategoriaMapping();
+  const categoriaLower = categoria.toLowerCase().trim();
+  
+  // Buscar coincidencia exacta
+  if (mapping[categoriaLower]) {
+    return mapping[categoriaLower];
+  }
+  
+  // Buscar coincidencia parcial
+  for (const [key, value] of Object.entries(mapping)) {
+    if (categoriaLower.includes(key) || key.includes(categoriaLower)) {
+      return value;
+    }
+  }
+  
+  // Si no encuentra coincidencia, usar 'otro'
+  logger.info(`Categoría no mapeada: "${categoria}" -> usando "otro"`);
+  return 'otro';
+};
+
+/**
+ * �️ OBTENER MAPEO DE CATEGORÍAS (PÚBLICO)
+ * Endpoint para que el frontend obtenga el mapeo correcto de categorías
+ */
+export const getCategoriasTipoServicio = async (req, res) => {
+  try {
+    const mapping = await getCategoriaMapping();
+    
+    // También obtener las categorías completas con sus detalles
+    const { default: Categoria } = await import('../models/Categoria.js');
+    const categorias = await Categoria.find({ activo: true })
+      .select('nombre slug descripcion icono color')
+      .sort('orden nombre');
+    
+    // Crear respuesta con categorías y su mapeo a tipoServicio
+    const categoriasConMapeo = categorias.map(cat => ({
+      _id: cat._id,
+      nombre: cat.nombre,
+      slug: cat.slug,
+      descripcion: cat.descripcion,
+      icono: cat.icono,
+      color: cat.color,
+      tipoServicio: mapping[cat.nombre.toLowerCase()] || mapping[cat.slug.toLowerCase()] || 'otro'
+    }));
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        categorias: categoriasConMapeo,
+        mapping: mapping,
+        enumValues: ['web', 'app', 'ecommerce', 'sistemas', 'consultoria', 'diseño', 'marketing', 'otro']
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Error obteniendo mapeo de categorías:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error obteniendo categorías',
+      error: error.message
+    });
+  }
+};
 export const validateContactCreation = [
   body('nombre')
     .trim()
@@ -35,8 +212,11 @@ export const validateContactCreation = [
 ];
 
 /**
- * 📩 CREAR CONTACTO (PÚBLICO - SIN AUTH)
+ * 📩 CREAR CONTACTO (PÚBLICO - AUTH OPCIONAL)
  * Endpoint para el formulario público del sitio web
+ * ✅ Funciona sin autenticación (usuarios públicos)
+ * ✅ Detecta usuarios autenticados para mejor seguimiento
+ * ✅ TODO se guarda como Lead para el CRM
  */
 export const createContact = async (req, res) => {
   try {
@@ -54,80 +234,92 @@ export const createContact = async (req, res) => {
 
     const { nombre, celular, correo, mensaje, categoria } = req.body;
 
+    // 🔍 Detectar si el usuario está autenticado (gracias a optionalAuth)
+    const isAuthenticated = req.isAuthenticated || false;
+    const authenticatedUser = req.user || null;
+
     // Crear metadata desde la request
     const metadata = {
       ip: req.ip || req.connection.remoteAddress,
       userAgent: req.get('user-agent'),
       referrer: req.get('referer'),
-      idioma: req.get('accept-language')?.split(',')[0] || 'es'
+      idioma: req.get('accept-language')?.split(',')[0] || 'es',
+      authenticated: isAuthenticated
     };
 
-    // Crear nuevo contacto
-    const nuevoContacto = new Contact({
-      nombre,
-      celular,
-      correo,
-      mensaje,
-      origen: 'web',
-      tipoFormulario: 'contacto_general',
-      estado: 'nuevo',
-      prioridad: 'media',
-      metadata
-    });
-
-    await nuevoContacto.save();
-
-    // 🎯 INTEGRACIÓN CRM: Crear también un Lead para gestión interna
-    try {
-      const nuevoLead = new Lead({
-        nombre,
-        celular,
-        correo: correo,
-        tipoServicio: categoria || 'consultoria',
-        descripcionProyecto: mensaje,
-        estado: 'nuevo',
-        prioridad: 'media',
-        origen: 'web',
-        tags: ['contacto-publico', 'formulario-web', ...(categoria ? [categoria] : [])],
-        creadoPor: {
-          userId: 'system', // Sistema para contactos públicos
-          nombre: 'Sistema Público',
-          email: 'system@webscuti.com'
-        },
-        // Agregar actividad inicial
-        actividades: [{
-          fecha: new Date(),
-          tipo: 'nota',
-          descripcion: 'Lead creado automáticamente desde formulario público del sitio web',
-          usuarioId: 'system',
-          usuarioNombre: 'Sistema Público'
-        }]
-      });
-
-      await nuevoLead.save();
-      
-      logger.info(`✅ Lead CRM ${nuevoLead._id} creado automáticamente desde contacto público ${nuevoContacto._id}`);
-    } catch (crmError) {
-      // No fallar si hay error en CRM, el contacto ya se guardó
-      logger.error('⚠️ Error al crear Lead en CRM desde contacto público:', crmError);
+    // 🎯 SIMPLIFICADO: Crear SOLO Lead (no Contact)
+    // El CRM maneja todo como Leads
+    // Normalizar/validar el tipo de servicio dinámicamente desde las categorías de la BD
+    const tipoServicioSafe = await normalizeServiceType(categoria);
+    
+    // Si no se pudo mapear correctamente, preservar la categoría original
+    if (categoria && tipoServicioSafe === 'otro' && categoria.toLowerCase() !== 'otro') {
+      metadata.originalCategoria = categoria;
     }
 
-    // Respuesta exitosa (sin datos sensibles)
-    res.status(201).json({
-      success: true,
-      message: '¡Gracias por contactarnos! Te responderemos pronto.',
-      contactId: nuevoContacto._id
+    const nuevoLead = new Lead({
+      nombre,
+      celular,
+      correo: correo,
+      tipoServicio: tipoServicioSafe,
+      descripcionProyecto: mensaje,
+      estado: 'nuevo',
+      prioridad: isAuthenticated ? 'alta' : 'media', // Priorizar usuarios registrados
+      origen: isAuthenticated ? 'web-authenticated' : 'web',
+      tags: [
+        isAuthenticated ? 'usuario-registrado' : 'contacto-publico',
+        'formulario-web',
+        ...(categoria ? [categoria] : [])
+      ],
+      creadoPor: {
+        userId: authenticatedUser?.id || 'system',
+        nombre: isAuthenticated ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}`.trim() : 'Sistema Público',
+        email: isAuthenticated ? authenticatedUser.email : 'system@webscuti.com'
+      },
+      // 🔗 Vincular con usuario si está autenticado
+      ...(isAuthenticated && authenticatedUser?.id && { 
+        usuarioVinculado: authenticatedUser.id 
+      }),
+      // Metadata adicional
+      metadata: {
+        ...metadata,
+        clerkId: authenticatedUser?.clerkId || null
+      },
+      actividades: [{
+        fecha: new Date(),
+        tipo: 'nota',
+        descripcion: isAuthenticated 
+          ? `✅ Lead creado por usuario registrado: ${nombre} (${correo})`
+          : `📝 Lead creado desde formulario público sin registro`,
+        usuarioId: authenticatedUser?.id || 'system',
+        usuarioNombre: isAuthenticated ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}`.trim() : 'Sistema Público'
+      }]
     });
 
-    // Log del nuevo contacto
-    logger.info('✉️ Nuevo contacto recibido:', {
-      id: nuevoContacto._id,
-      nombre: nuevoContacto.nombre,
-      correo: nuevoContacto.correo
+    await nuevoLead.save();
+
+    // Respuesta exitosa
+    res.status(201).json({
+      success: true,
+      message: isAuthenticated 
+        ? '¡Gracias! Puedes hacer seguimiento en tu panel de cliente.' 
+        : '¡Gracias por contactarnos! Te responderemos pronto.',
+      leadId: nuevoLead._id,
+      canAccessPanel: isAuthenticated, // Indicar si puede acceder al panel
+      userType: isAuthenticated ? 'registered' : 'public'
+    });
+
+    // Log del nuevo lead
+    logger.info(`✉️ Nuevo Lead CRM creado desde formulario ${isAuthenticated ? 'con usuario registrado' : 'público'}:`, {
+      id: nuevoLead._id,
+      nombre: nuevoLead.nombre,
+      correo: nuevoLead.correo,
+      authenticated: isAuthenticated,
+      userId: authenticatedUser?.id || 'público'
     });
 
   } catch (error) {
-    
+    logger.error('Error al crear contacto/lead:', error);
     res.status(500).json({
       success: false,
       message: 'Error al procesar tu mensaje. Por favor, intenta nuevamente.'
