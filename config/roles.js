@@ -160,7 +160,31 @@ export const PERMISSIONS = {
   EXPORT_BLOG_DATA: 'EXPORT_BLOG_DATA',               // Exportar datos del blog
   
   // Blog SEO - Gestión avanzada
-  MANAGE_BLOG_SEO: 'MANAGE_BLOG_SEO'                  // Gestionar configuración SEO avanzada
+  MANAGE_BLOG_SEO: 'MANAGE_BLOG_SEO',                 // Gestionar configuración SEO avanzada
+  
+  // ========================================
+  // 📅 PERMISOS DE EVENTOS/AGENDA
+  // ========================================
+  
+  // Eventos - Lectura
+  VIEW_ALL_EVENTS: 'VIEW_ALL_EVENTS',                 // Ver todos los eventos del sistema
+  VIEW_OWN_EVENTS: 'VIEW_OWN_EVENTS',                 // Ver solo eventos propios (organizador o participante)
+  VIEW_TEAM_EVENTS: 'VIEW_TEAM_EVENTS',               // Ver eventos del equipo
+  
+  // Eventos - Escritura
+  CREATE_EVENTS: 'CREATE_EVENTS',                     // Crear nuevos eventos
+  EDIT_ALL_EVENTS: 'EDIT_ALL_EVENTS',                 // Editar cualquier evento
+  EDIT_OWN_EVENTS: 'EDIT_OWN_EVENTS',                 // Editar solo eventos propios
+  DELETE_EVENTS: 'DELETE_EVENTS',                     // Eliminar eventos
+  
+  // Eventos - Gestión
+  MANAGE_EVENT_ATTENDEES: 'MANAGE_EVENT_ATTENDEES',   // Gestionar participantes de eventos
+  RESPOND_TO_EVENTS: 'RESPOND_TO_EVENTS',             // Responder a invitaciones de eventos
+  MANAGE_EVENT_REMINDERS: 'MANAGE_EVENT_REMINDERS',   // Gestionar recordatorios
+  
+  // Eventos - Analytics
+  VIEW_EVENT_ANALYTICS: 'VIEW_EVENT_ANALYTICS',       // Ver estadísticas de eventos
+  EXPORT_EVENT_DATA: 'EXPORT_EVENT_DATA'              // Exportar datos de eventos
 };
 
 // Matriz de permisos por rol
@@ -241,7 +265,20 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.REPLY_COMMENTS,
     PERMISSIONS.VIEW_BLOG_ANALYTICS,
     PERMISSIONS.EXPORT_BLOG_DATA,
-    PERMISSIONS.MANAGE_BLOG_SEO
+    PERMISSIONS.MANAGE_BLOG_SEO,
+    // Eventos/Agenda - Acceso total
+    PERMISSIONS.VIEW_ALL_EVENTS,
+    PERMISSIONS.VIEW_OWN_EVENTS,
+    PERMISSIONS.VIEW_TEAM_EVENTS,
+    PERMISSIONS.CREATE_EVENTS,
+    PERMISSIONS.EDIT_ALL_EVENTS,
+    PERMISSIONS.EDIT_OWN_EVENTS,
+    PERMISSIONS.DELETE_EVENTS,
+    PERMISSIONS.MANAGE_EVENT_ATTENDEES,
+    PERMISSIONS.RESPOND_TO_EVENTS,
+    PERMISSIONS.MANAGE_EVENT_REMINDERS,
+    PERMISSIONS.VIEW_EVENT_ANALYTICS,
+    PERMISSIONS.EXPORT_EVENT_DATA
   ],
   
   [ROLES.ADMIN]: [
@@ -317,7 +354,20 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.REPLY_COMMENTS,
     PERMISSIONS.VIEW_BLOG_ANALYTICS,
     PERMISSIONS.EXPORT_BLOG_DATA,
-    PERMISSIONS.MANAGE_BLOG_SEO
+    PERMISSIONS.MANAGE_BLOG_SEO,
+    // Eventos/Agenda - Gestión completa
+    PERMISSIONS.VIEW_ALL_EVENTS,
+    PERMISSIONS.VIEW_OWN_EVENTS,
+    PERMISSIONS.VIEW_TEAM_EVENTS,
+    PERMISSIONS.CREATE_EVENTS,
+    PERMISSIONS.EDIT_ALL_EVENTS,
+    PERMISSIONS.EDIT_OWN_EVENTS,
+    PERMISSIONS.DELETE_EVENTS,
+    PERMISSIONS.MANAGE_EVENT_ATTENDEES,
+    PERMISSIONS.RESPOND_TO_EVENTS,
+    PERMISSIONS.MANAGE_EVENT_REMINDERS,
+    PERMISSIONS.VIEW_EVENT_ANALYTICS,
+    PERMISSIONS.EXPORT_EVENT_DATA
   ],
   
   [ROLES.MODERATOR]: [
@@ -359,7 +409,14 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_BLOG_CATEGORIES,
     PERMISSIONS.VIEW_BLOG_TAGS,
     PERMISSIONS.MODERATE_COMMENTS,
-    PERMISSIONS.REPLY_COMMENTS
+    PERMISSIONS.REPLY_COMMENTS,
+    // Eventos/Agenda - Solo propios
+    PERMISSIONS.VIEW_OWN_EVENTS,
+    PERMISSIONS.VIEW_TEAM_EVENTS,
+    PERMISSIONS.CREATE_EVENTS,
+    PERMISSIONS.EDIT_OWN_EVENTS,
+    PERMISSIONS.RESPOND_TO_EVENTS,
+    PERMISSIONS.MANAGE_EVENT_REMINDERS
   ],
   
   [ROLES.CLIENT]: [
@@ -375,6 +432,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_PUBLISHED_POSTS,
     PERMISSIONS.VIEW_BLOG_CATEGORIES,
     PERMISSIONS.VIEW_BLOG_TAGS
+    // Eventos/Agenda - NO TIENE ACCESO (Solo área administrativa)
   ],
   
   [ROLES.USER]: [
@@ -391,6 +449,8 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_PUBLISHED_POSTS,    // Ver posts publicados
     PERMISSIONS.VIEW_BLOG_CATEGORIES,    // Ver categorías
     PERMISSIONS.VIEW_BLOG_TAGS           // Ver tags
+    
+    // 📅 Eventos/Agenda - NO TIENE ACCESO (Solo área administrativa)
   ]
 };
 
