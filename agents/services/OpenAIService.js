@@ -718,9 +718,10 @@ class OpenAIService {
         throw new Error('OpenAI API key not configured');
       }
 
-      // Verificar caché simple
+      // Verificar caché simple (TEMPORALMENTE DESHABILITADO PARA DEBUGGING)
       const cacheKey = this.generateCacheKey(messages);
-      const cached = this.getFromCache(cacheKey);
+      const cached = false; // ← TEMP: Deshabilitar cache
+      // const cached = this.getFromCache(cacheKey);
       if (cached) {
         logger.info('🎯 Using cached OpenAI response');
         return cached;

@@ -47,14 +47,16 @@ class AgentOrchestrator extends EventEmitter {
       }
 
       const agentId = agent.id || agent.name;
+      const agentName = agent.name;
       
       // Verificar si ya existe
       if (this.agents.has(agentId)) {
         logger.warn(`⚠️  Agent ${agentId} already registered, updating...`);
       }
 
-      // Registrar el agente
+      // Registrar el agente por ID (único) Y por nombre (para búsqueda fácil)
       this.agents.set(agentId, agent);
+      this.agents.set(agentName, agent); // ← FIX: También registrar por nombre
       this.metrics.totalAgents = this.agents.size;
 
       // Configurar listeners de eventos
@@ -65,6 +67,7 @@ class AgentOrchestrator extends EventEmitter {
       
       if (activationResult.success) {
         this.activeAgents.add(agentId);
+        this.activeAgents.add(agentName); // ← FIX: También agregar nombre a activos
         this.metrics.activeAgents = this.activeAgents.size;
         
         logger.success(`✅ Agent ${agent.name} registered and activated`);
@@ -87,6 +90,7 @@ class AgentOrchestrator extends EventEmitter {
    */
   setupAgentListeners(agent) {
     const agentId = agent.id || agent.name;
+    const agentName = agent.name;
 
     // Listener para cuando un agente completa una tarea
     agent.on('task:completed', (data) => {
@@ -107,6 +111,7 @@ class AgentOrchestrator extends EventEmitter {
     // Listener para cuando un agente es activado
     agent.on('agent:activated', (data) => {
       this.activeAgents.add(agentId);
+      this.activeAgents.add(agentName); // ← FIX: También agregar nombre
       this.metrics.activeAgents = this.activeAgents.size;
       logger.success(`🟢 Agent ${agent.name} activated`);
     });
@@ -114,6 +119,7 @@ class AgentOrchestrator extends EventEmitter {
     // Listener para cuando un agente es desactivado
     agent.on('agent:deactivated', (data) => {
       this.activeAgents.delete(agentId);
+      this.activeAgents.delete(agentName); // ← FIX: También remover nombre
       this.metrics.activeAgents = this.activeAgents.size;
       logger.info(`🔴 Agent ${agent.name} deactivated`);
     });

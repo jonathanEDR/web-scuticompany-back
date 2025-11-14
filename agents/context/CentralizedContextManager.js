@@ -230,10 +230,10 @@ export class CentralizedContextManager {
         }
       }
 
-      // 2. Buscar en DB
+      // 2. Buscar en DB (permitir reactivar sesiones completadas)
       const session = await GerenteSession.findOne({ 
         sessionId,
-        status: { $in: ['active', 'idle'] }
+        status: { $in: ['active', 'idle', 'completed'] }
       });
 
       if (!session) {
@@ -241,11 +241,16 @@ export class CentralizedContextManager {
         return null;
       }
 
-      // 3. Actualizar actividad
+      // 3. Reactivar sesión y actualizar actividad
+      const wasCompleted = session.status === 'completed';
       session.lastActivity = new Date();
       session.status = 'active';
       session.extendExpiration();
       await session.save();
+      
+      if (wasCompleted) {
+        logger.info(`🔄 Sesión reactivada desde estado completado: ${sessionId}`);
+      }
 
       // 4. Guardar en cache
       this.cacheSession(sessionId, session);
@@ -523,12 +528,25 @@ export class CentralizedContextManager {
    */
   async getUserSessions(userId, limit = 10) {
     try {
-      const sessions = await GerenteSession.find({ userId })
+      // Filtrar sesiones que tengan al menos una interacción válida (no solo status)
+      const sessions = await GerenteSession.find({ 
+        userId,
+        'interactions.0': { $exists: true } // Al menos 1 interacción
+      })
         .sort({ lastActivity: -1 })
-        .limit(limit)
+        .limit(limit * 2) // Obtener más para filtrar luego
         .select('sessionId status globalContext createdAt lastActivity interactions');
 
-      return sessions.map(s => this.sanitizeSession(s));
+      // Filtrar sesiones que tengan mensajes reales (no solo status)
+      const validSessions = sessions.filter(s => {
+        return s.interactions.some(interaction => 
+          interaction.action === 'coordinate' || 
+          interaction.action === 'route' ||
+          (interaction.input?.userMessage || interaction.input?.task?.command)
+        );
+      }).slice(0, limit);
+
+      return validSessions.map(s => this.sanitizeSession(s));
 
     } catch (error) {
       logger.error('❌ Error obteniendo sesiones del usuario:', error);

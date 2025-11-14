@@ -16,7 +16,9 @@
     "reset:agent:blog": "node scripts/resetAgents.js blog",
     "reset:agent:seo": "node scripts/resetAgents.js seo",
     "reset:agent:services": "node scripts/resetAgents.js services",
-    "reset:agent:gerente": "node scripts/resetAgents.js gerente"
+    "reset:agent:gerente": "node scripts/resetAgents.js gerente",
+    "migrate:blogagent": "node agents/specialized/migrate-blogagent.js",
+    "rollback:blogagent": "node agents/specialized/migrate-blogagent.js rollback"
   },
   "keywords": [
     "express",

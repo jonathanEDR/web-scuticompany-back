@@ -133,10 +133,19 @@ export class BaseAgent extends EventEmitter {
    * Verificar si el agente puede manejar una tarea
    */
   canHandle(task) {
-    if (!task || !task.type) return false;
+    if (!task) return false;
+    
+    // Si no tiene tipo, asumir que es una tarea válida (comando directo)
+    if (!task.type) return true; // ← FIX: Permitir tareas sin tipo explícito
     
     // Verificar capacidades
     const taskType = task.type.toLowerCase();
+    
+    // Siempre permitir comandos de lenguaje natural
+    if (taskType.includes('natural_language') || taskType.includes('command')) {
+      return true; // ← FIX: Todos los agentes pueden procesar lenguaje natural
+    }
+    
     return this.capabilities.some(capability => 
       capability.toLowerCase().includes(taskType) || 
       taskType.includes(capability.toLowerCase())

@@ -4,9 +4,10 @@
  */
 
 import BaseAgent from './BaseAgent.js';
-import AgentOrchestrator from './AgentOrchestrator.js';
+import orchestrator from './AgentOrchestrator.js';
 import centralizedContext from '../context/CentralizedContextManager.js';
 import AgentConfig from '../../models/AgentConfig.js';
+import openaiService from '../services/OpenAIService.js';
 import logger from '../../utils/logger.js';
 
 export class GerenteGeneral extends BaseAgent {
@@ -24,7 +25,8 @@ export class GerenteGeneral extends BaseAgent {
       ]
     });
 
-    this.orchestrator = AgentOrchestrator;
+    this.orchestrator = orchestrator;
+    this.openaiService = openaiService;
     this.routingRules = this.initializeRoutingRules();
     this.config = null; // Configuración desde base de datos
     
@@ -300,16 +302,27 @@ export class GerenteGeneral extends BaseAgent {
 
       const duration = Date.now() - startTime;
 
-      // Registrar interacción en contexto centralizado
-      await centralizedContext.addInteraction(
-        sessionId,
-        'GerenteGeneral',
-        task.action,
-        { task },
-        result,
-        duration,
-        result.success !== false
-      );
+      // Registrar interacción en contexto centralizado con formato mejorado
+      // NO registrar acciones de consulta (status, session_info) para evitar referencias circulares
+      const readOnlyActions = ['status', 'session_info'];
+      if (!readOnlyActions.includes(task.action)) {
+        await centralizedContext.addInteraction(
+          sessionId,
+          'GerenteGeneral',
+          task.action,
+          { 
+            task,
+            userMessage: task.command, // Mensaje original del usuario
+            userCommand: task.command
+          },
+          {
+            ...result,
+            agentResponse: result.message || result.response || result.result?.message // Respuesta del agente
+          },
+          duration,
+          result.success !== false
+        );
+      }
 
       // Actualizar métricas de éxito
       this.metrics.successfulTasks++;
@@ -367,11 +380,53 @@ export class GerenteGeneral extends BaseAgent {
       const targetAgents = this.identifyRequiredAgents(command);
 
       if (targetAgents.length === 0) {
-        return {
-          success: false,
-          message: 'No se pudo identificar agentes para esta tarea',
-          command
-        };
+        // No se identificó ningún agente específico
+        // El GerenteGeneral responde directamente como consultor general
+        logger.info(`💼 GerenteGeneral responderá directamente (sin delegación)`);
+        
+        try {
+          // Usar OpenAI para responder como gerente general
+          const prompt = `Como Gerente General de una empresa de tecnología, responde a la siguiente consulta de manera profesional y útil:
+
+"${command}"
+
+Proporciona una respuesta estratégica, práctica y orientada a resultados. Si es una pregunta sobre gestión, liderazgo o recomendaciones generales, ofrece insights valiosos basados en mejores prácticas.`;
+
+          const aiResponse = await this.openaiService.generateChatResponse([
+            { role: 'system', content: 'Eres un Gerente General experimentado de una empresa de tecnología. Proporcionas orientación estratégica, liderazgo y recomendaciones basadas en mejores prácticas empresariales.' },
+            { role: 'user', content: command }
+          ], {
+            temperature: 0.7,
+            max_tokens: 1500
+          });
+
+          return {
+            success: true,
+            message: aiResponse.content || aiResponse,
+            type: 'direct_response',
+            source: 'gerente_general',
+            agentsInvolved: ['GerenteGeneral']
+          };
+
+        } catch (error) {
+          logger.error('❌ Error en respuesta directa del GerenteGeneral:', error);
+          
+          // Fallback si falla OpenAI
+          return {
+            success: true,
+            message: `Como Gerente General, entiendo tu consulta: "${command}". 
+
+Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especializados:
+• BlogAgent - Para contenido y artículos
+• SEOAgent - Para optimización y posicionamiento
+• ServicesAgent - Para gestión de servicios
+
+¿Podrías reformular tu pregunta siendo más específico sobre qué área necesitas ayuda?`,
+            type: 'direct_response',
+            source: 'gerente_general_fallback',
+            agentsInvolved: ['GerenteGeneral']
+          };
+        }
       }
 
       // Delegar a cada agente
@@ -400,11 +455,15 @@ export class GerenteGeneral extends BaseAgent {
         );
       }
 
+      // Si hay canvas_data en los resultados, agregarlo a la respuesta principal
+      const canvasData = this.extractCanvasData(results);
+
       return {
         success: true,
         message: 'Tarea coordinada exitosamente',
         agents: targetAgents.map(a => a.agent),
-        results
+        results,
+        ...(canvasData && { canvas_data: canvasData })
       };
 
     } catch (error) {
@@ -413,6 +472,73 @@ export class GerenteGeneral extends BaseAgent {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * Extraer datos de canvas de los resultados de los agentes
+   * Busca canvas_data en las respuestas y lo formatea
+   */
+  extractCanvasData(results) {
+    try {
+      for (const agentResult of results) {
+        const result = agentResult.result;
+        
+        // Buscar canvas_data en diferentes niveles de la respuesta
+        if (result.canvas_data) {
+          return result.canvas_data;
+        }
+        
+        if (result.result && result.result.canvas_data) {
+          return result.result.canvas_data;
+        }
+
+        // Si el resultado tiene datos estructurados de blog o servicio
+        if (result.blog || result.blogPost) {
+          return {
+            type: 'blog',
+            mode: 'preview',
+            data: result.blog || result.blogPost,
+            metadata: {
+              agent: agentResult.agent,
+              action: 'blog_preview'
+            }
+          };
+        }
+
+        if (result.service || result.servicio) {
+          return {
+            type: 'service',
+            mode: 'preview',
+            data: result.service || result.servicio,
+            metadata: {
+              agent: agentResult.agent,
+              action: 'service_preview'
+            }
+          };
+        }
+
+        // Si tiene una lista de items
+        if (result.items && Array.isArray(result.items)) {
+          return {
+            type: 'list',
+            mode: 'list',
+            data: {
+              items: result.items,
+              totalCount: result.totalCount || result.items.length
+            },
+            metadata: {
+              agent: agentResult.agent,
+              action: 'list_items'
+            }
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      logger.error('❌ Error extrayendo canvas data:', error);
+      return null;
     }
   }
 
@@ -671,7 +797,7 @@ export class GerenteGeneral extends BaseAgent {
           userRole: session.userRole,
           globalContext: session.globalContext,
           interactionsCount: session.interactions.length,
-          recentInteractions: session.interactions.slice(-5),
+          interactions: session.interactions, // Devolver TODAS las interacciones
           sharedDataKeys: Array.from(session.sharedData.keys()),
           status: session.status,
           createdAt: session.createdAt,
@@ -805,8 +931,11 @@ export class GerenteGeneral extends BaseAgent {
       logger.info(`📤 Delegando a ${agentName}: ${action}`);
 
       // Ejecutar tarea en agente
+      // BaseAgent espera un objeto con 'type', 'action' o contenido directo
       const result = await agent.processTask({
-        action,
+        type: 'natural_language_command', // ← FIX: Agregar type para BaseAgent.canHandle()
+        command: action, // ← El comando original como texto (puede ser el mensaje del usuario)
+        action: params.action || 'process', // ← Acción específica si se proporciona
         ...params
       });
 

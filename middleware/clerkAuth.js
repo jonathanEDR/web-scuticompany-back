@@ -32,28 +32,43 @@ export const requireAuth = async (req, res, next) => {
     // Validar token con Clerk
     let clerkUser;
     try {
-      if (!process.env.CLERK_SECRET_KEY) {
-        logger.error('CLERK_SECRET_KEY no está configurado en variables de entorno');
-        return res.status(500).json({
-          success: false,
-          message: 'Error de configuración del servidor',
-          code: 'MISSING_CLERK_CONFIG'
-        });
-      }
-
-      // En desarrollo, permitir validación local de JWT
-      if (process.env.NODE_ENV === 'development') {
+      // En desarrollo, permitir tokens de prueba locales PRIMERO
+      if (process.env.NODE_ENV === 'development' && process.env.JWT_SECRET) {
         try {
-          clerkUser = jwt.verify(token, process.env.CLERK_SECRET_KEY, {
+          clerkUser = jwt.verify(token, process.env.JWT_SECRET, {
             algorithms: ['HS256'],
             ignoreExpiration: false
           });
+          logger.info('✅ Token de prueba local validado');
         } catch (localError) {
-          clerkUser = await verifyToken(token, {
-            secretKey: process.env.CLERK_SECRET_KEY
-          });
+          logger.info('❌ Token no es de prueba local, intentando con Clerk...');
+          // Si falla con JWT_SECRET, intentar con CLERK_SECRET_KEY
+          if (!process.env.CLERK_SECRET_KEY) {
+            throw new Error('CLERK_SECRET_KEY no está configurado');
+          }
+          
+          try {
+            clerkUser = jwt.verify(token, process.env.CLERK_SECRET_KEY, {
+              algorithms: ['HS256', 'RS256'],
+              ignoreExpiration: false
+            });
+          } catch (clerkJwtError) {
+            // Intentar con SDK de Clerk como último recurso
+            clerkUser = await verifyToken(token, {
+              secretKey: process.env.CLERK_SECRET_KEY
+            });
+          }
         }
       } else {
+        if (!process.env.CLERK_SECRET_KEY) {
+          logger.error('CLERK_SECRET_KEY no está configurado en variables de entorno');
+          return res.status(500).json({
+            success: false,
+            message: 'Error de configuración del servidor',
+            code: 'MISSING_CLERK_CONFIG'
+          });
+        }
+        
         // En producción, usar la SDK de Clerk
         clerkUser = await verifyToken(token, {
           secretKey: process.env.CLERK_SECRET_KEY
