@@ -10,7 +10,13 @@
     "seed:servicios": "node scripts/seedServicios.js",
     "seed:mensajeria": "node scripts/seedMensajeria.js",
     "migrate:indexes": "node scripts/addIndexes.js",
-    "verify": "node scripts/verifyOptimizations.js"
+    "verify": "node scripts/verifyOptimizations.js",
+    "clean:indexes": "node scripts/cleanDuplicateIndexes.js",
+    "reset:agents": "node scripts/resetAgents.js",
+    "reset:agent:blog": "node scripts/resetAgents.js blog",
+    "reset:agent:seo": "node scripts/resetAgents.js seo",
+    "reset:agent:services": "node scripts/resetAgents.js services",
+    "reset:agent:gerente": "node scripts/resetAgents.js gerente"
   },
   "keywords": [
     "express",
@@ -30,6 +36,7 @@
     "express-rate-limit": "^8.1.0",
     "express-validator": "^7.3.0",
     "joi": "^18.0.1",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.1",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",

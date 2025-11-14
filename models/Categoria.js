@@ -62,7 +62,7 @@ const categoriaSchema = new mongoose.Schema(
 categoriaSchema.index({ activo: 1, orden: 1 });
 // ✅ Optimización: Índices adicionales para queries frecuentes
 categoriaSchema.index({ activo: 1 });  // Para findActivas y búsquedas de categorías activas
-categoriaSchema.index({ slug: 1 });  // Para búsquedas por slug
+// slug ya tiene unique: true, no necesita índice adicional
 
 // Virtual: Servicios asociados
 categoriaSchema.virtual('servicios', {

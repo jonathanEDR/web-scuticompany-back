@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import fileUpload from 'express-fileupload';
 import rateLimit from 'express-rate-limit';
+import mongoose from 'mongoose';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import connectDB from './config/database.js';
@@ -23,13 +24,17 @@ import commentsRoutes from './routes/comments.js';
 import profileRoutes from './routes/profile.js';
 import userBlogRoutes from './routes/userBlog.js';
 import agentsRoutes from './routes/agents.js';
+import gerenteRoutes from './routes/gerente.js';
 import agentTestingRoutes from './routes/agentTesting.js';
 import aiAnalyticsRoutes from './routes/ai/analytics.js';
+import eventRoutes from './routes/events.js';
+import agentAgendaRoutes from './routes/agentAgenda.js';
 import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import { inicializarCategorias } from './utils/categoriaInitializer.js';
 import { inicializarPlantillasMensajes } from './utils/messageInitializer.js';
 import { initializeCacheConfig } from './utils/cacheInitializer.js';
+import { initializeAllAgents } from './utils/agentInitializer.js';
 import logger from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -62,7 +67,10 @@ async function initializeServer() {
     await inicializarPlantillasMensajes();
     await initializeCacheConfig();
     
-    // 3. Marcar DB como lista
+    // 3. Inicializar configuraciones de agentes con datos de entrenamiento
+    await initializeAllAgents();
+    
+    // 4. Marcar DB como lista
     isDbReady = true;
     logger.success('✅ Base de datos y configuraciones inicializadas');
     
@@ -428,8 +436,11 @@ app.use('/api', commentsRoutes); // 💬 Comments & Moderation Routes (Sprint 4)
 app.use('/api/profile', profileRoutes); // 👤 Profile Routes (Social System)
 app.use('/api/user-blog', userBlogRoutes); // 📚 User Blog Activity Routes (Dashboard)
 app.use('/api/agents', agentsRoutes); // 🤖 AI Agents System Routes (NEW)
+app.use('/api/gerente', gerenteRoutes); // 👔 Gerente General Routes (Coordinator)
 app.use('/api/ai', aiAnalyticsRoutes); // 📊 AI Analytics & Tracking Routes (NEW)
 app.use('/api/agents/testing', agentTestingRoutes); // 🧪 Advanced AI Testing Suite (NEW)
+app.use('/api/events', eventRoutes); // 📅 Events/Agenda System Routes (NEW)
+app.use('/api/agents/agenda', agentAgendaRoutes); // 📅 Agenda for Agents (GerenteGeneral) (NEW)
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

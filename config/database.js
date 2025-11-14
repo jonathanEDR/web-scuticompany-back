@@ -45,6 +45,10 @@ const connectDB = async () => {
 
     console.log(`MongoDB Connected: ${mongoose.connection.host}`);
     console.log(`📊 Pool Size: Min ${options.minPoolSize} - Max ${options.maxPoolSize}`);
+    
+    // 🔧 Sincronizar índices: elimina índices huérfanos y crea los faltantes
+    // Previene warnings de índices duplicados
+    await mongoose.connection.syncIndexes();
 
     // Eventos de conexión - solo errores críticos
     mongoose.connection.on('error', (err) => {

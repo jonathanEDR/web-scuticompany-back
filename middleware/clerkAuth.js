@@ -6,6 +6,7 @@
  */
 
 import { verifyToken } from '@clerk/clerk-sdk-node';
+import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { getRolePermissions } from '../config/roles.js';
 import logger from '../utils/logger.js';
@@ -31,9 +32,8 @@ export const requireAuth = async (req, res, next) => {
     // Validar token con Clerk
     let clerkUser;
     try {
-      // Debug: verificar que tenemos la clave secreta
       if (!process.env.CLERK_SECRET_KEY) {
-        logger.error('❌ CLERK_SECRET_KEY no está configurado en variables de entorno');
+        logger.error('CLERK_SECRET_KEY no está configurado en variables de entorno');
         return res.status(500).json({
           success: false,
           message: 'Error de configuración del servidor',
@@ -41,12 +41,27 @@ export const requireAuth = async (req, res, next) => {
         });
       }
 
-      clerkUser = await verifyToken(token, {
-        secretKey: process.env.CLERK_SECRET_KEY
-      });
+      // En desarrollo, permitir validación local de JWT
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          clerkUser = jwt.verify(token, process.env.CLERK_SECRET_KEY, {
+            algorithms: ['HS256'],
+            ignoreExpiration: false
+          });
+        } catch (localError) {
+          clerkUser = await verifyToken(token, {
+            secretKey: process.env.CLERK_SECRET_KEY
+          });
+        }
+      } else {
+        // En producción, usar la SDK de Clerk
+        clerkUser = await verifyToken(token, {
+          secretKey: process.env.CLERK_SECRET_KEY
+        });
+      }
 
     } catch (clerkError) {
-      logger.warn('❌ Token inválido de Clerk', { 
+      logger.warn('Token inválido de Clerk', { 
         error: clerkError.message,
         tokenPreview: token.substring(0, 20) + '...'
       });

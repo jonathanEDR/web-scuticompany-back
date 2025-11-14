@@ -7,6 +7,8 @@ import AgentOrchestrator from '../agents/core/AgentOrchestrator.js';
 import BlogAgent from '../agents/specialized/BlogAgent.js';
 import seoAgent from '../agents/specialized/SEOAgent.js';
 import ServicesAgent from '../agents/specialized/services/ServicesAgent.js';
+import gerenteGeneral from '../agents/core/GerenteGeneral.js';
+import centralizedContext from '../agents/context/CentralizedContextManager.js';
 import openaiService from '../agents/services/OpenAIService.js';
 import AgentConfig from '../models/AgentConfig.js';
 import logger from '../utils/logger.js';
@@ -54,9 +56,19 @@ const initializeAgents = async () => {
     } else {
       logger.error('❌ Failed to register ServicesAgent:', servicesRegistrationResult.error);
     }
+
+    // Registrar GerenteGeneral (ya viene inicializado como singleton)
+    const gerenteRegistrationResult = await AgentOrchestrator.registerAgent(gerenteGeneral);
+    
+    if (gerenteRegistrationResult.success) {
+      logger.success('✅ Agent GerenteGeneral registered and activated');
+      logger.info('👔 GerenteGeneral ready to coordinate all agents');
+    } else {
+      logger.error('❌ Failed to register GerenteGeneral:', gerenteRegistrationResult.error);
+    }
     
     // Marcar sistema como inicializado si al menos un agente fue registrado
-    if (blogRegistrationResult.success || seoRegistrationResult.success || servicesRegistrationResult.success) {
+    if (blogRegistrationResult.success || seoRegistrationResult.success || servicesRegistrationResult.success || gerenteRegistrationResult.success) {
       logger.success('✅ Agent system initialized successfully');
       isInitialized = true;
     } else {
@@ -1090,6 +1102,417 @@ export const processContextPattern = async (req, res) => {
   }
 };
 
+// ============================================================================
+// GERENTE GENERAL ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/gerente/command
+ * Procesar comando a través del Gerente General
+ */
+export const processGerenteCommand = async (req, res) => {
+  try {
+    const { 
+      command, 
+      action = 'coordinate',
+      params = {},
+      sessionId,
+      targetAgent 
+    } = req.body;
+
+    if (!command && action !== 'status' && action !== 'session_info') {
+      return res.status(400).json({
+        success: false,
+        error: 'Se requiere un comando'
+      });
+    }
+
+    logger.info(`👔 Gerente procesando: ${action} - ${command || 'N/A'}`);
+
+    // Construir contexto
+    const context = {
+      sessionId,
+      userId: req.auth?.userId || req.user?.clerkId || 'anonymous',
+      userRole: req.user?.role || 'guest'
+    };
+
+    // Construir tarea
+    const task = {
+      action,
+      command,
+      params,
+      targetAgent
+    };
+
+    // Procesar con GerenteGeneral
+    const result = await gerenteGeneral.processTask(task, context);
+
+    // Responder
+    res.json({
+      success: result.success !== false,
+      data: result,
+      sessionId: result.sessionId || sessionId
+    });
+
+  } catch (error) {
+    logger.error('❌ Error en processGerenteCommand:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error procesando comando del Gerente'
+    });
+  }
+};
+
+/**
+ * GET /api/gerente/status
+ * Obtener estado completo del sistema desde Gerente
+ */
+export const getGerenteStatus = async (req, res) => {
+  try {
+    const result = await gerenteGeneral.processTask({
+      action: 'status'
+    }, {
+      userId: req.auth?.userId || req.user?.clerkId || 'anonymous',
+      userRole: req.user?.role || 'guest'
+    });
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    logger.error('❌ Error en getGerenteStatus:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error obteniendo estado del sistema'
+    });
+  }
+};
+
+/**
+ * GET /api/gerente/sessions/:sessionId
+ * Obtener información de sesión específica
+ */
+export const getGerenteSession = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Se requiere sessionId'
+      });
+    }
+
+    const result = await gerenteGeneral.processTask({
+      action: 'session_info'
+    }, {
+      sessionId,
+      userId: req.auth?.userId || req.user?.clerkId || 'anonymous',
+      userRole: req.user?.role || 'guest'
+    });
+
+    res.json({
+      success: result.success !== false,
+      data: result
+    });
+
+  } catch (error) {
+    logger.error('❌ Error en getGerenteSession:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error obteniendo información de sesión'
+    });
+  }
+};
+
+/**
+ * GET /api/gerente/sessions/user/:userId
+ * Obtener sesiones de un usuario
+ */
+export const getUserSessions = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 10 } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Se requiere userId'
+      });
+    }
+
+    // Verificar permisos: solo el mismo usuario o admin
+    const requestUserId = req.auth?.userId || req.user?.clerkId;
+    const userRole = req.user?.role;
+
+    if (requestUserId !== userId && userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        error: 'No tienes permisos para acceder a estas sesiones'
+      });
+    }
+
+    const sessions = await centralizedContext.getUserSessions(userId, parseInt(limit));
+
+    res.json({
+      success: true,
+      data: {
+        userId,
+        sessions,
+        count: sessions.length
+      }
+    });
+
+  } catch (error) {
+    logger.error('❌ Error en getUserSessions:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error obteniendo sesiones del usuario'
+    });
+  }
+};
+
+/**
+ * POST /api/gerente/sessions/:sessionId/complete
+ * Completar/finalizar una sesión
+ */
+export const completeSession = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Se requiere sessionId'
+      });
+    }
+
+    const success = await centralizedContext.completeSession(sessionId);
+
+    res.json({
+      success,
+      message: success ? 'Sesión completada exitosamente' : 'Error completando sesión',
+      sessionId
+    });
+
+  } catch (error) {
+    logger.error('❌ Error en completeSession:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error completando sesión'
+    });
+  }
+};
+
+/**
+ * GET /api/gerente/health
+ * Health check del Gerente General
+ */
+export const getGerenteHealth = async (req, res) => {
+  try {
+    const health = await gerenteGeneral.healthCheck();
+
+    res.json({
+      success: health.status === 'healthy',
+      data: health
+    });
+
+  } catch (error) {
+    logger.error('❌ Error en getGerenteHealth:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error en health check'
+    });
+  }
+};
+
+/**
+ * GET /api/gerente/config
+ * Obtener configuración del Gerente General
+ */
+export const getGerenteConfig = async (req, res) => {
+  try {
+    const configSummary = gerenteGeneral.getConfigurationSummary();
+
+    if (!configSummary) {
+      return res.status(404).json({
+        success: false,
+        error: 'Configuración del Gerente no encontrada'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: configSummary
+    });
+
+  } catch (error) {
+    logger.error('❌ Error en getGerenteConfig:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error obteniendo configuración del Gerente'
+    });
+  }
+};
+
+/**
+ * PUT /api/gerente/config
+ * Actualizar configuración del Gerente General
+ */
+export const updateGerenteConfig = async (req, res) => {
+  try {
+    const updates = req.body;
+
+    if (!updates || Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Se requieren datos para actualizar'
+      });
+    }
+
+    // Validar que el usuario tiene permisos (admin/superadmin)
+    const userRole = req.user?.role;
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        error: 'No tienes permisos para modificar la configuración del Gerente'
+      });
+    }
+
+    const success = await gerenteGeneral.updateConfiguration(updates);
+
+    if (success) {
+      const updatedConfig = gerenteGeneral.getConfigurationSummary();
+      
+      res.json({
+        success: true,
+        message: 'Configuración actualizada exitosamente',
+        data: updatedConfig
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'Error actualizando configuración'
+      });
+    }
+
+  } catch (error) {
+    logger.error('❌ Error en updateGerenteConfig:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error actualizando configuración del Gerente'
+    });
+  }
+};
+
+/**
+ * POST /api/gerente/config/reload
+ * Recargar configuración del Gerente desde la base de datos
+ */
+export const reloadGerenteConfig = async (req, res) => {
+  try {
+    // Verificar permisos
+    const userRole = req.user?.role;
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        error: 'No tienes permisos para recargar la configuración'
+      });
+    }
+
+    await gerenteGeneral.loadConfiguration();
+    const configSummary = gerenteGeneral.getConfigurationSummary();
+
+    res.json({
+      success: true,
+      message: 'Configuración recargada desde la base de datos',
+      data: configSummary
+    });
+
+  } catch (error) {
+    logger.error('❌ Error en reloadGerenteConfig:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error recargando configuración'
+    });
+  }
+};
+
+/**
+ * GET /api/gerente/routing-rules
+ * Obtener reglas de routing del GerenteGeneral
+ */
+export const getGerenteRoutingRules = async (req, res) => {
+  try {
+    const configSummary = gerenteGeneral.getConfigurationSummary();
+
+    if (!configSummary || !configSummary.routingConfig) {
+      return res.status(404).json({
+        success: false,
+        error: 'Reglas de routing no encontradas'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: configSummary.routingConfig
+    });
+
+  } catch (error) {
+    logger.error('❌ Error en getGerenteRoutingRules:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error obteniendo reglas de routing'
+    });
+  }
+};
+
+/**
+ * PUT /api/gerente/routing-rules
+ * Actualizar reglas de routing del GerenteGeneral
+ */
+export const updateGerenteRoutingRules = async (req, res) => {
+  try {
+    const newRules = req.body;
+
+    if (!newRules || Object.keys(newRules).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Datos de reglas de routing requeridos'
+      });
+    }
+
+    // Actualizar en la base de datos
+    const success = await gerenteGeneral.updateConfiguration({
+      routingConfig: newRules
+    });
+
+    if (success) {
+      const updatedConfig = gerenteGeneral.getConfigurationSummary();
+      
+      res.json({
+        success: true,
+        message: 'Reglas de routing actualizadas exitosamente',
+        data: updatedConfig.routingConfig
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'Error actualizando reglas de routing'
+      });
+    }
+
+  } catch (error) {
+    logger.error('❌ Error en updateGerenteRoutingRules:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error actualizando reglas de routing'
+    });
+  }
+};
+
 export default {
   getAgentStatus,
   processCommand,
@@ -1107,5 +1530,17 @@ export default {
   resetAgentConfig,
   chatWithBlogAgent,
   generateContent,
-  processContextPattern
+  processContextPattern,
+  // Gerente General endpoints
+  processGerenteCommand,
+  getGerenteStatus,
+  getGerenteSession,
+  getUserSessions,
+  completeSession,
+  getGerenteHealth,
+  getGerenteConfig,
+  updateGerenteConfig,
+  reloadGerenteConfig,
+  getGerenteRoutingRules,
+  updateGerenteRoutingRules
 };

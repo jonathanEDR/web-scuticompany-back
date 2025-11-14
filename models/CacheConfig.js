@@ -245,7 +245,7 @@ CacheConfigSchema.methods.incrementStat = function(type) {
 };
 
 // Índices para optimización
-CacheConfigSchema.index({ moduleName: 1 });
+// moduleName ya tiene unique: true, no necesita índice adicional
 CacheConfigSchema.index({ enabled: 1, temporaryDisabled: 1 });
 CacheConfigSchema.index({ reactivateAt: 1 });
 
