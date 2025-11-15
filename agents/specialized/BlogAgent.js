@@ -19,6 +19,7 @@ import openaiService from '../services/OpenAIService.js';
 import AgentConfig from '../../models/AgentConfig.js';
 import BlogPost from '../../models/BlogPost.js';
 import logger from '../../utils/logger.js';
+import orchestrator from '../core/AgentOrchestrator.js';
 
 // Importar servicios especializados
 import blogContentService from '../services/blog/BlogContentService.js';
@@ -26,6 +27,7 @@ import blogSEOService from '../services/blog/BlogSEOService.js';
 import blogAnalysisService from '../services/blog/BlogAnalysisService.js';
 import blogPatternService from '../services/blog/BlogPatternService.js';
 import blogChatService from '../services/blog/BlogChatService.js';
+import blogConversationService from '../services/blog/BlogConversationService.js';
 
 export class BlogAgent extends BaseAgent {
   constructor() {
@@ -56,6 +58,9 @@ export class BlogAgent extends BaseAgent {
     };
 
     this.advancedConfig = null;
+
+    // Usar servicio de conversación singleton (sin instanciar)
+    this.conversationService = blogConversationService;
 
     // Cargar configuración desde base de datos
     this.loadConfiguration();
@@ -420,7 +425,13 @@ Balanceo óptimo: popularidad + especificidad técnica.`,
     try {
       const action = this.determineAction(command);
       
+      logger.info(`🔀 BlogAgent routing action: ${action} para comando: "${command?.substring(0, 50)}..."`);
+      
       switch (action) {
+        case 'create_blog':
+          // Caso específico para creación de blog
+          logger.info('🎨 Ejecutando creación de blog...');
+          return await this.handleGenericCommand(task, context);
         case 'optimize_content':
           return await this.optimizeContent(task, context);
         case 'analyze_content':
@@ -437,6 +448,7 @@ Balanceo óptimo: popularidad + especificidad técnica.`,
           return await this.moderateContent(task, context);
         case 'generate_summary':
           return await this.generateContentSummary(task, context);
+        case 'generic_command':
         default:
           return await this.handleGenericCommand(task, context);
       }
@@ -581,6 +593,38 @@ Balanceo óptimo: popularidad + especificidad técnica.`,
   determineAction(command) {
     const commandLower = command.toLowerCase();
     
+    // Detectar comandos de creación PRIMERO (antes que analyze)
+    // Comandos de creación van a 'create_blog' para manejarse específicamente
+    if (commandLower.includes('crear blog') || 
+        commandLower.includes('nuevo blog') ||
+        commandLower.includes('crear post') ||
+        commandLower.includes('nuevo post') ||
+        commandLower.includes('crear articulo') ||
+        commandLower.includes('nuevo articulo') ||
+        commandLower.includes('escribir blog') ||
+        commandLower.includes('generar blog')) {
+      logger.info('🎨 Comando de creación de blog detectado en determineAction');
+      return 'create_blog'; // Acción específica para crear blog
+    }
+    
+    // Detectar comandos canvas (análisis SEO, ver blog, listar) - PRIORIDAD ALTA
+    if (commandLower.includes('analizar seo del blog') ||
+        commandLower.includes('ver blog') ||
+        commandLower.includes('mostrar blog') ||
+        commandLower.includes('listar blog') ||
+        commandLower.includes('abrir blog') ||
+        (commandLower.includes('id:') && commandLower.includes('blog'))) {
+      return 'generic_command'; // Estos van a handleGenericCommand que tiene canvas_data
+    }
+    
+    // Otros comandos de generación/creación genéricos
+    if (commandLower.includes('crear') || 
+        commandLower.includes('nuevo') || 
+        commandLower.includes('escribir') ||
+        commandLower.includes('generar')) {
+      return 'generic_command';
+    }
+    
     if (commandLower.includes('optimiz')) return 'optimize_content';
     if (commandLower.includes('analiz') || commandLower.includes('revis')) return 'analyze_content';
     if (commandLower.includes('tag') || commandLower.includes('etiqueta')) return 'generate_tags';
@@ -590,7 +634,8 @@ Balanceo óptimo: popularidad + especificidad técnica.`,
     if (commandLower.includes('moder')) return 'moderate_content';
     if (commandLower.includes('resumen') || commandLower.includes('summary')) return 'generate_summary';
     
-    return 'analyze_content';
+    // Default a generic_command en lugar de analyze_content
+    return 'generic_command';
   }
 
   extractParameters(task, context) {
@@ -627,51 +672,408 @@ Balanceo óptimo: popularidad + especificidad técnica.`,
     const { command } = task;
     const commandLower = command.toLowerCase();
 
-    // Comando canvas: Listar blogs
-    if (commandLower.includes('listar blog') || 
-        commandLower.includes('lista de blog') ||
-        commandLower.includes('todos los blog') ||
-        commandLower.includes('blogs disponibles')) {
+    logger.info('🎯 BlogAgent.handleGenericCommand iniciado', {
+      command: command?.substring(0, 50),
+      commandLower: commandLower?.substring(0, 50),
+      contextKeys: Object.keys(context || {}),
+      taskKeys: Object.keys(task || {}),
+      hasSessionIdInTask: !!task.sessionId,
+      hasSessionIdInContext: !!context.sessionId,
+      conversationModeInTask: task.conversationMode,
+      conversationModeInContext: context.conversationMode,
+      hasUserId: !!(task.userId || context.userId || context.user?._id || context.user?.id)
+    });
+
+    // 🎨 COMANDO CANVAS: Continuar conversación de blog
+    // IMPORTANTE: Verificar PRIMERO si es continuación (sessionId puede estar en task o context)
+    const sessionId = task.sessionId || context.sessionId;
+    const conversationMode = task.conversationMode || context.conversationMode;
+    
+    if (sessionId && conversationMode === 'blog_creation') {
+      logger.info(`🎨 Continuando conversación de blog: ${sessionId}`, {
+        command: command?.substring(0, 50),
+        hasUserId: !!(task.userId || context.userId),
+        conversationMode: conversationMode,
+        sessionIdSource: task.sessionId ? 'task' : 'context'
+      });
       
       try {
-        const posts = await BlogPost.find({ isPublished: true })
-          .select('title slug category publishedAt views')
-          .populate('category', 'name')
-          .sort({ publishedAt: -1 })
-          .limit(20)
-          .lean();
+        // Procesar mensaje en la sesión
+        const result = await this.conversationService.processMessage(
+          sessionId,
+          command
+        );
+
+        if (!result.success) {
+          logger.error('❌ Error procesando mensaje en conversación:', result.error);
+          return {
+            success: false,
+            message: result.error || 'Error procesando el mensaje',
+            error: result.code
+          };
+        }
+
+        // 🔍 LOG: Verificar si shouldGenerate está presente
+        logger.info('🔍 Resultado de processMessage:', {
+          hasShouldGenerate: !!result.shouldGenerate,
+          shouldGenerate: result.shouldGenerate,
+          stage: result.context?.stage,
+          resultKeys: Object.keys(result)
+        });
+
+        // 🎨 Si shouldGenerate es true, iniciar generación del blog
+        if (result.shouldGenerate) {
+          logger.info('🚀 shouldGenerate detectado, iniciando generación de contenido...');
+          
+          try {
+            // Disparar generación de contenido
+            const generatedContent = await this.conversationService.generateBlogContent(sessionId);
+            
+            logger.info('✅ Contenido generado exitosamente:', {
+              hasTitle: !!generatedContent.title,
+              hasContent: !!generatedContent.content,
+              contentLength: generatedContent.content?.length || 0
+            });
+            
+            // Actualizar resultado con contenido generado
+            result.generatedContent = generatedContent;
+            result.context.stage = 'generation_completed';
+            result.message = '✨ ¡Contenido generado exitosamente! Aquí está tu artículo:';
+            
+          } catch (genError) {
+            logger.error('❌ Error generando contenido:', genError);
+            return {
+              success: false,
+              message: `Error al generar contenido: ${genError.message}`,
+              canvas_data: {
+                type: 'blog_creation',
+                mode: 'conversation',
+                title: 'Error en Generación',
+                data: {
+                  sessionId: result.sessionId || sessionId,
+                  stage: 'error',
+                  progress: result.progress || 0,
+                  error: genError.message
+                }
+              }
+            };
+          }
+        }
+
+        // Si la generación está completa, incluir el contenido generado
+        const canvasData = {
+          type: 'blog_creation',
+          mode: result.context.stage === 'generation_completed' ? 'preview' : 'conversation',
+          title: 'Crear Nuevo Blog',
+          data: {
+            sessionId: result.sessionId || sessionId,
+            stage: result.context.stage,
+            progress: result.context.progress,
+            conversationHistory: result.conversationHistory || [],
+            generatedContent: result.generatedContent || null,
+            // IMPORTANTE: Incluir questions si existen para renderizar opciones
+            questions: result.questions || null,
+            currentQuestion: result.questions?.[0] || null, // Pregunta actual si hay múltiples
+            // IMPORTANTE: Incluir actions si existen para botones de confirmación
+            actions: result.actions || null
+          },
+          metadata: {
+            agent: 'BlogAgent',
+            action: 'continue_blog_creation',
+            sessionId: result.sessionId || sessionId,
+            stage: result.context.stage,
+            progress: result.context.progress,
+            hasOptions: !!(result.questions && result.questions.length > 0),
+            hasActions: !!(result.actions && result.actions.length > 0)
+          }
+        };
+
+        // Si hay contenido generado, agregarlo
+        if (result.generatedContent) {
+          canvasData.data.blogPreview = {
+            title: result.generatedContent.title,
+            excerpt: result.generatedContent.excerpt || result.generatedContent.content?.substring(0, 200) + '...',
+            content: result.generatedContent.content,
+            categories: result.generatedContent.categories || [],
+            tags: result.generatedContent.tags || [],
+            seo: result.generatedContent.seo || {},
+            metadata: result.generatedContent.metadata || {}
+          };
+          
+          // Cambiar modo a preview cuando hay contenido
+          canvasData.mode = 'preview';
+          
+          logger.info('📝 Blog preview construido:', {
+            hasTitle: !!canvasData.data.blogPreview.title,
+            hasContent: !!canvasData.data.blogPreview.content,
+            contentLength: canvasData.data.blogPreview.content?.length || 0,
+            tagsCount: canvasData.data.blogPreview.tags?.length || 0,
+            categoriesCount: canvasData.data.blogPreview.categories?.length || 0
+          });
+        }
+
+        logger.info('✅ Conversación continuada exitosamente:', {
+          stage: result.context.stage,
+          progress: result.context.progress,
+          hasGeneratedContent: !!result.generatedContent,
+          shouldGenerate: result.shouldGenerate
+        });
 
         return {
           success: true,
-          type: 'blog_list',
-          data: {
-            total: posts.length,
-            posts: posts.map(post => ({
-              id: post._id,
-              title: post.title,
-              slug: post.slug,
-              category: post.category?.name,
-              publishedAt: post.publishedAt,
-              views: post.views || 0
-            }))
-          },
-          message: `Se encontraron ${posts.length} posts publicados`
+          message: result.message,
+          canvas_data: canvasData
         };
+        
       } catch (error) {
-        logger.error('Error listing blogs:', error);
+        logger.error('❌ Error en continuación de blog:', error);
         return {
           success: false,
-          message: 'Error al listar blogs',
+          message: `Error al procesar mensaje: ${error.message}`,
           error: error.message
         };
       }
     }
 
-    // Comando canvas: Ver blog específico
+    // 🎨 COMANDO CANVAS: Crear nuevo blog (iniciar conversación)
+    if (commandLower.includes('crear blog') || 
+        commandLower.includes('nuevo blog') ||
+        commandLower.includes('escribir blog') ||
+        commandLower.includes('generar blog') ||
+        commandLower.includes('crear post') ||
+        commandLower.includes('nuevo post') ||
+        commandLower.includes('crear articulo') ||
+        commandLower.includes('nuevo articulo')) {
+      
+      logger.info('🎨 Comando canvas detectado: crear blog');
+      
+      try {
+        // Obtener userId del contexto (puede venir de diferentes fuentes)
+        const userId = context.userId || task.userId || context.user?._id || context.user?.id;
+        
+        logger.info('🔍 Verificando userId:', {
+          'context.userId': context.userId,
+          'task.userId': task.userId,
+          'context.user._id': context.user?._id,
+          'context.user.id': context.user?.id,
+          'userId final': userId
+        });
+        
+        if (!userId) {
+          logger.error('❌ No se encontró userId en el contexto');
+          return {
+            success: false,
+            message: 'Se requiere autenticación para crear un blog. Por favor, inicia sesión.',
+            error: 'USER_NOT_AUTHENTICATED'
+          };
+        }
+        
+        logger.info(`✅ Iniciando sesión conversacional para usuario: ${userId}`);
+        
+        // Iniciar sesión conversacional
+        const result = await this.conversationService.startSession(userId, {
+          startedFrom: 'scuti-ai',
+          userAgent: context.userAgent || 'unknown'
+        });
+
+        logger.info('📥 Resultado de startSession:', {
+          success: result.success,
+          hasSessionId: !!result.sessionId,
+          hasMessage: !!result.message,
+          hasContext: !!result.context,
+          error: result.error
+        });
+
+        if (!result.success) {
+          logger.error('❌ Error al iniciar sesión conversacional:', result.error);
+          return {
+            success: false,
+            message: 'No pude iniciar la sesión de creación. Por favor, intenta de nuevo.',
+            error: result.error
+          };
+        }
+
+        // Construir canvas_data
+        const canvasData = {
+          type: 'blog_creation',
+          mode: 'conversation',
+          title: 'Crear Nuevo Blog',
+          data: {
+            sessionId: result.sessionId,
+            stage: result.context.stage,
+            progress: result.context.progress,
+            conversationHistory: [
+              {
+                role: 'agent',
+                message: result.message,
+                timestamp: new Date()
+              }
+            ],
+            userId
+          },
+          metadata: {
+            agent: 'BlogAgent',
+            action: 'start_blog_creation',
+            sessionId: result.sessionId,
+            stage: result.context.stage,
+            progress: result.context.progress
+          }
+        };
+
+        logger.info('✅ Canvas data construido correctamente:', {
+          type: canvasData.type,
+          mode: canvasData.mode,
+          hasData: !!canvasData.data,
+          sessionId: canvasData.data.sessionId
+        });
+
+        // Retornar con canvas_data para mostrar en el panel
+        const response = {
+          success: true,
+          message: result.message,
+          canvas_data: canvasData
+        };
+
+        logger.info('✅ Retornando respuesta con canvas_data:', {
+          success: response.success,
+          hasMessage: !!response.message,
+          hasCanvasData: !!response.canvas_data,
+          canvasType: response.canvas_data?.type
+        });
+
+        return response;
+
+      } catch (error) {
+        logger.error('❌ Error al iniciar creación de blog:', error);
+        return {
+          success: false,
+          message: 'Hubo un error al iniciar la creación del blog. Por favor, intenta de nuevo.',
+          error: error.message
+        };
+      }
+    }
+
+    // Comando canvas: Analizar SEO de blog
+    if (commandLower.includes('analizar seo') || 
+        commandLower.includes('análisis seo') ||
+        commandLower.includes('optimizar seo')) {
+      
+      logger.info('🎨 Comando canvas detectado: analizar SEO de blog');
+      
+      try {
+        // Extraer ID del blog
+        const idMatch = command.match(/id:\s*([a-f0-9]{24})/i);
+        
+        if (!idMatch) {
+          return {
+            success: false,
+            message: 'Por favor especifica el ID del blog a analizar. Formato: "analizar seo del blog (id: BLOG_ID)"'
+          };
+        }
+
+        const postId = idMatch[1];
+        
+        // Obtener el post completo
+        const post = await BlogPost.findById(postId)
+          .select('title content excerpt slug category tags author featuredImage seo aiOptimization readingTime wordCount')
+          .populate('category', 'name')
+          .populate('tags', 'name')
+          .populate('author', 'firstName lastName')
+          .lean();
+
+        if (!post) {
+          return {
+            success: false,
+            message: `No se encontró ningún blog con ID: ${postId}`
+          };
+        }
+
+        // Delegar análisis al SEOAgent
+        const seoAgent = orchestrator.agents.get('SEOAgent');
+        
+        if (!seoAgent) {
+          return {
+            success: false,
+            message: 'SEOAgent no disponible para análisis'
+          };
+        }
+
+        logger.info(`🔍 Analizando SEO del blog: ${post.title}`);
+
+        // Ejecutar análisis SEO
+        const seoAnalysisTask = {
+          type: 'content_analysis',
+          content: post.content,
+          title: post.title,
+          description: post.excerpt || post.seo?.metaDescription || '',
+          keywords: post.tags?.map(t => t.name) || []
+        };
+
+        const seoResult = await seoAgent.processTask(seoAnalysisTask);
+
+        // Extraer analysis desde la estructura envuelta por BaseAgent
+        const analysisData = seoResult.result?.analysis || seoResult.analysis || {};
+
+        logger.info('📊 SEO Analysis Data:', {
+          hasSeoScore: !!analysisData.seo_score,
+          hasRecommendations: !!analysisData.recommendations,
+          analysisKeys: Object.keys(analysisData)
+        });
+
+        // Formatear resultado para canvas
+        return {
+          success: true,
+          message: `Análisis SEO completado para: ${post.title}`,
+          canvas_data: {
+            type: 'seo_analysis',
+            mode: 'preview',
+            title: `Análisis SEO: ${post.title}`,
+            data: {
+              postId: post._id,
+              postTitle: post.title,
+              postSlug: post.slug,
+              analysis: analysisData,
+              currentSEO: {
+                metaTitle: post.seo?.metaTitle || post.title,
+                metaDescription: post.seo?.metaDescription || post.excerpt,
+                keywords: post.seo?.keywords || [],
+                focusKeywords: post.seo?.focusKeywords || []
+              },
+              stats: {
+                wordCount: post.wordCount || 0,
+                readingTime: post.readingTime || 0,
+                category: post.category?.name,
+                tags: post.tags?.map(t => t.name) || []
+              },
+              aiOptimization: post.aiOptimization || {}
+            },
+            metadata: {
+              agent: 'BlogAgent',
+              seoAgent: 'SEOAgent',
+              action: 'analyze_seo',
+              blogId: post._id,
+              analyzedAt: new Date().toISOString()
+            }
+          }
+        };
+
+      } catch (error) {
+        logger.error('❌ Error analyzing blog SEO:', error);
+        return {
+          success: false,
+          message: 'Error al analizar SEO del blog',
+          error: error.message
+        };
+      }
+    }
+
+    // Comando canvas: Ver blog específico (PRIMERO - más específico con ID)
     if (commandLower.includes('id:') && 
         (commandLower.includes('ver blog') || 
          commandLower.includes('mostrar blog') ||
          commandLower.includes('abrir blog'))) {
+      
+      logger.info('🎨 Comando canvas detectado: ver blog específico');
       
       try {
         const idMatch = command.match(/id:\s*([a-f0-9]{24})/i);
@@ -684,9 +1086,10 @@ Balanceo óptimo: popularidad + especificidad técnica.`,
 
         const postId = idMatch[1];
         const post = await BlogPost.findById(postId)
-          .select('title content slug category tags publishedAt views likes')
+          .select('title excerpt content slug category tags author featuredImage publishedAt views likes readingTime')
           .populate('category', 'name slug')
           .populate('tags', 'name slug')
+          .populate('author', 'firstName lastName')
           .lean();
 
         if (!post) {
@@ -698,25 +1101,118 @@ Balanceo óptimo: popularidad + especificidad técnica.`,
 
         return {
           success: true,
-          type: 'blog_detail',
-          data: {
-            id: post._id,
+          message: `Blog encontrado: ${post.title}`,
+          canvas_data: {
+            type: 'blog',  // Cambio de 'blog_detail' a 'blog'
+            mode: 'preview',
             title: post.title,
-            content: post.content,
-            slug: post.slug,
-            category: post.category,
-            tags: post.tags,
-            publishedAt: post.publishedAt,
-            views: post.views || 0,
-            likes: post.likes || 0
-          },
-          message: `Blog "${post.title}" cargado exitosamente`
+            data: {
+              id: post._id,
+              title: post.title,
+              excerpt: post.excerpt || '',
+              content: post.content,
+              slug: post.slug,
+              imageUrl: post.featuredImage || '',
+              categories: post.category ? [post.category.name] : [],
+              tags: post.tags ? post.tags.map(tag => tag.name) : [],
+              publishedAt: post.publishedAt,
+              views: post.views || 0,
+              likes: post.likes || 0,
+              metadata: {
+                author: post.author ? `${post.author.firstName || ''} ${post.author.lastName || ''}`.trim() : '',
+                readingTime: post.readingTime || '',
+                date: post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('es-ES', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                }) : ''
+              }
+            },
+            metadata: {
+              agent: 'BlogAgent',
+              action: 'view_blog',
+              blogId: post._id
+            }
+          }
         };
       } catch (error) {
-        logger.error('Error fetching blog:', error);
+        logger.error('❌ Error fetching blog:', error);
         return {
           success: false,
           message: 'Error al cargar el blog',
+          error: error.message
+        };
+      }
+    }
+
+    // Comando canvas: Listar blogs (SEGUNDO - menos específico)
+    if (commandLower.includes('listar blog') || 
+        commandLower.includes('lista de blog') ||
+        commandLower.includes('todos los blog') ||
+        commandLower.includes('blogs disponibles') ||
+        commandLower.includes('mostrar blog') ||
+        commandLower.includes('ver blog')) {
+      
+      logger.info('🎨 Comando canvas detectado: listar blogs');
+      
+      try {
+        const posts = await BlogPost.find({ 
+          status: 'published'
+        })
+          .select('title slug excerpt content category tags author featuredImage publishedAt views status readingTime')
+          .populate('category', 'name')
+          .populate('tags', 'name')
+          .populate('author', 'firstName lastName')
+          .sort({ publishedAt: -1 })
+          .limit(20)
+          .lean();
+
+        logger.info(`📝 ${posts.length} blogs encontrados`);
+
+        return {
+          success: true,
+          message: `Se encontraron ${posts.length} posts publicados`,
+          canvas_data: {
+            type: 'blog_list',
+            mode: 'list',
+            title: 'Blogs Publicados',
+            data: {
+              total: posts.length,
+              posts: posts.map(post => ({
+                id: post._id,
+                title: post.title,
+                slug: post.slug,
+                description: post.excerpt,
+                imageUrl: post.featuredImage || '',
+                category: post.category?.name,
+                publishedAt: post.publishedAt,
+                views: post.views || 0,
+                metadata: {
+                  date: post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                  }) : '',
+                  author: post.author ? `${post.author.firstName || ''} ${post.author.lastName || ''}`.trim() : '',
+                  category: post.category?.name || '',
+                  readingTime: post.readingTime || '',
+                  views: post.views || 0,
+                  tags: post.tags?.map(tag => tag.name).join(', ') || ''
+                }
+              }))
+            },
+            metadata: {
+              agent: 'BlogAgent',
+              action: 'list_blogs',
+              totalCount: posts.length
+            }
+          }
+        };
+      } catch (error) {
+        logger.error('❌ Error listing blogs:', error);
+        return {
+          success: false,
+          message: 'Error al listar blogs',
           error: error.message
         };
       }
@@ -728,11 +1224,12 @@ Balanceo óptimo: popularidad + especificidad técnica.`,
       message: `Comando recibido: "${command}". Para mejores resultados, intenta comandos específicos.`,
       type: 'generic_response',
       availableCommands: [
+        'crear blog - inicia creación de blog conversacional',
+        'listar blogs - muestra todos los blogs publicados',
+        'ver blog id:XXX - muestra un blog específico',
         'optimizar contenido',
         'analizar blog',
-        'generar tags',
-        'optimizar seo',
-        'analizar rendimiento'
+        'generar tags'
       ]
     };
   }

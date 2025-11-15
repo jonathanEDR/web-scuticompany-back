@@ -182,7 +182,9 @@ export class GerenteGeneral extends BaseAgent {
           'blog', 'post', 'artículo', 'contenido', 'publicación',
           // Acciones de blog
           'escribir', 'redactar', 'crear blog', 'generar contenido',
-          'optimizar contenido', 'mejorar artículo', 
+          'optimizar contenido', 'mejorar artículo',
+          // Análisis de blog específico (PRIORIDAD)
+          'analizar seo del blog', 'analizar blog', 'seo del blog',
           // Elementos de blog
           'título', 'párrafo', 'introducción', 'conclusión',
           'tags', 'etiquetas', 'categorías blog'
@@ -197,8 +199,8 @@ export class GerenteGeneral extends BaseAgent {
         keywords: [
           // SEO técnico
           'seo', 'posicionamiento', 'keywords', 'meta', 'schema', 'sitemap', 'robot', 'canonical',
-          // Análisis SEO
-          'analizar seo', 'auditoria seo', 'palabras clave', 'ranking',
+          // Análisis SEO general (sin blog)
+          'auditoria seo', 'análisis seo general', 'palabras clave', 'ranking',
           'meta description', 'meta title', 'h1', 'h2',
           // Optimización
           'optimizar seo', 'mejorar posicionamiento', 'google', 'buscadores'
@@ -222,6 +224,26 @@ export class GerenteGeneral extends BaseAgent {
         ],
         capabilities: ['service_management', 'pricing_strategy', 'content_generation', 'service_analysis'],
         description: 'Especializado en análisis y gestión de servicios profesionales'
+      },
+
+      // Event Agent
+      events: {
+        agent: 'EventAgent',
+        keywords: [
+          // Eventos principales
+          'evento', 'eventos', 'agenda', 'calendario', 'programación',
+          // Tipos de eventos
+          'reunión', 'reuniones', 'cita', 'citas', 'meeting', 'appointment',
+          'recordatorio', 'reminder', 'tarea programada',
+          // Acciones de eventos
+          'mostrar eventos', 'listar eventos', 'ver eventos', 'mis eventos',
+          'eventos de hoy', 'eventos hoy', 'agenda de hoy', 'calendario de hoy',
+          'próximos eventos', 'eventos próximos', 'eventos futuros', 'próximas reuniones',
+          // Gestión de calendario
+          'agenda personal', 'mi calendario', 'mi agenda', 'horario'
+        ],
+        capabilities: ['event_management', 'calendar_management', 'reminder_system', 'agenda_coordination'],
+        description: 'Especializado en gestión de eventos, calendario y recordatorios'
       },
 
       // Casos especiales de coordinación multi-agente
@@ -276,7 +298,7 @@ export class GerenteGeneral extends BaseAgent {
       // Enrutar según acción
       switch (task.action) {
         case 'coordinate':
-          result = await this.coordinateTask(task, sessionId);
+          result = await this.coordinateTask(task, sessionId, context);
           break;
 
         case 'route':
@@ -364,11 +386,46 @@ export class GerenteGeneral extends BaseAgent {
   /**
    * Coordinar tarea compleja (delegar a múltiples agentes)
    */
-  async coordinateTask(task, sessionId) {
+  async coordinateTask(task, sessionId, context = {}) {
     try {
       const { command, params = {} } = task;
 
       logger.info(`🎯 Coordinando tarea: ${command}`);
+
+      // 🔍 VERIFICAR SI HAY UNA CONVERSACIÓN DE BLOG ACTIVA
+      if (params.blogCreationSessionId && params.conversationMode === 'blog_creation') {
+        logger.info(`📝 Conversación de blog activa detectada: ${params.blogCreationSessionId}`);
+        logger.info(`👉 Delegando continuación a BlogAgent...`);
+        
+        // Delegar directamente a BlogAgent con el contexto de conversación
+        const result = await this.delegateToAgent(
+          'BlogAgent',
+          command,
+          {
+            ...params,
+            sessionId: params.blogCreationSessionId,
+            conversationMode: params.conversationMode,
+            userId: context.userId
+          },
+          sessionId
+        );
+
+        // Extraer canvas_data si existe
+        const canvasData = result.canvas_data || 
+                          result.result?.canvas_data || 
+                          result.data?.canvas_data;
+
+        return {
+          success: true,
+          message: result.message || result.response || 'Tarea completada',
+          agent: 'BlogAgent',
+          results: [{
+            agent: 'BlogAgent',
+            result
+          }],
+          ...(canvasData && { canvas_data: canvasData })
+        };
+      }
 
       // Obtener contexto enriquecido
       const enrichedContext = await centralizedContext.getEnrichedContextForAgent(
@@ -435,10 +492,20 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
       for (const agentInfo of targetAgents) {
         logger.info(`📤 Delegando a ${agentInfo.agent}...`);
         
+        // Incluir userId y otros datos del context en params
+        const agentParams = {
+          ...params,
+          enrichedContext,
+          userId: context.userId,
+          clerkId: context.clerkId, // Agregar clerkId para EventAgent
+          userRole: context.userRole,
+          sessionId: context.sessionId
+        };
+        
         const agentResult = await this.delegateToAgent(
           agentInfo.agent,
           command,
-          { ...params, enrichedContext },
+          agentParams,
           sessionId
         );
 
@@ -481,20 +548,42 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
    */
   extractCanvasData(results) {
     try {
+      logger.info(`🔍 Extrayendo canvas_data de ${results.length} resultados...`);
+      
       for (const agentResult of results) {
         const result = agentResult.result;
         
-        // Buscar canvas_data en diferentes niveles de la respuesta
+        logger.info(`🔍 Revisando resultado de ${agentResult.agent}:`, {
+          hasCanvasData: !!result.canvas_data,
+          hasResult: !!result.result,
+          hasBlog: !!result.blog,
+          hasService: !!result.service,
+          hasItems: !!result.items,
+          keys: Object.keys(result || {}),
+          resultStructure: JSON.stringify(result, null, 2).substring(0, 500)
+        });
+        
+        // Nivel 1: canvas_data directo en result
         if (result.canvas_data) {
+          logger.info(`✅ Canvas data encontrado en nivel 1 (result.canvas_data)`);
           return result.canvas_data;
         }
         
+        // Nivel 2: canvas_data en result.result
         if (result.result && result.result.canvas_data) {
+          logger.info(`✅ Canvas data encontrado en nivel 2 (result.result.canvas_data)`);
           return result.result.canvas_data;
+        }
+
+        // Nivel 3: canvas_data en result.data
+        if (result.data && result.data.canvas_data) {
+          logger.info(`✅ Canvas data encontrado en nivel 3 (result.data.canvas_data)`);
+          return result.data.canvas_data;
         }
 
         // Si el resultado tiene datos estructurados de blog o servicio
         if (result.blog || result.blogPost) {
+          logger.info(`✅ Generando canvas_data desde blog data`);
           return {
             type: 'blog',
             mode: 'preview',
@@ -507,6 +596,7 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
         }
 
         if (result.service || result.servicio) {
+          logger.info(`✅ Generando canvas_data desde service data`);
           return {
             type: 'service',
             mode: 'preview',
@@ -520,6 +610,7 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
 
         // Si tiene una lista de items
         if (result.items && Array.isArray(result.items)) {
+          logger.info(`✅ Generando canvas_data desde items array`);
           return {
             type: 'list',
             mode: 'list',
@@ -535,6 +626,7 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
         }
       }
 
+      logger.warn('⚠️ No se encontró canvas_data en ningún resultado');
       return null;
     } catch (error) {
       logger.error('❌ Error extrayendo canvas data:', error);
@@ -900,16 +992,24 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
     const matches = [];
 
     for (const [category, config] of Object.entries(this.routingRules)) {
-      const hasMatch = config.keywords.some(keyword => 
+      const matchedKeywords = config.keywords.filter(keyword => 
         content.includes(keyword.toLowerCase())
       );
 
-      if (hasMatch) {
-        matches.push(config);
+      if (matchedKeywords.length > 0) {
+        matches.push({
+          ...config,
+          matchCount: matchedKeywords.length,
+          matchedKeywords
+        });
       }
     }
 
-    return matches;
+    // Ordenar por número de keywords que hicieron match (más relevante primero)
+    matches.sort((a, b) => b.matchCount - a.matchCount);
+
+    // Retornar solo el más relevante para evitar delegación múltiple
+    return matches.length > 0 ? [matches[0]] : [];
   }
 
   /**
@@ -928,16 +1028,20 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
         };
       }
 
-      logger.info(`📤 Delegando a ${agentName}: ${action}`);
+      logger.info(`📤 Delegando a ${agentName}: ${action.substring(0, 60)}...`);
+
+      // Construir tarea con estructura completa
+      const taskPayload = {
+        type: 'natural_language_command',
+        command: action, // El comando original del usuario
+        action: params.action || 'process',
+        userId: params.userId || params.enrichedContext?.userId,
+        sessionId: sessionId,
+        ...params
+      };
 
       // Ejecutar tarea en agente
-      // BaseAgent espera un objeto con 'type', 'action' o contenido directo
-      const result = await agent.processTask({
-        type: 'natural_language_command', // ← FIX: Agregar type para BaseAgent.canHandle()
-        command: action, // ← El comando original como texto (puede ser el mensaje del usuario)
-        action: params.action || 'process', // ← Acción específica si se proporciona
-        ...params
-      });
+      const result = await agent.processTask(taskPayload);
 
       // Registrar en contexto centralizado
       await centralizedContext.addInteraction(

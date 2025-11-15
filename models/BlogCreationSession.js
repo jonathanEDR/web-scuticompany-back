@@ -245,7 +245,7 @@ const BlogCreationSessionSchema = new mongoose.Schema({
     ipAddress: String,
     startedFrom: {
       type: String,
-      enum: ['dashboard', 'blog_list', 'direct', 'api', 'test'],
+      enum: ['dashboard', 'blog_list', 'direct', 'api', 'test', 'scuti-ai'],
       default: 'dashboard'
     },
     totalMessages: {

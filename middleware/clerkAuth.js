@@ -274,7 +274,7 @@ export const requirePermission = (permission) => {
 };
 
 /**
- * Middleware para verificar rol especÃ­fico
+ * Middleware para verificar rol especÃ­fico (soporta string o array)
  */
 export const requireRole = (role) => {
   return (req, res, next) => {
@@ -286,22 +286,35 @@ export const requireRole = (role) => {
       });
     }
 
-    // Normalizar roles a mayúsculas para comparación
-    const normalizedRole = role.toUpperCase();
     const userRole = req.user.role.toUpperCase();
 
-    if (userRole !== normalizedRole) {
+    // Soportar tanto string como array de roles
+    let hasPermission = false;
+    let requiredRoles = '';
+
+    if (Array.isArray(role)) {
+      // Si es array, verificar si el rol del usuario está en la lista
+      const normalizedRoles = role.map(r => r.toUpperCase());
+      hasPermission = normalizedRoles.includes(userRole);
+      requiredRoles = role.join(' o ');
+    } else {
+      // Si es string, comparación directa
+      const normalizedRole = role.toUpperCase();
+      hasPermission = userRole === normalizedRole;
+      requiredRoles = role;
+    }
+
+    if (!hasPermission) {
       logger.warn('Acceso denegado por rol', {
         userId: req.user.id,
         userRole: req.user.role,
         requiredRole: role,
-        normalizedUserRole: userRole,
-        normalizedRequiredRole: normalizedRole
+        normalizedUserRole: userRole
       });
 
       return res.status(403).json({
         success: false,
-        message: `Rol insuficiente. Se requiere: ${role}`,
+        message: `Rol insuficiente. Se requiere: ${requiredRoles}`,
         code: 'INSUFFICIENT_ROLE'
       });
     }

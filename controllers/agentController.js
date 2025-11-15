@@ -7,6 +7,7 @@ import AgentOrchestrator from '../agents/core/AgentOrchestrator.js';
 import BlogAgent from '../agents/specialized/BlogAgent.js';
 import seoAgent from '../agents/specialized/SEOAgent.js';
 import ServicesAgent from '../agents/specialized/services/ServicesAgent.js';
+import eventAgent from '../agents/specialized/EventAgent.js';
 import gerenteGeneral from '../agents/core/GerenteGeneral.js';
 import centralizedContext from '../agents/context/CentralizedContextManager.js';
 import openaiService from '../agents/services/OpenAIService.js';
@@ -57,6 +58,16 @@ const initializeAgents = async () => {
       logger.error('❌ Failed to register ServicesAgent:', servicesRegistrationResult.error);
     }
 
+    // Registrar EventAgent (ya viene inicializado como singleton)
+    const eventRegistrationResult = await AgentOrchestrator.registerAgent(eventAgent);
+    
+    if (eventRegistrationResult.success) {
+      logger.success('✅ Agent EventAgent registered and activated');
+      logger.info('📅 EventAgent registered with calendar and agenda management');
+    } else {
+      logger.error('❌ Failed to register EventAgent:', eventRegistrationResult.error);
+    }
+
     // Registrar GerenteGeneral (ya viene inicializado como singleton)
     const gerenteRegistrationResult = await AgentOrchestrator.registerAgent(gerenteGeneral);
     
@@ -68,7 +79,7 @@ const initializeAgents = async () => {
     }
     
     // Marcar sistema como inicializado si al menos un agente fue registrado
-    if (blogRegistrationResult.success || seoRegistrationResult.success || servicesRegistrationResult.success || gerenteRegistrationResult.success) {
+    if (blogRegistrationResult.success || seoRegistrationResult.success || servicesRegistrationResult.success || eventRegistrationResult.success || gerenteRegistrationResult.success) {
       logger.success('✅ Agent system initialized successfully');
       isInitialized = true;
     } else {
@@ -1129,12 +1140,35 @@ export const processGerenteCommand = async (req, res) => {
 
     logger.info(`👔 Gerente procesando: ${action} - ${command || 'N/A'}`);
 
-    // Construir contexto
+    // DEBUG: Ver qué viene en el request
+    logger.info('🔍 DEBUG Request Auth:', { 
+      'params.userId': params.userId,
+      'req.userId': req.userId,
+      'req.user.id': req.user?.id,
+      'req.user.clerkId': req.user?.clerkId,
+      'req.auth.userId': req.auth?.userId
+    });
+
+    // Construir contexto - obtener userId de múltiples fuentes
+    // Prioridad: req.userId (MongoDB _id del middleware) > req.user.id > params.userId (Clerk ID del frontend)
     const context = {
       sessionId,
-      userId: req.auth?.userId || req.user?.clerkId || 'anonymous',
-      userRole: req.user?.role || 'guest'
+      userId: req.userId || req.user?.id || params.userId,
+      userRole: req.user?.role || 'guest',
+      clerkId: req.auth?.userId || req.user?.clerkId // Mantener clerkId por si acaso
     };
+
+    // Validar que tengamos userId
+    if (!context.userId) {
+      logger.warn('⚠️ No se pudo obtener userId del request');
+      return res.status(401).json({
+        success: false,
+        error: 'Se requiere autenticación. Por favor, inicia sesión.',
+        code: 'USER_NOT_AUTHENTICATED'
+      });
+    }
+
+    logger.info(`✅ UserId obtenido: ${context.userId} (Clerk: ${context.clerkId})`);
 
     // Construir tarea
     const task = {

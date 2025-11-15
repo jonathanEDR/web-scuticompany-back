@@ -5,13 +5,13 @@
 
 import BlogCreationSession from '../../../models/BlogCreationSession.js';
 import BlogCategory from '../../../models/BlogCategory.js';
-import BlogAgent from '../../specialized/BlogAgent.js';
 import { getTemplate, listTemplates } from '../../../utils/contentTemplates.js';
 import logger from '../../../utils/logger.js';
 
 class BlogConversationService {
   constructor() {
-    this.blogAgent = new BlogAgent();
+    // No instanciar BlogAgent aquí para evitar dependencia circular
+    this.blogAgent = null;
     
     // Mapeo de etapas a porcentajes de progreso
     this.stageProgress = {
@@ -26,6 +26,17 @@ class BlogConversationService {
       generation_completed: 100,
       draft_saved: 100
     };
+  }
+
+  /**
+   * Lazy load BlogAgent para evitar dependencia circular
+   */
+  async getBlogAgent() {
+    if (!this.blogAgent) {
+      const { BlogAgent } = await import('../../specialized/BlogAgent.js');
+      this.blogAgent = new BlogAgent();
+    }
+    return this.blogAgent;
   }
 
   /**
@@ -664,10 +675,11 @@ ${summary}
       
       logger.info(`🎨 Starting content generation for session ${sessionId}`);
       
-      // Generar contenido usando BlogAgent
+      // Generar contenido usando BlogAgent (lazy load)
+      const blogAgent = await this.getBlogAgent();
       const { collected } = session;
       
-      const result = await this.blogAgent.generateFullPost({
+      const result = await blogAgent.generateFullPost({
         title: collected.title,
         category: collected.topic, // Tema como categoría descriptiva
         style: collected.tone || 'professional',
@@ -882,6 +894,259 @@ ${template.structure.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}
       general: '👥 General'
     };
     return labels[audience] || '👥 General';
+  }
+
+  /**
+   * Generar contenido del blog basado en la sesión
+   */
+  async generateBlogContent(sessionId) {
+    try {
+      logger.info(`🎨 Iniciando generación de contenido para sesión: ${sessionId}`);
+      
+      // Obtener sesión
+      const session = await BlogCreationSession.findActiveSession(sessionId);
+      
+      if (!session) {
+        throw new Error('Sesión no encontrada o expirada');
+      }
+
+      if (!session.collected || !session.collected.title) {
+        throw new Error('Sesión incompleta: falta información requerida');
+      }
+
+      // Importar BlogContentService
+      const BlogContentService = (await import('./BlogContentService.js')).default;
+      
+      const { collected } = session;
+      
+      // Obtener categoría
+      const category = await BlogCategory.findById(collected.category);
+      
+      logger.info('📋 Datos para generación:', {
+        title: collected.title,
+        template: collected.template,
+        audience: collected.audience,
+        length: collected.length,
+        categoryId: collected.category,
+        categoryName: category?.name || 'Sin categoría',
+        keywords: collected.keywords?.length || 0
+      });
+
+      // Generar contenido usando BlogContentService
+      const result = await BlogContentService.generateFullPost({
+        title: collected.title,
+        category: category?.name || 'General',
+        style: this.mapAudienceToStyle(collected.audience),
+        wordCount: collected.length || 1200,
+        focusKeywords: collected.keywords || [],
+        template: collected.template || 'informative'
+      });
+
+      if (!result.success) {
+        throw new Error('Error generando contenido');
+      }
+
+      // Preparar tags sugeridos
+      const tags = result.metadata?.suggestedTags || [];
+      if (collected.keywords && collected.keywords.length > 0) {
+        tags.push(...collected.keywords.filter(k => !tags.includes(k)));
+      }
+
+      // Construir objeto de contenido generado
+      const generatedContent = {
+        title: collected.title,
+        content: result.content,
+        excerpt: this.generateExcerpt(result.content),
+        categories: collected.category ? [collected.category] : [],
+        tags: tags.slice(0, 8), // Máximo 8 tags
+        seo: {
+          metaTitle: collected.title,
+          metaDescription: this.generateMetaDescription(result.content, collected.title),
+          focusKeywords: collected.keywords || [],
+          score: result.metadata?.seoScore || 85
+        },
+        metadata: {
+          wordCount: result.metadata?.wordCount || 0,
+          readingTime: Math.ceil((result.metadata?.wordCount || 0) / 200),
+          template: collected.template,
+          audience: collected.audience,
+          generatedAt: new Date()
+        }
+      };
+
+      // Actualizar sesión
+      session.generatedContent = generatedContent;
+      session.moveToStage('generation_completed', this.stageProgress.generation_completed);
+      session.addMessage('agent', '✨ ¡Contenido generado exitosamente!', {
+        type: 'generation_complete',
+        stage: 'generation_completed'
+      });
+      
+      await session.save();
+
+      logger.info('✅ Contenido generado exitosamente:', {
+        sessionId,
+        wordCount: generatedContent.metadata.wordCount,
+        tagsCount: generatedContent.tags.length,
+        seoScore: generatedContent.seo.score
+      });
+
+      // 💾 Guardar como BlogPost en la base de datos
+      try {
+        const BlogPost = (await import('../../../models/BlogPost.js')).default;
+        const BlogTag = (await import('../../../models/BlogTag.js')).default;
+        
+        logger.info('💾 Intentando guardar post en base de datos...', {
+          title: generatedContent.title,
+          hasExcerpt: !!generatedContent.excerpt,
+          hasContent: !!generatedContent.content,
+          contentLength: generatedContent.content?.length || 0,
+          userId: session.userId,
+          categories: generatedContent.categories,
+          categoryToUse: generatedContent.categories?.[0],
+          tagsCount: generatedContent.tags?.length || 0
+        });
+
+        // Validar que tenemos una categoría válida
+        if (!generatedContent.categories || generatedContent.categories.length === 0 || !generatedContent.categories[0]) {
+          throw new Error('No se encontró una categoría válida para el post. La categoría es requerida.');
+        }
+        
+        // Crear o obtener tags
+        const tagIds = [];
+        if (generatedContent.tags && generatedContent.tags.length > 0) {
+          for (const tagName of generatedContent.tags) {
+            let tag = await BlogTag.findOne({ name: tagName });
+            if (!tag) {
+              tag = await BlogTag.create({
+                name: tagName,
+                slug: tagName.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')
+              });
+            }
+            tagIds.push(tag._id);
+          }
+        }
+
+        // Crear el post
+        const newPost = await BlogPost.create({
+          title: generatedContent.title,
+          content: generatedContent.content,
+          excerpt: generatedContent.excerpt,
+          contentFormat: 'markdown', // El contenido generado es Markdown
+          slug: generatedContent.title.toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remover acentos
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .substring(0, 100),
+          author: session.userId,
+          category: generatedContent.categories[0], // Tomar la primera categoría (ya validada arriba)
+          tags: tagIds,
+          status: 'draft', // Guardar como draft por defecto
+          seo: {
+            metaTitle: generatedContent.seo.metaTitle?.substring(0, 60),
+            metaDescription: generatedContent.seo.metaDescription?.substring(0, 160),
+            keywords: generatedContent.seo.focusKeywords || [],
+            ogTitle: generatedContent.title.substring(0, 60),
+            ogDescription: generatedContent.excerpt?.substring(0, 160)
+          },
+          aiOptimization: {
+            score: generatedContent.seo.score,
+            lastOptimized: new Date(),
+            suggestions: []
+          },
+          readingTime: generatedContent.metadata.readingTime,
+          wordCount: generatedContent.metadata.wordCount
+        });
+
+        // Agregar el ID del post al contenido generado
+        generatedContent._id = newPost._id;
+        generatedContent.postId = newPost._id.toString();
+
+        // Actualizar sesión con el postId
+        session.postId = newPost._id;
+        await session.save();
+
+        logger.info('💾 Post guardado en base de datos:', {
+          postId: newPost._id,
+          title: newPost.title,
+          slug: newPost.slug,
+          status: newPost.status
+        });
+
+      } catch (saveError) {
+        logger.error('⚠️  Error guardando post en base de datos:', {
+          error: saveError.message,
+          stack: saveError.stack,
+          name: saveError.name,
+          code: saveError.code,
+          validationErrors: saveError.errors
+        });
+        // No fallar completamente si el guardado falla
+        generatedContent.saveError = saveError.message;
+      }
+
+      return generatedContent;
+      
+    } catch (error) {
+      logger.error('❌ Error en generateBlogContent:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mapear audiencia a estilo de escritura
+   */
+  mapAudienceToStyle(audience) {
+    const styleMap = {
+      beginner: 'friendly',
+      intermediate: 'professional',
+      advanced: 'technical',
+      expert: 'academic'
+    };
+    return styleMap[audience] || 'professional';
+  }
+
+  /**
+   * Generar excerpt del contenido
+   */
+  generateExcerpt(content, maxLength = 160) {
+    // Extraer primer párrafo sin markdown
+    const firstParagraph = content
+      .split('\n\n')[0]
+      .replace(/[#*`_\[\]]/g, '')
+      .trim();
+    
+    if (firstParagraph.length <= maxLength) {
+      return firstParagraph;
+    }
+    
+    return firstParagraph.substring(0, maxLength - 3) + '...';
+  }
+
+  /**
+   * Generar meta descripción
+   */
+  generateMetaDescription(content, title, maxLength = 155) {
+    // Intentar usar la introducción
+    const intro = content
+      .split('\n\n')
+      .slice(0, 2)
+      .join(' ')
+      .replace(/[#*`_\[\]]/g, '')
+      .trim();
+    
+    if (intro.length <= maxLength) {
+      return intro;
+    }
+    
+    // Si es muy largo, usar el título + primer párrafo resumido
+    const firstSentence = intro.split('.')[0];
+    if (firstSentence.length <= maxLength) {
+      return firstSentence + '.';
+    }
+    
+    return intro.substring(0, maxLength - 3) + '...';
   }
 }
 
