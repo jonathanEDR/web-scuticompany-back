@@ -39,6 +39,7 @@ import {
   getPostBySlug,
   getPostById,
   getFeaturedPosts,
+  getHeaderMenuPosts,
   getPopularPosts,
   searchPosts,
   createPost,
@@ -133,6 +134,7 @@ router.post('/admin/invalidate-cache', noCache, ...canManageBlogCategories, inva
 // ✅ Rutas públicas de posts - CON CACHE HTTP
 router.get('/posts', cachePublicPosts, getAllPublishedPosts);
 router.get('/posts/featured', cacheFeaturedPosts, getFeaturedPosts);
+router.get('/posts/header-menu', cacheFeaturedPosts, getHeaderMenuPosts);
 router.get('/posts/popular', cacheFeaturedPosts, getPopularPosts);
 router.get('/posts/search', cachePublicPosts, searchPosts);
 router.get('/posts/user/:username', cachePublicPosts, getPostsByUser);

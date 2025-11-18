@@ -277,6 +277,39 @@ export const getFeaturedPosts = async (req, res) => {
 };
 
 /**
+ * @desc    Obtener posts para mostrar en header menu
+ * @route   GET /api/blog/posts/header-menu
+ * @access  Public
+ */
+export const getHeaderMenuPosts = async (req, res) => {
+  try {
+    const posts = await BlogPost.find({
+      isPublished: true,
+      status: 'published',
+      showInHeaderMenu: true
+    })
+      .select('title slug excerpt featuredImage')
+      .sort('-publishedAt')
+      .limit(5)
+      .lean();
+    
+    res.json({
+      success: true,
+      data: posts,
+      count: posts.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Error al obtener posts del header menu:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener posts del header menu',
+      error: error.message
+    });
+  }
+};
+
+/**
  * @desc    Obtener posts populares
  * @route   GET /api/blog/posts/popular
  * @access  Public
@@ -361,7 +394,8 @@ export const createPost = async (req, res) => {
       aiOptimization,
       isFeatured,
       allowComments,
-      isPinned
+      isPinned,
+      showInHeaderMenu
     } = req.body;
     
         
@@ -493,7 +527,7 @@ export const createPost = async (req, res) => {
     }
     
     // Crear post
-    const post = await BlogPost.create({
+    const postDataToCreate = {
       title,
       slug,
       excerpt,
@@ -512,7 +546,27 @@ export const createPost = async (req, res) => {
       readingTime,
       isFeatured: isFeatured || false,
       isPinned: isPinned || false,
+      showInHeaderMenu: showInHeaderMenu || false,
       allowComments: allowComments !== undefined ? allowComments : true
+    };
+
+    console.log('💾 [createPost] Datos a guardar en DB:', {
+      title: postDataToCreate.title,
+      isPinned: postDataToCreate.isPinned,
+      showInHeaderMenu: postDataToCreate.showInHeaderMenu,
+      allowComments: postDataToCreate.allowComments
+    });
+
+    const post = await BlogPost.create(postDataToCreate);
+
+    console.log('✅ [createPost] Post creado exitosamente en DB');
+    console.log('📊 [createPost] Post creado con valores:', {
+      _id: post._id,
+      title: post.title,
+      isPinned: post.isPinned,
+      showInHeaderMenu: post.showInHeaderMenu,
+      allowComments: post.allowComments,
+      isPublished: post.isPublished
     });
     
         
@@ -536,8 +590,7 @@ export const createPost = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ [createPost] Error completo:', error);
-    console.error('❌ [createPost] Stack trace:', error.stack);
+    console.error('❌ Error al crear post:', error);
     
     res.status(500).json({
       success: false,
@@ -556,6 +609,7 @@ export const createPost = async (req, res) => {
 export const updatePost = async (req, res) => {
   try {
     const { id } = req.params;
+
     const {
       title,
       excerpt,
@@ -571,7 +625,8 @@ export const updatePost = async (req, res) => {
       aiOptimization,
       isFeatured,
       allowComments,
-      isPinned
+      isPinned,
+      showInHeaderMenu
     } = req.body;
     
     
@@ -726,6 +781,12 @@ export const updatePost = async (req, res) => {
     // ✅ Actualizar isPinned
     if (isPinned !== undefined) post.isPinned = isPinned;
     
+    // ✅ Actualizar showInHeaderMenu
+    if (showInHeaderMenu !== undefined) {
+      console.log('🔄 [updatePost] Actualizando showInHeaderMenu:', showInHeaderMenu);
+      post.showInHeaderMenu = showInHeaderMenu;
+    }
+    
     // 🎯 AUTO-ACTUALIZAR SEO SI CAMBIARON CAMPOS RELEVANTES
     if (seo !== undefined || title || excerpt || content) {
       const shouldRegenerateSEO = (
@@ -762,7 +823,17 @@ export const updatePost = async (req, res) => {
     if (isFeatured !== undefined) post.isFeatured = isFeatured;
     if (allowComments !== undefined) post.allowComments = allowComments;
     
+    console.log('💾 [updatePost] Guardando post con campos:', {
+      title: post.title,
+      isPinned: post.isPinned,
+      showInHeaderMenu: post.showInHeaderMenu,
+      allowComments: post.allowComments,
+      isPublished: post.isPublished
+    });
+
     await post.save();
+
+    console.log('✅ [updatePost] Post guardado exitosamente en DB');
     
     // ✅ Invalidar caché de posts
     postCacheService.invalidateOnPostChange();

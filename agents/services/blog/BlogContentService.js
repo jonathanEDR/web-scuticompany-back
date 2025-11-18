@@ -33,31 +33,58 @@ class BlogContentService {
           audience: 'Profesionales y desarrolladores'
         });
       } else {
-        // Prompt por defecto mejorado
-        prompt = `Genera un artículo de blog completo y profesional con las siguientes características:
+        // Prompt mejorado para generar HTML compatible con TipTap (como el editor manual)
+        prompt = `Genera un artículo de blog en HTML puro y semántico. NO uses sintaxis Markdown.
 
-Título: ${title}
-Categoría: ${category}
-Estilo: ${style}
-Longitud objetivo: ${wordCount} palabras${keywordsStr}
+DATOS: Título: "${title}" | Categoría: ${category} | Longitud: ${wordCount} palabras${keywordsStr}
 
-REQUISITOS ESTRUCTURALES (OBLIGATORIOS):
-1. Una introducción atractiva (2-3 párrafos de 60-80 palabras cada uno)
-2. 3-4 secciones principales con subtítulos HTML (## Título Sección)
-3. Usar listas con viñetas o numeradas donde sea apropiado
-4. Si el tema es técnico, incluir ejemplos de código en bloques \`\`\`
-5. Párrafos cortos y legibles (máximo 80 palabras por párrafo)
-6. Usar **negritas** para términos importantes
-7. Una conclusión sólida con llamado a la acción
-8. Optimizado para SEO con palabras clave naturalmente integradas
+IMPORTANTE: Debes escribir SOLO en HTML, NO en Markdown.
 
-FORMATO DE SALIDA:
-- Usa encabezados Markdown: ## para secciones, ### para subsecciones
-- Usa listas: - para viñetas, 1. para numeradas
-- Usa bloques de código: \`\`\`javascript para código
-- Usa **negrita** para énfasis y términos clave
+INCORRECTO (Markdown):
+## Título de Sección
+**negrita**
+* item de lista
 
-Genera SOLO el contenido del artículo en formato Markdown, sin el título principal (H1).`;
+CORRECTO (HTML):
+<h2>Título de Sección</h2>
+<strong>negrita</strong>
+<li>item de lista</li>
+
+ESTRUCTURA:
+<h2>Introducción</h2>
+<p>Párrafo introductorio explicando el tema principal con <strong>conceptos clave</strong> resaltados.</p>
+<p>Segundo párrafo desarrollando la idea y su importancia en la industria actual.</p>
+
+<h2>Conceptos Fundamentales</h2>
+<p>Explicación de los conceptos básicos que se necesitan conocer.</p>
+<ul>
+<li><strong>Concepto 1:</strong> Descripción breve y clara</li>
+<li><strong>Concepto 2:</strong> Descripción breve y clara</li>
+<li><strong>Concepto 3:</strong> Descripción breve y clara</li>
+</ul>
+
+<h2>Implementación y Mejores Prácticas</h2>
+<p>Pasos prácticos para implementar estos conceptos en proyectos reales.</p>
+<ol>
+<li>Primer paso con explicación detallada</li>
+<li>Segundo paso con consideraciones importantes</li>
+<li>Tercer paso con recomendaciones</li>
+</ol>
+
+<h2>Conclusión</h2>
+<p>Resumen de los puntos clave y llamado a la acción para aplicar los conocimientos.</p>
+
+REGLAS:
+- Usa <h2> y <h3> para títulos
+- Usa <p> para párrafos (50-80 palabras)
+- Usa <strong> para negritas
+- Usa <ul><li> o <ol><li> para listas
+- Si hay código: <pre><code>código aquí</code></pre>
+- NO uses ##, **, *, \`\`\` ni ningún Markdown
+
+Escribe el artículo completo en HTML siguiendo esta estructura
+
+Genera el artículo completo en HTML puro:`;
       }
 
       const content = await openaiService.generateCompletion(prompt, {
@@ -108,15 +135,19 @@ REQUISITOS:
 - Párrafos cortos (60-80 palabras máximo)
 - Coherente con el contexto anterior
 - Incluir listas con viñetas si es apropiado
-- Usar **negritas** para términos importantes
+- Usar negritas para términos importantes
 - Si es contenido técnico, incluir ejemplos de código
 - Profesional, informativo y optimizado para SEO
 
-FORMATO:
-- Usa Markdown para estructura (##, ###, -, **, \`\`\`)
-- Genera contenido legible y escaneables
+FORMATO DE SALIDA - HTML LIMPIO:
+- Usa <h2> o <h3> para el título de la sección
+- Usa <p> para párrafos
+- Usa <ul><li> para listas con viñetas
+- Usa <strong> para negritas
+- Usa <pre><code> para código
+- NO uses Markdown - SOLO HTML
 
-Genera SOLO el contenido de esta sección.`;
+Genera SOLO el contenido HTML de esta sección.`;
 
       const content = await openaiService.generateCompletion(prompt, {
         temperature: 0.7,
@@ -194,11 +225,11 @@ Requisitos:
 - Mejora claridad, fluidez y profesionalismo
 - Corrige errores gramaticales
 - Optimiza para legibilidad y SEO
-- Usa formato Markdown (**negritas**, listas, etc.)
+- Usa formato HTML semántico (<p>, <strong>, <ul>, <li>, etc.)
 - Párrafos cortos (máximo 80 palabras)
 - Conserva el mensaje principal
 
-Genera el contenido mejorado en formato Markdown.`;
+Genera el contenido mejorado en HTML limpio (sin etiquetas html, head, body).`;
 
       const improvedContent = await openaiService.generateCompletion(prompt, {
         temperature: 0.6,
@@ -238,10 +269,10 @@ ${context?.before || 'Sin contexto adicional'}
 REQUISITOS:
 - Genera el siguiente párrafo (2-4 oraciones, 60-80 palabras)
 - Mantén coherencia con el contenido anterior
-- Usa formato Markdown si es apropiado (**negritas**, listas)
+- Usa formato HTML (<p>, <strong>, etc.)
 - Continúa naturalmente el flujo del contenido
 
-Genera SOLO el siguiente párrafo.`;
+Genera SOLO el siguiente párrafo en HTML limpio.`;
 
       const suggestion = await openaiService.generateCompletion(prompt, {
         temperature: 0.8,

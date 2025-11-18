@@ -702,11 +702,14 @@ ${summary}
       // Preparar draft del post
       const category = await BlogCategory.findById(collected.category);
       
+      // ✅ Convertir Markdown a HTML si es necesario (fallback)
+      const cleanContent = this.convertMarkdownToHTML(result.content);
+      
       const draft = {
         title: collected.title,
-        excerpt: this.generateExcerpt(result.content, 280),
-        content: result.content,
-        contentFormat: 'markdown',
+        excerpt: this.generateExcerpt(cleanContent, 280),
+        content: cleanContent,
+        contentFormat: 'html',
         category: collected.category,
         tags: result.metadata.suggestedTags || [],
         seo: {
@@ -822,14 +825,65 @@ ${summary}
     return cleanTopic.charAt(0).toUpperCase() + cleanTopic.slice(1);
   }
 
+  /**
+   * Convertir Markdown residual a HTML (fallback)
+   */
+  convertMarkdownToHTML(content) {
+    if (!content) return '';
+    
+    let html = content;
+    
+    // Si ya tiene etiquetas HTML, no hacer nada
+    if (html.includes('<h2>') || html.includes('<p>')) {
+      return html;
+    }
+    
+    // Convertir encabezados Markdown a HTML
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h2>$1</h2>');
+    
+    // Convertir negritas
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    
+    // Convertir cursivas
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+    
+    // Convertir listas con viñetas
+    html = html.replace(/^\* (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+    
+    // Convertir listas numeradas
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+    
+    // Convertir bloques de código
+    html = html.replace(/```(\w+)?\n([\s\S]+?)```/g, '<pre><code>$2</code></pre>');
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Convertir párrafos (líneas que no son etiquetas HTML)
+    html = html.split('\n\n').map(para => {
+      para = para.trim();
+      if (!para) return '';
+      if (para.startsWith('<')) return para;
+      return `<p>${para}</p>`;
+    }).join('\n');
+    
+    return html;
+  }
+
   generateExcerpt(content, maxLength = 280) {
-    // Remover markdown
+    // Remover HTML y Markdown para obtener texto plano
     const plainText = content
-      .replace(/#{1,6}\s/g, '')
-      .replace(/\*\*/g, '')
-      .replace(/\*/g, '')
-      .replace(/`{1,3}[^`]*`{1,3}/g, '')
-      .replace(/\n+/g, ' ')
+      .replace(/<[^>]*>/g, ' ')  // Remover tags HTML
+      .replace(/#{1,6}\s/g, '')   // Remover ## Markdown
+      .replace(/\*\*/g, '')        // Remover **
+      .replace(/\*/g, '')          // Remover *
+      .replace(/`{1,3}[^`]*`{1,3}/g, '') // Remover código
+      .replace(/\n+/g, ' ')        // Remover saltos de línea
+      .replace(/\s+/g, ' ')        // Normalizar espacios
       .trim();
     
     if (plainText.length <= maxLength) {

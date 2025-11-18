@@ -201,6 +201,7 @@ export const checkPostOwnership = async (req, res, next) => {
     // Importar modelo dinámicamente para evitar dependencias circulares
     const { default: BlogPost } = await import('../models/BlogPost.js');
     const { default: User } = await import('../models/User.js');
+    const { ROLE_PERMISSIONS } = await import('../config/roles.js');
     
     // Buscar el post
     const post = await BlogPost.findById(id);
@@ -222,9 +223,12 @@ export const checkPostOwnership = async (req, res, next) => {
       });
     }
     
-    // Verificar si el usuario tiene permiso para editar todos los posts
-    const hasEditAllPermission = user.permissions?.includes(PERMISSIONS.EDIT_ALL_BLOG_POSTS);
-    const hasDeleteAllPermission = user.permissions?.includes(PERMISSIONS.DELETE_BLOG_POSTS);
+    // Obtener permisos del rol desde la configuración centralizada
+    const userPermissions = ROLE_PERMISSIONS[user.role] || [];
+    
+    // Verificar si el usuario tiene permiso para editar o eliminar todos los posts
+    const hasEditAllPermission = userPermissions.includes(PERMISSIONS.EDIT_ALL_BLOG_POSTS);
+    const hasDeleteAllPermission = userPermissions.includes(PERMISSIONS.DELETE_BLOG_POSTS);
     
     // Si tiene permisos globales, permitir
     if (hasEditAllPermission || hasDeleteAllPermission) {

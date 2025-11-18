@@ -294,6 +294,11 @@ const BlogPostSchema = new mongoose.Schema({
     default: false,
     index: true
   },
+  showInHeaderMenu: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
   allowComments: {
     type: Boolean,
     default: true
