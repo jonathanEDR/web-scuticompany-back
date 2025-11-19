@@ -361,6 +361,20 @@ export const updatePage = async (req, res) => {
     // Actualizar campos manualmente
     if (updateData.content) {
       
+      // 🔧 CORRECCIÓN: Limpiar IDs temporales de los logos antes de guardar
+      if (updateData.content.clientLogos?.logos) {
+        updateData.content.clientLogos.logos = updateData.content.clientLogos.logos.map(logo => {
+          const cleanLogo = { ...logo };
+          // Eliminar _id si es temporal o string que no sea ObjectId válido
+          if (cleanLogo._id && (
+            typeof cleanLogo._id === 'string' && 
+            (cleanLogo._id.startsWith('temp_') || cleanLogo._id.length !== 24)
+          )) {
+            delete cleanLogo._id;
+          }
+          return cleanLogo;
+        });
+      }
       
       
       page.content = updateData.content;
@@ -434,11 +448,17 @@ export const updatePage = async (req, res) => {
       data: pageObj
     });
   } catch (error) {
-    
+    console.error('❌ [ERROR] Error al actualizar página:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      slug: req.params.slug
+    });
     res.status(500).json({
       success: false,
       message: 'Error al actualizar página',
-      error: error.message
+      error: error.message,
+      details: error.name === 'ValidationError' ? error.errors : undefined
     });
   }
 };

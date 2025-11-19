@@ -155,25 +155,39 @@ const PageSchema = new mongoose.Schema({
         link: String,       // URL opcional para hacer clickeable el logo
         order: { type: Number, default: 0 } // Orden de aparición
       }],
-      // Configuración de la barra de logos
+      // Configuración de logos (sin barra - solo configuración de los logos individuales)
       logosBarDesign: {
         light: {
-          background: { type: String, default: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.8) 100%)' },
-          borderColor: { type: String, default: 'rgba(139, 92, 246, 0.15)' },
-          borderWidth: { type: String, default: '1px' },
-          borderRadius: { type: String, default: '1rem' }, // 16px
-          shadow: { type: String, default: '0 8px 32px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05)' },
-          backdropBlur: { type: Boolean, default: true },
-          disperseEffect: { type: Boolean, default: false } // Efecto de dispersión en los bordes
+          // Configuraciones de animación y comportamiento
+          animationsEnabled: { type: Boolean, default: true },
+          rotationMode: { type: String, enum: ['none', 'individual'], default: 'individual' },
+          animationSpeed: { type: String, enum: ['slow', 'normal', 'fast'], default: 'normal' },
+          hoverEffects: { type: Boolean, default: true },
+          hoverIntensity: { type: String, enum: ['subtle', 'normal', 'intense'], default: 'normal' },
+          glowEffects: { type: Boolean, default: true },
+          autoDetectTech: { type: Boolean, default: true },
+          // Configuración de tamaño y espaciado
+          logoSize: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' },
+          logoSpacing: { type: String, enum: ['compact', 'normal', 'wide'], default: 'normal' },
+          logoFormat: { type: String, enum: ['square', 'rectangle', 'original'], default: 'rectangle' },
+          maxLogoWidth: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' },
+          uniformSize: { type: Boolean, default: false }
         },
         dark: {
-          background: { type: String, default: 'linear-gradient(135deg, rgba(17, 24, 39, 0.9) 0%, rgba(31, 41, 55, 0.8) 100%)' },
-          borderColor: { type: String, default: 'rgba(139, 92, 246, 0.25)' },
-          borderWidth: { type: String, default: '1px' },
-          borderRadius: { type: String, default: '1rem' }, // 16px
-          shadow: { type: String, default: '0 8px 32px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(255, 255, 255, 0.05)' },
-          backdropBlur: { type: Boolean, default: true },
-          disperseEffect: { type: Boolean, default: false } // Efecto de dispersión en los bordes
+          // Configuraciones de animación y comportamiento
+          animationsEnabled: { type: Boolean, default: true },
+          rotationMode: { type: String, enum: ['none', 'individual'], default: 'individual' },
+          animationSpeed: { type: String, enum: ['slow', 'normal', 'fast'], default: 'normal' },
+          hoverEffects: { type: Boolean, default: true },
+          hoverIntensity: { type: String, enum: ['subtle', 'normal', 'intense'], default: 'normal' },
+          glowEffects: { type: Boolean, default: true },
+          autoDetectTech: { type: Boolean, default: true },
+          // Configuración de tamaño y espaciado
+          logoSize: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' },
+          logoSpacing: { type: String, enum: ['compact', 'normal', 'wide'], default: 'normal' },
+          logoFormat: { type: String, enum: ['square', 'rectangle', 'original'], default: 'rectangle' },
+          maxLogoWidth: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' },
+          uniformSize: { type: Boolean, default: false }
         }
       },
       // Diseño de tarjetas por tema (similar a solutions)
@@ -297,7 +311,20 @@ const PageSchema = new mongoose.Schema({
           logosBorderRadius: { type: String, default: '0.5rem' },
           logosGap: { type: String, default: '2rem' },
           logosPerRow: { type: Number, default: 4 }, // Logos por fila en desktop
-          logosAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' }
+          logosAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' },
+          // Propiedades de animación
+          floatAnimation: { type: Boolean, default: true }, // Animación flotante
+          floatIntensity: { type: String, enum: ['subtle', 'normal', 'strong'], default: 'normal' },
+          mouseTracking: { type: Boolean, default: true }, // Seguimiento del mouse
+          mouseIntensity: { type: String, enum: ['subtle', 'normal', 'strong'], default: 'normal' },
+          hoverScale: { type: Number, default: 1.15 }, // Escala en hover
+          hoverRotation: { type: Boolean, default: true }, // Rotación en hover
+          // Configuración del carrusel
+          carouselEnabled: { type: Boolean, default: true }, // Habilitar carrusel automático
+          carouselSpeed: { type: Number, default: 3000 }, // Velocidad en ms (3 segundos)
+          logosToShowDesktop: { type: Number, default: 6 }, // Logos visibles en desktop
+          logosToShowTablet: { type: Number, default: 4 }, // Logos visibles en tablet
+          logosToShowMobile: { type: Number, default: 3 } // Logos visibles en móvil
         },
         dark: {
           logoMaxWidth: { type: String, default: '120px' },
@@ -311,7 +338,20 @@ const PageSchema = new mongoose.Schema({
           logosBorderRadius: { type: String, default: '0.5rem' },
           logosGap: { type: String, default: '2rem' },
           logosPerRow: { type: Number, default: 4 }, // Logos por fila en desktop
-          logosAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' }
+          logosAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' },
+          // Propiedades de animación
+          floatAnimation: { type: Boolean, default: true }, // Animación flotante
+          floatIntensity: { type: String, enum: ['subtle', 'normal', 'strong'], default: 'normal' },
+          mouseTracking: { type: Boolean, default: true }, // Seguimiento del mouse
+          mouseIntensity: { type: String, enum: ['subtle', 'normal', 'strong'], default: 'normal' },
+          hoverScale: { type: Number, default: 1.15 }, // Escala en hover
+          hoverRotation: { type: Boolean, default: true }, // Rotación en hover
+          // Configuración del carrusel
+          carouselEnabled: { type: Boolean, default: true }, // Habilitar carrusel automático
+          carouselSpeed: { type: Number, default: 3000 }, // Velocidad en ms (3 segundos)
+          logosToShowDesktop: { type: Number, default: 6 }, // Logos visibles en desktop
+          logosToShowTablet: { type: Number, default: 4 }, // Logos visibles en tablet
+          logosToShowMobile: { type: Number, default: 3 } // Logos visibles en móvil
         }
       }
     },
