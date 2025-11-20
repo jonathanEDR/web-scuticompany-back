@@ -27,7 +27,11 @@ export const uploadImage = async (req, res) => {
       fileInfo: req.files?.image ? {
         name: req.files.image.name,
         size: req.files.image.size,
-        mimetype: req.files.image.mimetype
+        mimetype: req.files.image.mimetype,
+        hasTempFilePath: !!req.files.image.tempFilePath,
+        tempFilePath: req.files.image.tempFilePath,
+        hasData: !!req.files.image.data,
+        dataSize: req.files.image.data ? req.files.image.data.length : 0
       } : null,
       cloudinaryConfigured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY),
       environment: process.env.NODE_ENV,
@@ -83,8 +87,16 @@ export const uploadImage = async (req, res) => {
       });
     }
     
-    // Validar tipo de archivo
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    // Validar tipo de archivo (agregado SVG para íconos)
+    const allowedTypes = [
+      'image/jpeg', 
+      'image/jpg', 
+      'image/png', 
+      'image/gif', 
+      'image/webp',
+      'image/svg+xml'  // ✅ SVG para íconos sin fondo
+    ];
+    
     if (!allowedTypes.includes(imageFile.mimetype)) {
       logger.warn('❌ Tipo de archivo no permitido:', {
         provided: imageFile.mimetype,
@@ -92,7 +104,7 @@ export const uploadImage = async (req, res) => {
       });
       return res.status(400).json({
         success: false,
-        message: 'Tipo de archivo no permitido. Solo se permiten: JPG, PNG, GIF, WEBP'
+        message: 'Tipo de archivo no permitido. Solo se permiten: JPG, PNG, GIF, WEBP, SVG'
       });
     }
 
@@ -119,14 +131,27 @@ export const uploadImage = async (req, res) => {
     });
     
     const uploadResult = await new Promise((resolve, reject) => {
+      // Detectar si es SVG para configuración especial
+      const isSVG = imageFile.mimetype === 'image/svg+xml';
+      
+      // Generar public_id único con extensión para SVG
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 15);
+      const basePublicId = `${timestamp}_${randomStr}`;
+      
       // Configuración mejorada para el upload
       const uploadOptions = {
         folder: 'web-scuti',
-        resource_type: 'image',
-        transformation: [
-          { width: 2000, height: 2000, crop: 'limit' },
-          { quality: 'auto:best' }
-        ],
+        resource_type: isSVG ? 'raw' : 'image',  // SVG como 'raw' en Cloudinary
+        // Para SVG, agregar la extensión explícitamente en el public_id
+        ...(isSVG ? { public_id: `${basePublicId}.svg` } : {}),
+        // Solo aplicar transformaciones a imágenes raster (no SVG)
+        ...(isSVG ? {} : {
+          transformation: [
+            { width: 2000, height: 2000, crop: 'limit' },
+            { quality: 'auto:best' }
+          ]
+        }),
         timeout: 60000 // 60 segundos timeout
       };
 
@@ -181,7 +206,32 @@ export const uploadImage = async (req, res) => {
       });
 
       try {
-        uploadStream.end(imageFile.data);
+        // express-fileupload con useTempFiles: true usa .tempFilePath
+        // en vez de .data (buffer en memoria)
+        if (imageFile.tempFilePath) {
+          // Modo archivo temporal - leer y enviar al stream
+          const readStream = fs.createReadStream(imageFile.tempFilePath);
+          
+          readStream.on('error', (readError) => {
+            clearTimeout(timeoutId);
+            logger.error('❌ Error leyendo archivo temporal:', readError);
+            reject(readError);
+          });
+
+          readStream.pipe(uploadStream);
+        } else if (imageFile.data) {
+          // Modo buffer en memoria (fallback)
+          uploadStream.end(imageFile.data);
+        } else {
+          clearTimeout(timeoutId);
+          const error = new Error('No se pudo acceder a los datos del archivo');
+          logger.error('❌ Archivo sin datos ni tempFilePath:', {
+            hasTempFilePath: !!imageFile.tempFilePath,
+            hasData: !!imageFile.data,
+            fileName: imageFile.name
+          });
+          reject(error);
+        }
       } catch (streamError) {
         clearTimeout(timeoutId);
         logger.error('❌ Error al enviar datos al stream:', streamError);
@@ -221,6 +271,19 @@ export const uploadImage = async (req, res) => {
       isOrphan: true // Inicialmente es huérfana hasta que se use
     });
 
+    // Limpiar archivo temporal si existe
+    if (imageFile.tempFilePath) {
+      try {
+        await fs.promises.unlink(imageFile.tempFilePath);
+        logger.info('🗑️ Archivo temporal limpiado:', imageFile.tempFilePath);
+      } catch (unlinkError) {
+        logger.warn('⚠️ No se pudo eliminar archivo temporal:', {
+          path: imageFile.tempFilePath,
+          error: unlinkError.message
+        });
+      }
+    }
+
     logger.success('🎉 Upload completado exitosamente:', {
       imageId: imageRecord._id,
       cloudinaryId: uploadResult.public_id,
@@ -236,6 +299,16 @@ export const uploadImage = async (req, res) => {
       data: imageRecord
     });
   } catch (error) {
+    // Limpiar archivo temporal en caso de error
+    if (req.files?.image?.tempFilePath) {
+      try {
+        await fs.promises.unlink(req.files.image.tempFilePath);
+        logger.info('🗑️ Archivo temporal limpiado tras error:', req.files.image.tempFilePath);
+      } catch (unlinkError) {
+        logger.warn('⚠️ No se pudo eliminar archivo temporal tras error:', unlinkError.message);
+      }
+    }
+
     // ============================================
     // MANEJO DE ERRORES CON LOGS DETALLADOS
     // ============================================

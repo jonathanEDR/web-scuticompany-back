@@ -35,6 +35,9 @@ import {
 // Importar ServicesAgent controller
 import {
   chatWithServicesAgent,
+  chatWithServicesAgentPublic, // 🆕 Endpoint público para chatbot de ventas
+  listPublicServices, // 🆕 Listar servicios públicos
+  listPublicCategories, // 🆕 Listar categorías públicas
   createServiceWithAgent,
   editServiceWithAgent,
   analyzeServiceWithAgent,
@@ -89,7 +92,36 @@ import {
 
 // Rate limiters para endpoints de AI
 import rateLimit from 'express-rate-limit';
+import { ipKeyGenerator } from 'express-rate-limit';
 
+// 🔒 Rate limiter ESTRICTO para chat público (por IP)
+const publicChatLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutos
+  max: 20, // Máximo 20 mensajes cada 10 minutos por IP
+  message: {
+    success: false,
+    error: '⏱️ Has alcanzado el límite de mensajes. Por favor espera unos minutos antes de continuar.',
+    retryAfter: 600 // segundos
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Contar todas las requests
+  skipFailedRequests: false,
+  // ✅ Usar ipKeyGenerator para soporte IPv6
+  keyGenerator: ipKeyGenerator,
+  // Handler personalizado para logging
+  handler: (req, res) => {
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    console.warn(`🚫 [RATE LIMIT] Chat público bloqueado para IP: ${ip}`);
+    res.status(429).json({
+      success: false,
+      error: '⏱️ Has alcanzado el límite de mensajes. Por favor espera unos minutos.',
+      retryAfter: 600
+    });
+  }
+});
+
+// Rate limiter estándar para agente (usuarios autenticados)
 const agentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 30, // 30 requests por ventana
@@ -98,6 +130,7 @@ const agentLimiter = rateLimit({
   legacyHeaders: false
 });
 
+// Rate limiter para comandos AI intensivos
 const aiCommandLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutos
   max: 10, // 10 comandos AI por ventana
@@ -111,7 +144,14 @@ const router = express.Router();
 // ============================================
 // RUTAS DEL SERVICESAGENT (antes de todo)
 // ============================================
-// Chat con el agente
+// 🆕 ENDPOINTS PÚBLICOS (sin autenticación requerida)
+// 🔒 Chat público con rate limiting ESTRICTO por IP
+router.post('/agent/chat/public', publicChatLimiter, chatWithServicesAgentPublic);
+// Listados con rate limiting estándar
+router.get('/agent/public/services', agentLimiter, listPublicServices); // 🗂️ Listar servicios
+router.get('/agent/public/categories', agentLimiter, listPublicCategories); // 📂 Listar categorías
+
+// Chat con el agente (autenticado)
 router.post('/agent/chat', requireAuth, ...requireUser, agentLimiter, chatWithServicesAgent);
 
 // Crear servicio con IA

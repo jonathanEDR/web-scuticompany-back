@@ -18,16 +18,19 @@ import logger from '../../../utils/logger.js';
 export class ServicesAgent extends BaseAgent {
   constructor(skipDBConnection = false) {
     super(
-      'ServicesAgent',
-      'Agente especializado en gestión inteligente de servicios con AI integrado',
+      'Asesor de Ventas SCUTI',
+      'Asesor de ventas especializado para SCUTI Company - Experto en servicios de desarrollo de software y tecnología',
       [
-        'ai_content_generation', // ✅ NUEVO - Generación con OpenAI
+        'sales_consultation', // 🎯 NUEVO - Asesoramiento de ventas
+        'service_catalog_access', // 🎯 NUEVO - Acceso al catálogo de servicios
+        'category_browsing', // 🎯 NUEVO - Navegación por categorías
+        'ai_content_generation', // ✅ Generación con OpenAI
         'service_creation',
         'service_editing',
-        'content_blocks_generation', // ✅ NUEVO - 7 bloques específicos
+        'content_blocks_generation', // ✅ 7 bloques específicos
         'pricing_strategy',
-        'fallback_content', // ✅ NUEVO - Templates profesionales
-        'chat_interaction' // ✅ NUEVO - Chat interactivo
+        'fallback_content', // ✅ Templates profesionales
+        'chat_interaction' // ✅ Chat interactivo
       ],
       skipDBConnection
     );
@@ -69,7 +72,7 @@ export class ServicesAgent extends BaseAgent {
    */
   async chat(message, sessionId, context = {}) {
     try {
-      logger.info(`💬 ServicesAgent.chat() - Message: "${message.substring(0, 50)}..."`);
+      logger.info(`💬 Asesor de Ventas SCUTI - Message: "${message.substring(0, 50)}..."`);
       
       if (!this.chatHandler) {
         throw new Error('ChatHandler not initialized');
@@ -83,6 +86,90 @@ export class ServicesAgent extends BaseAgent {
     } catch (error) {
       logger.error('❌ Error in ServicesAgent.chat():', error);
       throw error;
+    }
+  }
+
+  /**
+   * 🗂️ Listar servicios disponibles (para páginas públicas)
+   * Método específico para consultas del chatbot de ventas
+   */
+  async listPublicServices(options = {}) {
+    try {
+      const { categoriaId, limit = 30, activo = true } = options;
+      
+      const query = { activo };
+      if (categoriaId) {
+        query.categoria = categoriaId;
+      }
+
+      const servicios = await Servicio.find(query)
+        .populate('categoria', 'nombre descripcion icono')
+        .select('titulo descripcionCorta categoria precio duracion destacado imagenes')
+        .sort({ destacado: -1, createdAt: -1 })
+        .limit(limit);
+
+      logger.info(`📋 Listed ${servicios.length} public services`);
+
+      return {
+        success: true,
+        data: {
+          servicios,
+          total: servicios.length,
+          filtered: !!categoriaId
+        }
+      };
+    } catch (error) {
+      logger.error('❌ Error listing public services:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * 📂 Listar categorías disponibles (para páginas públicas)
+   * Método específico para navegación del chatbot de ventas
+   */
+  async listPublicCategories() {
+    try {
+      const categorias = await Categoria.find({ activa: true })
+        .select('nombre descripcion icono orden')
+        .sort({ orden: 1, nombre: 1 });
+
+      // Contar servicios por categoría
+      const categoriasConConteo = await Promise.all(
+        categorias.map(async (cat) => {
+          const count = await Servicio.countDocuments({
+            categoria: cat._id,
+            activo: true
+          });
+          
+          return {
+            _id: cat._id,
+            nombre: cat.nombre,
+            descripcion: cat.descripcion,
+            icono: cat.icono,
+            serviciosCount: count
+          };
+        })
+      );
+
+      logger.info(`📂 Listed ${categorias.length} public categories`);
+
+      return {
+        success: true,
+        data: {
+          categorias: categoriasConConteo,
+          total: categorias.length
+        }
+      };
+    } catch (error) {
+      logger.error('❌ Error listing public categories:', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 

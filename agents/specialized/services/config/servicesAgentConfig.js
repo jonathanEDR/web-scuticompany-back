@@ -142,9 +142,9 @@ export const SERVICES_AGENT_CONFIG = {
     
     // Respuestas
     maxResponseLength: 500,
-    includeRecommendations: true,
+    includeRecommendations: false, // 🔧 Desactivado: Las recomendaciones vienen del prompt específico
     includeExamples: true,
-    includeNextSteps: true,
+    includeNextSteps: false, // 🔧 Desactivado para conversaciones más naturales
     
     // Personalización
     adaptToUserExpertise: true,

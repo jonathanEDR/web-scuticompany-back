@@ -390,6 +390,11 @@ const PageSchema = new mongoose.Schema({
         correoPlaceholder: { type: String, default: 'tu@email.com' },
         correoRequired: { type: Boolean, default: true },
         
+        categoriaLabel: { type: String, default: 'Servicio de Interés' },
+        categoriaPlaceholder: { type: String, default: 'Selecciona un tipo de servicio' },
+        categoriaRequired: { type: Boolean, default: false },
+        categoriaEnabled: { type: Boolean, default: false },
+        
         mensajeLabel: { type: String, default: 'Cuéntanos sobre tu proyecto' },
         mensajePlaceholder: { type: String, default: 'Describe tu proyecto, necesidades o consulta...' },
         mensajeRequired: { type: Boolean, default: true },
@@ -424,6 +429,60 @@ const PageSchema = new mongoose.Schema({
         dark: { type: String, default: '' }
       },
       backgroundImageAlt: { type: String, default: 'Contact background' },
+      
+      // Diseño de tarjetas por tema (para el formulario)
+      cardsDesign: {
+        light: {
+          background: { type: String, default: 'rgba(255, 255, 255, 0.95)' },
+          border: { type: String, default: 'rgba(0, 0, 0, 0.1)' },
+          borderWidth: { type: String, default: '1px' },
+          shadow: { type: String, default: '0 10px 40px rgba(0, 0, 0, 0.1)' },
+          hoverBackground: { type: String, default: 'rgba(255, 255, 255, 1)' },
+          hoverBorder: { type: String, default: 'rgba(139, 92, 246, 0.4)' },
+          hoverShadow: { type: String, default: '0 20px 40px rgba(139, 92, 246, 0.15)' },
+          iconGradient: { type: String, default: 'linear-gradient(135deg, #8B5CF6, #06B6D4)' },
+          iconBackground: { type: String, default: 'rgba(255, 255, 255, 0.9)' },
+          iconColor: { type: String, default: '#1f2937' },
+          titleColor: { type: String, default: '#1f2937' },
+          descriptionColor: { type: String, default: '#4b5563' },
+          linkColor: { type: String, default: '#8B5CF6' },
+          // Tamaño de tarjetas
+          cardMinWidth: { type: String, default: '320px' },
+          cardMaxWidth: { type: String, default: '480px' },
+          cardMinHeight: { type: String, default: 'auto' },
+          cardPadding: { type: String, default: '1.5rem' },
+          // Alineación
+          cardsAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' },
+          // Configuración de iconos
+          iconBorderEnabled: { type: Boolean, default: false },
+          iconAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' }
+        },
+        dark: {
+          background: { type: String, default: 'rgba(31, 41, 55, 0.95)' },
+          border: { type: String, default: 'rgba(255, 255, 255, 0.1)' },
+          borderWidth: { type: String, default: '1px' },
+          shadow: { type: String, default: '0 10px 40px rgba(0, 0, 0, 0.5)' },
+          hoverBackground: { type: String, default: 'rgba(31, 41, 55, 1)' },
+          hoverBorder: { type: String, default: 'rgba(167, 139, 250, 0.5)' },
+          hoverShadow: { type: String, default: '0 20px 40px rgba(167, 139, 250, 0.2)' },
+          iconGradient: { type: String, default: 'linear-gradient(135deg, #A78BFA, #22D3EE)' },
+          iconBackground: { type: String, default: 'rgba(17, 24, 39, 0.8)' },
+          iconColor: { type: String, default: '#ffffff' },
+          titleColor: { type: String, default: '#f9fafb' },
+          descriptionColor: { type: String, default: '#9ca3af' },
+          linkColor: { type: String, default: '#A78BFA' },
+          // Tamaño de tarjetas
+          cardMinWidth: { type: String, default: '320px' },
+          cardMaxWidth: { type: String, default: '480px' },
+          cardMinHeight: { type: String, default: 'auto' },
+          cardPadding: { type: String, default: '1.5rem' },
+          // Alineación
+          cardsAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' },
+          // Configuración de iconos
+          iconBorderEnabled: { type: Boolean, default: false },
+          iconAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'center' }
+        }
+      },
       
       // Estilos por tema
       styles: {
@@ -536,6 +595,80 @@ const PageSchema = new mongoose.Schema({
       },
       
       // Habilitar/deshabilitar formulario
+      enabled: { type: Boolean, default: true }
+    },
+    // ========================================
+    // 🆕 CHATBOT CONFIGURATION
+    // ========================================
+    chatbotConfig: {
+      // Información del bot
+      botName: { type: String, default: 'Asesor de Ventas' },
+      statusText: { type: String, default: 'En línea • Respuesta inmediata' },
+      
+      // Logo del bot por tema
+      logo: {
+        light: { type: String, default: '' },  // URL para tema claro
+        dark: { type: String, default: '' }    // URL para tema oscuro
+      },
+      logoAlt: { type: String, default: 'Bot Logo' },
+      
+      // Mensaje de bienvenida
+      welcomeMessage: {
+        title: { type: String, default: '¡Hola! Soy tu Asesor Virtual 👋' },
+        description: { type: String, default: 'Estoy aquí para ayudarte con información sobre nuestros servicios, precios y cotizaciones.' }
+      },
+      
+      // Preguntas sugeridas (máximo 4)
+      suggestedQuestions: [{
+        icon: { type: String, default: '💼' },
+        text: { type: String, default: '' },
+        message: { type: String, default: '' }
+      }],
+      
+      // Estilos del header por tema
+      headerStyles: {
+        light: {
+          background: { type: String, default: 'linear-gradient(to right, #EFF6FF, #F5F3FF)' },
+          titleColor: { type: String, default: '#111827' },
+          subtitleColor: { type: String, default: '#6B7280' },
+          logoBackground: { type: String, default: 'linear-gradient(to bottom right, #3B82F6, #8B5CF6)' }
+        },
+        dark: {
+          background: { type: String, default: 'linear-gradient(to right, #1F2937, #1F2937)' },
+          titleColor: { type: String, default: '#FFFFFF' },
+          subtitleColor: { type: String, default: '#9CA3AF' },
+          logoBackground: { type: String, default: 'linear-gradient(to bottom right, #3B82F6, #8B5CF6)' }
+        }
+      },
+      
+      // Estilos del botón flotante
+      buttonStyles: {
+        size: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' }, // 48px, 56px, 64px
+        position: {
+          bottom: { type: String, default: '24px' }, // 1.5rem = 24px
+          right: { type: String, default: '24px' }   // 1.5rem = 24px
+        },
+        gradient: {
+          from: { type: String, default: '#3B82F6' },  // blue-600
+          to: { type: String, default: '#8B5CF6' }     // purple-600
+        },
+        shape: { type: String, enum: ['circle', 'rounded', 'square'], default: 'circle' },
+        // Icono personalizado del botón por tema
+        icon: {
+          light: { type: String, default: '' },  // URL para tema claro
+          dark: { type: String, default: '' }    // URL para tema oscuro
+        }
+      },
+      
+      // Configuración de comportamiento
+      behavior: {
+        autoOpen: { type: Boolean, default: false },
+        autoOpenDelay: { type: Number, default: 5000 }, // ms
+        showUnreadBadge: { type: Boolean, default: true },
+        showPoweredBy: { type: Boolean, default: true }
+      },
+      
+      // Habilitar/deshabilitar chatbot
       enabled: { type: Boolean, default: true }
     },
     sections: [

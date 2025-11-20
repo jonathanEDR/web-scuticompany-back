@@ -91,6 +91,40 @@ export const getAllPages = async (req, res) => {
       };
     }
 
+    // 🔧 CORRECCIÓN: Asegurar que cardsDesign existe para contactForm
+    if (pageObj.content?.contactForm && !pageObj.content.contactForm.cardsDesign) {
+      pageObj.content.contactForm.cardsDesign = {
+        light: {
+          background: 'rgba(255, 255, 255, 0.95)',
+          border: 'rgba(0, 0, 0, 0.1)',
+          borderWidth: '1px',
+          shadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
+          hoverBackground: 'rgba(255, 255, 255, 1)',
+          hoverBorder: 'rgba(139, 92, 246, 0.4)',
+          hoverShadow: '0 20px 40px rgba(139, 92, 246, 0.15)',
+          titleColor: '#1f2937',
+          descriptionColor: '#4b5563',
+          cardMinWidth: '320px',
+          cardMaxWidth: '480px',
+          cardPadding: '1.5rem'
+        },
+        dark: {
+          background: 'rgba(31, 41, 55, 0.95)',
+          border: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: '1px',
+          shadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+          hoverBackground: 'rgba(31, 41, 55, 1)',
+          hoverBorder: 'rgba(167, 139, 250, 0.5)',
+          hoverShadow: '0 20px 40px rgba(167, 139, 250, 0.2)',
+          titleColor: '#f9fafb',
+          descriptionColor: '#9ca3af',
+          cardMinWidth: '320px',
+          cardMaxWidth: '480px',
+          cardPadding: '1.5rem'
+        }
+      };
+    }
+
     // 🔧 CORRECCIÓN: Asegurar que cardsDesign existe para solutions
     if (pageObj.content?.solutions && !pageObj.content.solutions.cardsDesign) {
       

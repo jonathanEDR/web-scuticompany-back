@@ -27,7 +27,7 @@ const imageSchema = new mongoose.Schema({
   mimetype: {
     type: String,
     required: [true, 'El tipo MIME es requerido'],
-    enum: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    enum: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
   },
   size: {
     type: Number,

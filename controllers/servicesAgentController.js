@@ -207,6 +207,107 @@ export const chatWithServicesAgent = async (req, res) => {
 };
 
 /**
+ * 🆕 Chat PÚBLICO con ServicesAgent (para chatbot de ventas)
+ * POST /api/servicios/agent/chat/public
+ * Auth: OPCIONAL (permite usuarios anónimos)
+ */
+export const chatWithServicesAgentPublic = async (req, res) => {
+  try {
+    const { message, sessionId, context } = req.body;
+    const userId = req.auth?.userId || 'anonymous'; // Usuario anónimo si no está autenticado
+
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Mensaje requerido'
+      });
+    }
+
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'SessionId requerido'
+      });
+    }
+
+    logger.info(`💬 [PUBLIC] Sales chat from ${userId === 'anonymous' ? 'anonymous user' : `user ${userId}`}`);
+
+    const agent = await getServicesAgent();
+    
+    const result = await agent.chat(message, sessionId, {
+      userId,
+      isPublic: true, // Marcar como chat público
+      ...context
+    });
+
+    // 🆕 Asegurar que el nombre del agente sea correcto en la respuesta
+    return res.status(200).json({
+      ...result,
+      agent: 'Asesor de Ventas SCUTI',
+      agentRole: 'sales'
+    });
+
+  } catch (error) {
+    logger.error('Error in public sales chat:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Error al procesar chat'
+    });
+  }
+};
+
+/**
+ * 🗂️ Listar servicios públicos (para chatbot de ventas)
+ * GET /api/servicios/agent/public/services
+ * Auth: NO REQUERIDA (público)
+ */
+export const listPublicServices = async (req, res) => {
+  try {
+    const { categoriaId, limit } = req.query;
+
+    logger.info(`📋 [PUBLIC] Listing services - Category: ${categoriaId || 'all'}`);
+
+    const agent = await getServicesAgent();
+    const result = await agent.listPublicServices({
+      categoriaId,
+      limit: limit ? parseInt(limit) : 30
+    });
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    logger.error('Error listing public services:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Error al listar servicios'
+    });
+  }
+};
+
+/**
+ * 📂 Listar categorías públicas (para chatbot de ventas)
+ * GET /api/servicios/agent/public/categories
+ * Auth: NO REQUERIDA (público)
+ */
+export const listPublicCategories = async (req, res) => {
+  try {
+    logger.info(`📂 [PUBLIC] Listing categories`);
+
+    const agent = await getServicesAgent();
+    const result = await agent.listPublicCategories();
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    logger.error('Error listing public categories:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Error al listar categorías'
+    });
+  }
+};
+
+/**
  * Crear servicio con IA
  * POST /api/servicios/agent/create
  * Auth: requireAuth + canCreateServices

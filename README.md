@@ -1,6 +1,6 @@
 # 🚀 Web Scuti Backend
 
-Backend completo para Web Scuti Company con sistema de agentes AI, blog inteligente y gestión de contenido.
+Backend completo para Web Scuti Company con sistema de agentes AI, captura de leads automatizada y gestión de contenido.
 
 ## 📋 Índice
 
@@ -17,30 +17,35 @@ Backend completo para Web Scuti Company con sistema de agentes AI, blog intelige
 ## ✨ Características
 
 ### 🤖 Sistema de Agentes AI
+- **ServicesAgent (Asesor de Ventas)** - Captura de leads con formulario conversacional 
+  - 🎯 Sistema de 5 niveles de conversación
+  - 🛡️ Protección anti off-topic (ahorro $36+/año)
+  - 📝 Captura automática en MongoDB
+  - ✅ 100% tests pasando
 - **BlogAgent** - Generación de contenido optimizado (SEO 97/100)
 - **SEOAgent** - Optimización y análisis SEO
-- **ServicesAgent** - Gestión de servicios
 - **GerenteGeneral** - Coordinador maestro
 
-### 💬 Sistema Conversacional de Blog (NUEVO)
-- Creación guiada mediante chat
-- 6 etapas conversacionales
-- 5 templates profesionales
-- Generación asíncrona con polling
-- Persistencia con TTL automático
+### 💬 Sistema Conversacional de Ventas (V2.0)
+- Detección inteligente de intención
+- Formulario secuencial (nombre → teléfono → email)
+- Persistencia de sesiones con global scope
+- Detección temprana de consultas off-topic
+- Respuestas de redirección automáticas
 
 ### 📝 Gestión de Contenido
 - Blog completo con categorías y tags
 - Sistema de comentarios y moderación
 - Onboarding de clientes
-- CRM integrado
+- CRM integrado con leads
 - Gestión de eventos/agenda
 
 ### 🔐 Seguridad
 - Autenticación con Clerk
 - Sistema de roles y permisos
 - MongoDB como source of truth
-- Rate limiting
+- Rate limiting (30-60 req/min)
+- Protección contra abuse/spam
 - Validación exhaustiva
 
 ---

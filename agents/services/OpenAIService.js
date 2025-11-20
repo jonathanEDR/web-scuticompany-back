@@ -178,7 +178,10 @@ class OpenAIService {
       // Estrategia especial: usar caché temporal si hemos tenido rate limits recientes
       const hasRecentRateLimits = this.metrics.rateLimitHits > 0 && Date.now() - this.lastRequestTime < 300000; // 5 minutos
       
-      if (hasRecentRateLimits && agentName.includes('ServicesAgent')) {
+      // 🔧 Identificar agentes de ventas (ServicesAgent o "Asesor de Ventas SCUTI")
+      const isSalesAgent = agentName.includes('ServicesAgent') || agentName.includes('Asesor de Ventas') || agentName.includes('SCUTI');
+      
+      if (hasRecentRateLimits && isSalesAgent) {
         cached = this.getFromSmartCache(cacheKey);
         if (cached) {
           logger.info('🎯 Using emergency cache due to recent rate limits');
@@ -187,16 +190,23 @@ class OpenAIService {
         }
       }
       
-      // No usar caché para ServicesAgent para garantizar contenido único (excepto en emergencias)
-      if (!agentName.includes('ServicesAgent') && !agentName.includes('generator_')) {
+      // 🔧 CRÍTICO: Respetar disableCache del contexto
+      const cacheDisabled = taskContext.disableCache === true;
+      
+      // No usar caché para agentes de ventas o si está explícitamente deshabilitado
+      if (cacheDisabled || isSalesAgent) {
+        if (cacheDisabled) {
+          logger.info('🚫 Cache explicitly disabled by caller - generating fresh content');
+        } else {
+          logger.info('🚫 Cache disabled for Sales Agent - generating fresh content');
+        }
+      } else if (!agentName.includes('generator_')) {
         cached = this.getFromSmartCache(cacheKey);
         if (cached) {
           logger.info('🎯 Using intelligent cached response');
           this.metrics.cachedResponses++;
           return cached;
         }
-      } else if (!hasRecentRateLimits) {
-        logger.info('🚫 Cache disabled for ServicesAgent - generating fresh content');
       }
 
       // Configurar parámetros según perfil del agente
@@ -229,14 +239,16 @@ class OpenAIService {
       // Actualizar contexto y métricas
       await this.updateContextAndMetrics(sessionId, agentName, userMessage, processedResponse, startTime);
 
-      // Guardar en caché inteligente (incluir ServicesAgent si hay rate limits)
-      const shouldCache = !agentName.includes('ServicesAgent') && !agentName.includes('generator_') || 
-                          (agentName.includes('ServicesAgent') && this.metrics.rateLimitHits > 0);
+      // Guardar en caché inteligente (NO cachear si está deshabilitado o es agente de ventas)
+      const shouldCache = !taskContext.disableCache && 
+                          !isSalesAgent && 
+                          !agentName.includes('generator_') || 
+                          (isSalesAgent && this.metrics.rateLimitHits > 0);
       
       if (shouldCache) {
         this.saveToSmartCache(cacheKey, processedResponse, agentProfile);
-        if (agentName.includes('ServicesAgent')) {
-          logger.info('💾 Emergency cache save for ServicesAgent due to rate limits');
+        if (isSalesAgent) {
+          logger.info('💾 Emergency cache save for Sales Agent due to rate limits');
         } else {
           logger.info('💾 Response cached for future use');
         }
@@ -470,9 +482,15 @@ class OpenAIService {
    * Construir mensajes optimizados para el contexto (método original mejorado)
    */
   async buildOptimizedMessages(contextData, agentProfile, userMessage, taskContext) {
+    // 🔧 CRÍTICO: Si el caller ya proporciona messages completos, USARLOS directamente
+    if (taskContext.messages && Array.isArray(taskContext.messages) && taskContext.messages.length > 0) {
+      logger.info(`✅ [BUILD MESSAGES] Using provided messages array (${taskContext.messages.length} messages)`);
+      return taskContext.messages; // Retornar directamente los mensajes pre-construidos
+    }
+
     const messages = [];
 
-    // 1. Sistema personalizado con contexto
+    // 1. Sistema personalizado con contexto (solo si no hay messages pre-construidos)
     const systemPrompt = personalitySystem.generatePersonalizedPrompt(agentProfile, {
       ...contextData.additionalContext,
       currentTask: taskContext,
@@ -702,9 +720,8 @@ class OpenAIService {
       structured += '\n\n📊 MÉTRICAS CLAVE:\n- Rendimiento actual evaluado\n- Oportunidades de mejora identificadas';
     }
 
-    if (config.includeRecommendations && !structured.toLowerCase().includes('recomend')) {
-      structured += '\n\n💡 RECOMENDACIÓN:\nRevisa los puntos destacados y prioriza las acciones de mayor impacto.';
-    }
+    // 🔧 REMOVIDO: No agregar recomendaciones genéricas en contexto de ventas
+    // Las recomendaciones deben venir del prompt específico del agente
 
     return structured;
   }
