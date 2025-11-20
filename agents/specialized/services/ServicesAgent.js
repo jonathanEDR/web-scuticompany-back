@@ -133,7 +133,15 @@ export class ServicesAgent extends BaseAgent {
    */
   async listPublicCategories() {
     try {
-      const categorias = await Categoria.find({ activa: true })
+      // 🔧 FIX: Buscar categorías activas O sin campo activo/activa
+      const categorias = await Categoria.find({ 
+        $or: [
+          { activo: true },
+          { activa: true },
+          { activo: { $exists: false } },
+          { activa: { $exists: false } }
+        ]
+      })
         .select('nombre descripcion icono orden')
         .sort({ orden: 1, nombre: 1 });
 

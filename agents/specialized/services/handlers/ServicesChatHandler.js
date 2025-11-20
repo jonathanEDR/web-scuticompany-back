@@ -1038,7 +1038,15 @@ Mientras tanto, ¿hay algo más que quieras saber? 🚀`;
     const input = userInput.toLowerCase().trim();
     
     // Obtener todas las categorías de la BD
-    const categorias = await Categoria.find({ activo: true }, 'nombre slug');
+    // 🔧 FIX: Usar $or para buscar tanto 'activo' como 'activa' y permitir categorías sin ese campo
+    const categorias = await Categoria.find({ 
+      $or: [
+        { activo: true },
+        { activa: true },
+        { activo: { $exists: false } },
+        { activa: { $exists: false } }
+      ]
+    }, 'nombre slug');
     
     logger.info(`🔍 [CATEGORY] Searching for: "${input}" among ${categorias.length} categories`);
     
@@ -1088,7 +1096,15 @@ Mientras tanto, ¿hay algo más que quieras saber? 🚀`;
       servicesContext.totalServices = await Servicio.countDocuments({ estado: 'activo' });
 
       // 🔧 Obtener TODAS las categorías (incluye test, Otro, etc.)
-      const categories = await Categoria.find({}, 'nombre slug descripcion').limit(20).lean();
+      // FIX: Buscar categorías activas O sin campo activo/activa
+      const categories = await Categoria.find({ 
+        $or: [
+          { activo: true },
+          { activa: true },
+          { activo: { $exists: false } },
+          { activa: { $exists: false } }
+        ]
+      }, 'nombre slug descripcion').limit(20).lean();
       
       servicesContext.categories = categories.map(c => ({ 
         nombre: c.nombre, 
@@ -2812,7 +2828,15 @@ REGLAS:
    */
   async getCategoriaOptions() {
     try {
-      const categorias = await Categoria.find({ activo: true }).select('nombre slug').limit(10);
+      // 🔧 FIX: Buscar categorías activas O sin campo activo/activa
+      const categorias = await Categoria.find({ 
+        $or: [
+          { activo: true },
+          { activa: true },
+          { activo: { $exists: false } },
+          { activa: { $exists: false } }
+        ]
+      }).select('nombre slug').limit(10);
       return categorias.map(cat => ({
         nombre: cat.nombre,
         slug: cat.slug
