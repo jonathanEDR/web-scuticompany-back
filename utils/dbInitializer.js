@@ -360,17 +360,78 @@ export const initializeDatabase = async () => {
       
       if (needsChatbotUpdate) {
         logger.init('⚠️  Configuración del chatbot incompleta, actualizando...');
+        logger.info(`📊 Estado actual: ${JSON.stringify({
+          hasConfig: !!homePage.chatbotConfig,
+          hasQuestions: !!homePage.chatbotConfig?.suggestedQuestions,
+          questionsCount: homePage.chatbotConfig?.suggestedQuestions?.length || 0
+        })}`);
         
-        // Actualizar con la configuración completa del chatbot
-        homePage.chatbotConfig = defaultHomePageData.chatbotConfig;
+        // Crear objeto completo de chatbot config
+        const newChatbotConfig = {
+          enabled: true,
+          botName: 'Asesor de Ventas',
+          statusText: 'En línea • Respuesta inmediata',
+          logo: {
+            light: '',
+            dark: ''
+          },
+          logoAlt: 'Asesor Virtual',
+          welcomeMessage: {
+            title: '¡Hola! Soy tu Asesor Virtual 👋',
+            description: 'Estoy aquí para ayudarte con información sobre nuestros servicios, precios y cotizaciones.'
+          },
+          suggestedQuestions: [
+            {
+              icon: '💼',
+              text: '¿Qué servicios ofrecen?',
+              message: '¿Qué servicios ofrecen?'
+            },
+            {
+              icon: '💰',
+              text: 'Solicitar cotización',
+              message: 'Quiero solicitar una cotización'
+            },
+            {
+              icon: '📋',
+              text: 'Ver precios y planes',
+              message: '¿Cuáles son sus precios y planes?'
+            },
+            {
+              icon: '📞',
+              text: 'Información de contacto',
+              message: '¿Cómo puedo contactarlos?'
+            }
+          ],
+          headerStyles: defaultHomePageData.chatbotConfig.headerStyles,
+          buttonStyles: defaultHomePageData.chatbotConfig.buttonStyles,
+          behavior: defaultHomePageData.chatbotConfig.behavior
+        };
+        
+        // Asignar la configuración completa
+        homePage.content.chatbotConfig = newChatbotConfig;
+        
+        // 🔥 IMPORTANTE: Marcar explícitamente el campo como modificado para que Mongoose lo guarde
+        homePage.markModified('content.chatbotConfig');
+        homePage.markModified('content.chatbotConfig.suggestedQuestions');
+        
         homePage.lastUpdated = new Date();
         homePage.updatedBy = 'system-auto-update';
         
+        logger.info(`💾 Guardando con ${newChatbotConfig.suggestedQuestions.length} preguntas sugeridas...`);
         await homePage.save();
         
+        // Verificar que se guardó correctamente
+        const updatedPage = await Page.findOne({ pageSlug: 'home' }).lean();
+        const savedQuestionsCount = updatedPage?.content?.chatbotConfig?.suggestedQuestions?.length || 0;
+        
         logger.success('✅ Configuración del chatbot actualizada');
-        logger.success(`📝 Preguntas sugeridas agregadas: ${homePage.chatbotConfig.suggestedQuestions.length}`);
+        logger.success(`📝 Preguntas sugeridas guardadas: ${savedQuestionsCount}`);
         logger.database('UPDATE', 'pages', { slug: 'home', field: 'chatbotConfig' });
+        
+        if (savedQuestionsCount === 0) {
+          logger.error('❌ ERROR: Las preguntas NO se guardaron en la base de datos');
+          logger.error('🔍 Verifique el schema de Page.js para el campo suggestedQuestions');
+        }
       } else {
         logger.success('✅ Configuración del chatbot completa', {
           questionsCount: homePage.chatbotConfig.suggestedQuestions.length
