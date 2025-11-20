@@ -18,7 +18,8 @@
     "reset:agent:services": "node scripts/resetAgents.js services",
     "reset:agent:gerente": "node scripts/resetAgents.js gerente",
     "migrate:blogagent": "node agents/specialized/migrate-blogagent.js",
-    "rollback:blogagent": "node agents/specialized/migrate-blogagent.js rollback"
+    "rollback:blogagent": "node agents/specialized/migrate-blogagent.js rollback",
+    "update:chatbot-config": "node scripts/update-chatbot-config.js"
   },
   "keywords": [
     "express",

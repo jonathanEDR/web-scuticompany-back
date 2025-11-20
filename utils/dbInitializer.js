@@ -165,6 +165,80 @@ const defaultHomePageData = {
     ogImage: '',
     twitterCard: 'summary_large_image'
   },
+  // 🆕 CONFIGURACIÓN DEL CHATBOT
+  chatbotConfig: {
+    enabled: true,
+    botName: 'Asesor de Ventas',
+    statusText: 'En línea • Respuesta inmediata',
+    logo: {
+      light: '',
+      dark: ''
+    },
+    logoAlt: 'Asesor Virtual',
+    welcomeMessage: {
+      title: '¡Hola! Soy tu Asesor Virtual 👋',
+      description: 'Estoy aquí para ayudarte con información sobre nuestros servicios, precios y cotizaciones.'
+    },
+    // 🎯 PREGUNTAS SUGERIDAS (las que aparecen al abrir el chat)
+    suggestedQuestions: [
+      {
+        icon: '💼',
+        text: '¿Qué servicios ofrecen?',
+        message: '¿Qué servicios ofrecen?'
+      },
+      {
+        icon: '💰',
+        text: 'Solicitar cotización',
+        message: 'Quiero solicitar una cotización'
+      },
+      {
+        icon: '📋',
+        text: 'Ver precios y planes',
+        message: '¿Cuáles son sus precios y planes?'
+      },
+      {
+        icon: '📞',
+        text: 'Información de contacto',
+        message: '¿Cómo puedo contactarlos?'
+      }
+    ],
+    headerStyles: {
+      light: {
+        background: 'linear-gradient(to right, #EFF6FF, #F5F3FF)',
+        titleColor: '#111827',
+        subtitleColor: '#6B7280',
+        logoBackground: 'linear-gradient(to bottom right, #3B82F6, #8B5CF6)'
+      },
+      dark: {
+        background: 'linear-gradient(to right, #1F2937, #1F2937)',
+        titleColor: '#FFFFFF',
+        subtitleColor: '#9CA3AF',
+        logoBackground: 'linear-gradient(to bottom right, #3B82F6, #8B5CF6)'
+      }
+    },
+    buttonStyles: {
+      size: 'medium',
+      position: {
+        bottom: '24px',
+        right: '24px'
+      },
+      gradient: {
+        from: '#3B82F6',
+        to: '#8B5CF6'
+      },
+      shape: 'circle',
+      icon: {
+        light: '',
+        dark: ''
+      }
+    },
+    behavior: {
+      autoOpen: false,
+      autoOpenDelay: 5000,
+      showUnreadBadge: true,
+      showPoweredBy: true
+    }
+  },
   theme: {
     default: 'light',
     lightMode: {
