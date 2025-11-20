@@ -5,6 +5,7 @@
 
 import mongoose from 'mongoose';
 import logger from '../../utils/logger.js';
+import INIT_CONFIG from '../../config/initConfig.js';
 
 // Schema para templates de prompts
 const PromptTemplateSchema = new mongoose.Schema({
@@ -566,9 +567,15 @@ Longitud: ${context.contentData.content?.length || 0} caracteres`;
    */
   async initializeDefaultTemplates() {
     try {
+      if (!INIT_CONFIG.INIT_PROMPT_TEMPLATES) {
+        return; // Salir silenciosamente si está desactivado
+      }
+      
       const existingTemplates = await PromptTemplate.countDocuments();
       if (existingTemplates > 0) {
-        logger.info('📋 Prompt templates already exist, skipping initialization');
+        if (INIT_CONFIG.SHOW_DETAILED_LOGS) {
+          logger.info('📋 Prompt templates already exist, skipping initialization');
+        }
         return;
       }
 

@@ -9,12 +9,17 @@
  */
 
 import CacheConfig from '../models/CacheConfig.js';
+import INIT_CONFIG from '../config/initConfig.js';
 
 /**
- * Inicializar configuración de cache para servicios
+ * Inicializa la configuración de cache por defecto
  */
-export const initializeCacheConfig = async () => {
+export const inicializarCache = async () => {
   try {
+    if (!INIT_CONFIG.INIT_CACHE_CONFIG) {
+      return; // Salir silenciosamente si está desactivado
+    }
+    
     console.log('🔧 Inicializando configuración de cache...');
     
     // Verificar si ya existe configuración
@@ -165,6 +170,6 @@ export const checkCacheStatus = async () => {
 };
 
 export default {
-  initializeCacheConfig,
+  inicializarCache,
   checkCacheStatus
 };

@@ -1,5 +1,6 @@
 import MessageTemplate from '../models/MessageTemplate.js';
 import logger from './logger.js';
+import INIT_CONFIG from '../config/initConfig.js';
 
 /**
  * 📄 Inicializador de Plantillas de Mensajes
@@ -8,13 +9,19 @@ import logger from './logger.js';
 
 export const inicializarPlantillasMensajes = async () => {
   try {
+    if (!INIT_CONFIG.INIT_MESSAGE_TEMPLATES) {
+      return; // Salir silenciosamente si está desactivado
+    }
+    
     logger.info('🔧 Verificando plantillas de mensajes...');
     
     // Verificar si ya existen plantillas
     const plantillasExistentes = await MessageTemplate.countDocuments();
     
     if (plantillasExistentes > 0) {
-      logger.info(`✅ Ya existen ${plantillasExistentes} plantillas en la base de datos`);
+      if (INIT_CONFIG.SHOW_DETAILED_LOGS) {
+        logger.info(`✅ Ya existen ${plantillasExistentes} plantillas en la base de datos`);
+      }
       return;
     }
     

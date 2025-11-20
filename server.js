@@ -35,7 +35,7 @@ import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import { inicializarCategorias } from './utils/categoriaInitializer.js';
 import { inicializarPlantillasMensajes } from './utils/messageInitializer.js';
-import { initializeCacheConfig } from './utils/cacheInitializer.js';
+import { inicializarCache } from './utils/cacheInitializer.js';
 import { initializeAllAgents } from './utils/agentInitializer.js';
 import logger from './utils/logger.js';
 
@@ -67,7 +67,7 @@ async function initializeServer() {
     await initializeDatabase();
     await inicializarCategorias();
     await inicializarPlantillasMensajes();
-    await initializeCacheConfig();
+    await inicializarCache();
     
     // 3. Inicializar configuraciones de agentes con datos de entrenamiento
     await initializeAllAgents();

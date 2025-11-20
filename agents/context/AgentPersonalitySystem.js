@@ -5,6 +5,7 @@
 
 import mongoose from 'mongoose';
 import logger from '../../utils/logger.js';
+import INIT_CONFIG from '../../config/initConfig.js';
 
 // Schema para perfiles de agentes personalizados
 const AgentProfileSchema = new mongoose.Schema({
@@ -208,10 +209,16 @@ export class AgentPersonalitySystem {
    */
   async initializeDefaultProfiles() {
     try {
+      if (!INIT_CONFIG.INIT_AGENT_PROFILES) {
+        return; // Salir silenciosamente si está desactivado
+      }
+      
       // Verificar si ya existen perfiles
       const existingProfiles = await AgentProfile.countDocuments();
       if (existingProfiles > 0) {
-        logger.info('📋 Agent profiles already exist, skipping initialization');
+        if (INIT_CONFIG.SHOW_DETAILED_LOGS) {
+          logger.info('📋 Agent profiles already exist, skipping initialization');
+        }
         return;
       }
 

@@ -8,6 +8,7 @@
 
 import AgentConfig from '../models/AgentConfig.js';
 import logger from './logger.js';
+import INIT_CONFIG from '../config/initConfig.js';
 
 // ============================================
 // 📋 CONFIGURACIONES POR DEFECTO DE AGENTES
@@ -441,7 +442,13 @@ async function initializeAgentIfNotExists(defaultConfig) {
  */
 export async function initializeAllAgents() {
   try {
-    logger.init('🤖 Inicializando configuraciones de agentes...\n');
+    if (!INIT_CONFIG.INIT_AGENT_CONFIGS) {
+      return; // Salir silenciosamente si está desactivado
+    }
+    
+    if (INIT_CONFIG.SHOW_INIT_LOGS) {
+      logger.init('🤖 Inicializando configuraciones de agentes...\n');
+    }
     
     const configs = [
       DEFAULT_BLOG_AGENT_CONFIG,
@@ -456,7 +463,7 @@ export async function initializeAllAgents() {
       const result = await initializeAgentIfNotExists(config);
       results.push(result);
       
-      if (process.env.NODE_ENV !== 'production') {
+      if (INIT_CONFIG.SHOW_DETAILED_LOGS && process.env.NODE_ENV !== 'production') {
         const { agentName } = config;
         const taskCount = config.trainingConfig.taskPrompts.length;
         const rulesCount = config.trainingConfig.behaviorRules.length;
@@ -466,7 +473,9 @@ export async function initializeAllAgents() {
       }
     }
     
-    logger.success('✅ Todos los agentes inicializados correctamente\n');
+    if (INIT_CONFIG.SHOW_INIT_LOGS) {
+      logger.success('✅ Todos los agentes inicializados correctamente\n');
+    }
     
     return results;
     

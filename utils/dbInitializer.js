@@ -2,6 +2,7 @@ import Page from '../models/Page.js';
 import { ensureSuperAdminExists } from './roleHelper.js';
 import { inicializarCategorias } from './categoriaInitializer.js';
 import logger from './logger.js';
+import INIT_CONFIG from '../config/initConfig.js';
 
 /**
  * Datos por defecto para la página Home
@@ -335,34 +336,24 @@ export const initializeDatabase = async () => {
   try {
     logger.init('Verificando estado de la base de datos', 'progress');
 
-    // Verificar si existe la página Home
+    // ========================================
+    // 📄 PÁGINA HOME
+    // ========================================
     const homePage = await Page.findOne({ pageSlug: 'home' });
 
-    if (!homePage) {
+    if (!homePage && INIT_CONFIG.CREATE_HOME_PAGE) {
       logger.init('Página Home no encontrada, creando configuración por defecto');
-
       await Page.create(defaultHomePageData);
-      
       logger.success('Página Home creada exitosamente');
       logger.startup('Puedes editar el contenido desde el CMS Manager');
       logger.database('CREATE', 'pages', { slug: 'home' });
+    } else if (!homePage) {
+      logger.warn('⚠️  Página Home no encontrada (CREATE_HOME_PAGE = false)');
     } else {
-      logger.success('Página Home encontrada', {
-        id: homePage._id,
-        lastUpdate: homePage.lastUpdated,
-        updatedBy: homePage.updatedBy
-      });
+      logger.success('✅ Página Home encontrada');
       
-      // 🆕 ACTUALIZAR CONFIGURACIÓN DEL CHATBOT SI FALTA O TIENE DATOS INCORRECTOS
-      const hasEmptyIcons = homePage.content?.chatbotConfig?.suggestedQuestions?.some(q => !q.icon || q.icon === '');
-      const hasOldUpdate = homePage.updatedBy && homePage.updatedBy !== 'system-auto-update';
-      
-      const needsChatbotUpdate = !homePage.content?.chatbotConfig || 
-                                 !homePage.content.chatbotConfig.suggestedQuestions || 
-                                 homePage.content.chatbotConfig.suggestedQuestions.length === 0 ||
-                                 hasEmptyIcons; // 🔥 NUEVO: También actualizar si los iconos están vacíos
-      
-      if (needsChatbotUpdate) {
+      // 🆕 VERIFICACIÓN DEL CHATBOT
+      if (INIT_CONFIG.AUTO_UPDATE_CHATBOT) {
         logger.init('⚠️  Configuración del chatbot incompleta o desactualizada, actualizando...');
         logger.info(`📊 Estado actual: ${JSON.stringify({
           hasConfig: !!homePage.content?.chatbotConfig,
@@ -462,50 +453,37 @@ export const initializeDatabase = async () => {
           logger.error('❌ ERROR: Los iconos NO se guardaron correctamente');
         }
       } else {
-        logger.success('✅ Configuración del chatbot completa', {
-          questionsCount: homePage.content.chatbotConfig.suggestedQuestions.length
-        });
+        logger.success('✅ Configuración del chatbot completa');
       }
-      
-      // Verificar integridad de datos
-      const hasHeroImages = !!(homePage.content?.hero?.backgroundImage?.light || 
-                                homePage.content?.hero?.backgroundImage?.dark);
-      const hasSolutionsImages = !!(homePage.content?.solutions?.backgroundImage?.light || 
-                                     homePage.content?.solutions?.backgroundImage?.dark);
-      const itemsCount = homePage.content?.solutions?.items?.length || 0;
-      const itemsWithIcons = homePage.content?.solutions?.items?.filter(
-        i => i.iconLight || i.iconDark
-      ).length || 0;
-
-      logger.debug('Estado de la página Home', {
-        heroImages: hasHeroImages ? 'Configuradas' : 'Sin configurar',
-        solutionsImages: hasSolutionsImages ? 'Configuradas' : 'Sin configurar',
-        itemsCount,
-        itemsWithIcons
-      });
       
       logger.database('FOUND', 'pages', { slug: 'home' });
     }
 
-    // Verificar si existe la página Services
+    // ========================================
+    // 📄 PÁGINA SERVICES
+    // ========================================
     const servicesPage = await Page.findOne({ pageSlug: 'services' });
 
-    if (!servicesPage) {
+    if (!servicesPage && INIT_CONFIG.CREATE_SERVICES_PAGE) {
       logger.init('Página Services no encontrada, creando configuración por defecto');
 
       await Page.create(defaultServicesPageData);
       
       logger.success('Página Services creada exitosamente');
       logger.database('CREATE', 'pages', { slug: 'services' });
+    } else if (!servicesPage) {
+      logger.warn('⚠️  Página Services no encontrada (CREATE_SERVICES_PAGE = false)');
     } else {
-      logger.success('Página Services encontrada');
+      logger.success('✅ Página Services encontrada');
       logger.database('FOUND', 'pages', { slug: 'services' });
     }
 
-    // 🆕 Verificar si existe la página About (Nosotros)
+    // ========================================
+    // 📄 PÁGINA ABOUT
+    // ========================================
     const aboutPage = await Page.findOne({ pageSlug: 'about' });
 
-    if (!aboutPage) {
+    if (!aboutPage && INIT_CONFIG.CREATE_ABOUT_PAGE) {
       logger.init('Página About no encontrada, creando configuración por defecto');
 
       await Page.create({
@@ -577,35 +555,45 @@ export const initializeDatabase = async () => {
       
       logger.success('Página About creada exitosamente');
       logger.database('CREATE', 'pages', { slug: 'about' });
+    } else if (!aboutPage) {
+      logger.warn('⚠️  Página About no encontrada (CREATE_ABOUT_PAGE = false)');
     } else {
-      logger.success('Página About encontrada');
+      logger.success('✅ Página About encontrada');
       logger.database('FOUND', 'pages', { slug: 'about' });
     }
 
-    // Verificar existencia de Super Admin
-    logger.init('Verificando Super Administrador del sistema');
-    const superAdmin = await ensureSuperAdminExists();
-    
-    if (superAdmin) {
-      logger.success('Super Administrador verificado', {
-        email: superAdmin.email,
-        id: superAdmin._id
-      });
-    } else {
-      logger.warn('No se pudo verificar/crear Super Administrador');
-      logger.warn('Asegúrate de configurar DEFAULT_SUPER_ADMIN_EMAIL en .env');
+    // ========================================
+    // 👤 SUPER ADMINISTRADOR
+    // ========================================
+    if (INIT_CONFIG.ENSURE_SUPER_ADMIN) {
+      logger.init('Verificando Super Administrador del sistema');
+      const superAdmin = await ensureSuperAdminExists();
+      
+      if (superAdmin) {
+        logger.success('✅ Super Administrador verificado');
+      } else {
+        logger.warn('⚠️  No se pudo verificar/crear Super Administrador');
+      }
     }
 
-    // Inicializar categorías por defecto
-    logger.init('Verificando categorías del sistema');
-    await inicializarCategorias();
+    // ========================================
+    // 🏷️  CATEGORÍAS
+    // ========================================
+    if (INIT_CONFIG.INIT_CATEGORIES) {
+      logger.init('Verificando categorías del sistema');
+      await inicializarCategorias();
+    }
 
-    // Verificar estado general de la BD
+    // ========================================
+    // 📊 RESUMEN
+    // ========================================
     const totalPages = await Page.countDocuments();
-    logger.database('COUNT', 'pages', { total: totalPages });
+    
+    if (INIT_CONFIG.SHOW_HEALTH_CHECK) {
+      logger.database('COUNT', 'pages', { total: totalPages });
+    }
 
     logger.performance('Inicialización de base de datos', startTime);
-
     console.log('✅ Base de datos inicializada correctamente\n');
 
   } catch (error) {

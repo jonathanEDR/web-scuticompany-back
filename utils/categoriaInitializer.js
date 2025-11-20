@@ -1,5 +1,6 @@
 import Categoria from '../models/Categoria.js';
 import logger from './logger.js';
+import INIT_CONFIG from '../config/initConfig.js';
 
 // Categorías por defecto basadas en el enum anterior
 const categoriasDefecto = [
@@ -50,13 +51,19 @@ const categoriasDefecto = [
 // Función para inicializar categorías
 export const inicializarCategorias = async () => {
   try {
+    if (!INIT_CONFIG.INIT_CATEGORIES) {
+      return; // Salir silenciosamente si está desactivado
+    }
+    
     logger.info('🏷️  Inicializando categorías por defecto...');
     
     // Verificar si ya existen categorías
     const categoriasExistentes = await Categoria.countDocuments();
     
     if (categoriasExistentes > 0) {
-      logger.info(`Ya existen ${categoriasExistentes} categorías en la base de datos`);
+      if (INIT_CONFIG.SHOW_DETAILED_LOGS) {
+        logger.info(`Ya existen ${categoriasExistentes} categorías en la base de datos`);
+      }
       return;
     }
     
