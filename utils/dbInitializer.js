@@ -353,88 +353,117 @@ export const initializeDatabase = async () => {
         updatedBy: homePage.updatedBy
       });
       
-      // 🆕 ACTUALIZAR CONFIGURACIÓN DEL CHATBOT SI FALTA
-      const needsChatbotUpdate = !homePage.chatbotConfig || 
-                                 !homePage.chatbotConfig.suggestedQuestions || 
-                                 homePage.chatbotConfig.suggestedQuestions.length === 0;
+      // 🆕 ACTUALIZAR CONFIGURACIÓN DEL CHATBOT SI FALTA O TIENE DATOS INCORRECTOS
+      const hasEmptyIcons = homePage.content?.chatbotConfig?.suggestedQuestions?.some(q => !q.icon || q.icon === '');
+      const hasOldUpdate = homePage.updatedBy && homePage.updatedBy !== 'system-auto-update';
+      
+      const needsChatbotUpdate = !homePage.content?.chatbotConfig || 
+                                 !homePage.content.chatbotConfig.suggestedQuestions || 
+                                 homePage.content.chatbotConfig.suggestedQuestions.length === 0 ||
+                                 hasEmptyIcons; // 🔥 NUEVO: También actualizar si los iconos están vacíos
       
       if (needsChatbotUpdate) {
-        logger.init('⚠️  Configuración del chatbot incompleta, actualizando...');
+        logger.init('⚠️  Configuración del chatbot incompleta o desactualizada, actualizando...');
         logger.info(`📊 Estado actual: ${JSON.stringify({
-          hasConfig: !!homePage.chatbotConfig,
-          hasQuestions: !!homePage.chatbotConfig?.suggestedQuestions,
-          questionsCount: homePage.chatbotConfig?.suggestedQuestions?.length || 0
+          hasConfig: !!homePage.content?.chatbotConfig,
+          hasQuestions: !!homePage.content?.chatbotConfig?.suggestedQuestions,
+          questionsCount: homePage.content?.chatbotConfig?.suggestedQuestions?.length || 0,
+          hasEmptyIcons: hasEmptyIcons,
+          lastUpdatedBy: homePage.updatedBy
         })}`);
         
-        // Crear objeto completo de chatbot config
-        const newChatbotConfig = {
-          enabled: true,
-          botName: 'Asesor de Ventas',
-          statusText: 'En línea • Respuesta inmediata',
-          logo: {
-            light: '',
-            dark: ''
+        // Preguntas sugeridas con iconos explícitos
+        const suggestedQuestionsData = [
+          {
+            icon: '💼',
+            text: '¿Qué servicios ofrecen?',
+            message: '¿Qué servicios ofrecen?'
           },
-          logoAlt: 'Asesor Virtual',
-          welcomeMessage: {
-            title: '¡Hola! Soy tu Asesor Virtual 👋',
-            description: 'Estoy aquí para ayudarte con información sobre nuestros servicios, precios y cotizaciones.'
+          {
+            icon: '💰',
+            text: 'Solicitar cotización',
+            message: 'Quiero solicitar una cotización'
           },
-          suggestedQuestions: [
-            {
-              icon: '💼',
-              text: '¿Qué servicios ofrecen?',
-              message: '¿Qué servicios ofrecen?'
-            },
-            {
-              icon: '💰',
-              text: 'Solicitar cotización',
-              message: 'Quiero solicitar una cotización'
-            },
-            {
-              icon: '📋',
-              text: 'Ver precios y planes',
-              message: '¿Cuáles son sus precios y planes?'
-            },
-            {
-              icon: '📞',
-              text: 'Información de contacto',
-              message: '¿Cómo puedo contactarlos?'
-            }
-          ],
-          headerStyles: defaultHomePageData.chatbotConfig.headerStyles,
-          buttonStyles: defaultHomePageData.chatbotConfig.buttonStyles,
-          behavior: defaultHomePageData.chatbotConfig.behavior
-        };
+          {
+            icon: '📋',
+            text: 'Ver precios y planes',
+            message: '¿Cuáles son sus precios y planes?'
+          },
+          {
+            icon: '📞',
+            text: 'Información de contacto',
+            message: '¿Cómo puedo contactarlos?'
+          }
+        ];
         
-        // Asignar la configuración completa
-        homePage.content.chatbotConfig = newChatbotConfig;
+        // Crear o actualizar la configuración del chatbot
+        if (!homePage.content.chatbotConfig) {
+          homePage.content.chatbotConfig = {};
+        }
         
-        // 🔥 IMPORTANTE: Marcar explícitamente el campo como modificado para que Mongoose lo guarde
+        // Actualizar campos uno por uno para asegurar que se guardan
+        homePage.content.chatbotConfig.enabled = true;
+        homePage.content.chatbotConfig.botName = 'Asesor de Ventas';
+        homePage.content.chatbotConfig.statusText = 'En línea • Respuesta inmediata';
+        homePage.content.chatbotConfig.logoAlt = 'Asesor Virtual';
+        
+        if (!homePage.content.chatbotConfig.logo) {
+          homePage.content.chatbotConfig.logo = { light: '', dark: '' };
+        }
+        
+        if (!homePage.content.chatbotConfig.welcomeMessage) {
+          homePage.content.chatbotConfig.welcomeMessage = {};
+        }
+        homePage.content.chatbotConfig.welcomeMessage.title = '¡Hola! Soy tu Asesor Virtual 👋';
+        homePage.content.chatbotConfig.welcomeMessage.description = 'Estoy aquí para ayudarte con información sobre nuestros servicios, precios y cotizaciones.';
+        
+        // 🔥 CRÍTICO: Reemplazar completamente el array de preguntas
+        homePage.content.chatbotConfig.suggestedQuestions = suggestedQuestionsData;
+        
+        // Mantener los estilos existentes si ya existen
+        if (!homePage.content.chatbotConfig.headerStyles) {
+          homePage.content.chatbotConfig.headerStyles = defaultHomePageData.chatbotConfig.headerStyles;
+        }
+        if (!homePage.content.chatbotConfig.buttonStyles) {
+          homePage.content.chatbotConfig.buttonStyles = defaultHomePageData.chatbotConfig.buttonStyles;
+        }
+        if (!homePage.content.chatbotConfig.behavior) {
+          homePage.content.chatbotConfig.behavior = defaultHomePageData.chatbotConfig.behavior;
+        }
+        
+        // 🔥 IMPORTANTE: Marcar explícitamente todos los campos como modificados
+        homePage.markModified('content');
         homePage.markModified('content.chatbotConfig');
         homePage.markModified('content.chatbotConfig.suggestedQuestions');
         
         homePage.lastUpdated = new Date();
         homePage.updatedBy = 'system-auto-update';
         
-        logger.info(`💾 Guardando con ${newChatbotConfig.suggestedQuestions.length} preguntas sugeridas...`);
+        logger.info(`💾 Guardando configuración completa del chatbot...`);
+        logger.info(`📝 Preguntas a guardar: ${suggestedQuestionsData.length}`);
+        logger.info(`🎨 Iconos: ${suggestedQuestionsData.map(q => q.icon).join(' ')}`);
+        
         await homePage.save();
         
         // Verificar que se guardó correctamente
         const updatedPage = await Page.findOne({ pageSlug: 'home' }).lean();
         const savedQuestionsCount = updatedPage?.content?.chatbotConfig?.suggestedQuestions?.length || 0;
+        const savedIcons = updatedPage?.content?.chatbotConfig?.suggestedQuestions?.map(q => q.icon || '❌') || [];
         
         logger.success('✅ Configuración del chatbot actualizada');
         logger.success(`📝 Preguntas sugeridas guardadas: ${savedQuestionsCount}`);
+        logger.success(`🎨 Iconos guardados: ${savedIcons.join(' ')}`);
         logger.database('UPDATE', 'pages', { slug: 'home', field: 'chatbotConfig' });
         
         if (savedQuestionsCount === 0) {
           logger.error('❌ ERROR: Las preguntas NO se guardaron en la base de datos');
-          logger.error('🔍 Verifique el schema de Page.js para el campo suggestedQuestions');
+        }
+        if (savedIcons.some(icon => !icon || icon === '❌')) {
+          logger.error('❌ ERROR: Los iconos NO se guardaron correctamente');
         }
       } else {
         logger.success('✅ Configuración del chatbot completa', {
-          questionsCount: homePage.chatbotConfig.suggestedQuestions.length
+          questionsCount: homePage.content.chatbotConfig.suggestedQuestions.length
         });
       }
       
