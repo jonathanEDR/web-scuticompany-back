@@ -353,6 +353,30 @@ export const initializeDatabase = async () => {
         updatedBy: homePage.updatedBy
       });
       
+      // 🆕 ACTUALIZAR CONFIGURACIÓN DEL CHATBOT SI FALTA
+      const needsChatbotUpdate = !homePage.chatbotConfig || 
+                                 !homePage.chatbotConfig.suggestedQuestions || 
+                                 homePage.chatbotConfig.suggestedQuestions.length === 0;
+      
+      if (needsChatbotUpdate) {
+        logger.init('⚠️  Configuración del chatbot incompleta, actualizando...');
+        
+        // Actualizar con la configuración completa del chatbot
+        homePage.chatbotConfig = defaultHomePageData.chatbotConfig;
+        homePage.lastUpdated = new Date();
+        homePage.updatedBy = 'system-auto-update';
+        
+        await homePage.save();
+        
+        logger.success('✅ Configuración del chatbot actualizada');
+        logger.success(`📝 Preguntas sugeridas agregadas: ${homePage.chatbotConfig.suggestedQuestions.length}`);
+        logger.database('UPDATE', 'pages', { slug: 'home', field: 'chatbotConfig' });
+      } else {
+        logger.success('✅ Configuración del chatbot completa', {
+          questionsCount: homePage.chatbotConfig.suggestedQuestions.length
+        });
+      }
+      
       // Verificar integridad de datos
       const hasHeroImages = !!(homePage.content?.hero?.backgroundImage?.light || 
                                 homePage.content?.hero?.backgroundImage?.dark);
