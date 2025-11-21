@@ -46,10 +46,13 @@ export class GerenteGeneral extends BaseAgent {
     // Configuración avanzada (se carga desde DB con trainingConfig)
     this.advancedConfig = null;
     
-    // Cargar configuración de la base de datos
-    this.loadConfiguration();
+    // Flag para indicar si la configuración ya fue cargada
+    this.configurationLoaded = false;
     
-    logger.info('👔 GerenteGeneral initialized');
+    // NO cargar configuración aquí - esperar a activate() para lazy initialization
+    // this.loadConfiguration(); // ← REMOVIDO: causa problemas en deploy
+    
+    logger.info('👔 GerenteGeneral initialized (configuration will load on activation)');
   }
 
   /**
@@ -58,6 +61,12 @@ export class GerenteGeneral extends BaseAgent {
    * @private
    */
   async loadConfiguration() {
+    // Si ya está cargada, no volver a cargar
+    if (this.configurationLoaded) {
+      logger.debug('Configuration already loaded, skipping...');
+      return;
+    }
+    
     try {
       // Buscar configuración en la base de datos
       let dbConfig = await AgentConfig.findOne({ agentName: 'gerente' });
@@ -125,6 +134,10 @@ export class GerenteGeneral extends BaseAgent {
           trainingConfig: null
         };
       }
+      
+      // Marcar configuración como cargada
+      this.configurationLoaded = true;
+      
     } catch (error) {
       logger.error('❌ Error loading GerenteGeneral configuration:', error);
       this.config = this.getDefaultConfig();
@@ -135,6 +148,9 @@ export class GerenteGeneral extends BaseAgent {
         promptConfig: this.getDefaultPrompts(),
         routingConfig: this.getDefaultRoutingConfig()
       };
+      
+      // Marcar configuración como cargada (con defaults)
+      this.configurationLoaded = true;
     }
   }
 
@@ -267,11 +283,34 @@ export class GerenteGeneral extends BaseAgent {
   }
 
   /**
+   * Activar el agente
+   * @override - Cargar configuración antes de activar
+   */
+  async activate() {
+    try {
+      // Cargar configuración desde DB (lazy initialization)
+      await this.loadConfiguration();
+      
+      // Llamar al activate del padre
+      return await super.activate();
+    } catch (error) {
+      this.status = 'error';
+      logger.error(`❌ Error activating GerenteGeneral:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Procesar tarea principal
    * @override
    */
   async processTask(task, context = {}) {
     const startTime = Date.now();
+    
+    // Asegurar que la configuración esté cargada (lazy loading por si acaso)
+    if (!this.configurationLoaded) {
+      await this.loadConfiguration();
+    }
     
     // Incrementar contador de requests
     this.metrics.totalRequests++;
@@ -1277,12 +1316,24 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
    */
   async healthCheck() {
     try {
+      // Si la configuración no está cargada, el agente no está healthy todavía
+      if (!this.configurationLoaded) {
+        return {
+          status: 'initializing',
+          healthy: false,
+          agent: 'GerenteGeneral',
+          message: 'Configuration not loaded yet (waiting for activation)',
+          timestamp: new Date().toISOString()
+        };
+      }
+      
       const registeredCount = this.orchestrator.agents.size;
       const activeCount = this.orchestrator.activeAgents.size;
       const sessionStats = await centralizedContext.getSessionStats();
 
       return {
         status: 'healthy',
+        healthy: true,
         agent: 'GerenteGeneral',
         registeredAgents: registeredCount,
         activeAgents: activeCount,
@@ -1299,6 +1350,7 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
     } catch (error) {
       return {
         status: 'unhealthy',
+        healthy: false,
         agent: 'GerenteGeneral',
         error: error.message,
         timestamp: new Date().toISOString()
