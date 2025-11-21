@@ -581,7 +581,7 @@ BlogPostSchema.statics.getPublishedPosts = async function(options = {}) {
   if (featured !== null) query.isFeatured = featured;
   
   const posts = await this.find(query)
-    .populate('author', 'firstName lastName')
+    .populate('author', 'firstName lastName email username profileImage blogProfile.displayName blogProfile.bio blogProfile.avatar blogProfile.website blogProfile.location blogProfile.expertise blogProfile.social')
     .populate('category', 'name slug color')
     .populate('tags', 'name slug color')
     .sort(sortBy)
@@ -617,7 +617,7 @@ BlogPostSchema.statics.getRelatedPosts = async function(postId, limit = 3) {
       { tags: { $in: post.tags } }
     ]
   })
-    .populate('author', 'firstName lastName')
+    .populate('author', 'firstName lastName email username profileImage blogProfile.displayName blogProfile.bio blogProfile.avatar blogProfile.website blogProfile.location blogProfile.expertise blogProfile.social')
     .populate('category', 'name slug color')
     .sort({ 'analytics.views': -1, publishedAt: -1 })
     .limit(limit)
@@ -634,7 +634,7 @@ BlogPostSchema.statics.getPopularPosts = async function(limit = 5, days = 30) {
     status: 'published',
     publishedAt: { $gte: dateLimit }
   })
-    .populate('author', 'firstName lastName')
+    .populate('author', 'firstName lastName email username profileImage blogProfile.displayName blogProfile.bio blogProfile.avatar blogProfile.website blogProfile.location blogProfile.expertise blogProfile.social')
     .populate('category', 'name slug color')
     .sort({ 'analytics.views': -1, 'analytics.likes': -1 })
     .limit(limit)
@@ -653,7 +653,7 @@ BlogPostSchema.statics.searchPosts = async function(searchTerm, options = {}) {
     },
     { score: { $meta: 'textScore' } }
   )
-    .populate('author', 'firstName lastName')
+    .populate('author', 'firstName lastName email username profileImage blogProfile.displayName blogProfile.bio blogProfile.avatar blogProfile.website blogProfile.location blogProfile.expertise blogProfile.social')
     .populate('category', 'name slug color')
     .populate('tags', 'name slug')
     .sort({ score: { $meta: 'textScore' } })

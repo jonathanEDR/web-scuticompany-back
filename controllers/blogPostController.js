@@ -169,7 +169,7 @@ export const getPostBySlug = async (req, res) => {
     const { incrementViews = 'true' } = req.query;
     
     const post = await BlogPost.findOne({ slug, isPublished: true, status: 'published' })
-      .populate('author', 'firstName lastName bio avatar') // ✅ Optimizado: removidos campos innecesarios (email, website, social, role)
+      .populate('author') // ✅ Traer todos los campos del author para debugging
       .populate('category', 'name slug color description')
       .populate('tags', 'name slug color')
       .lean();

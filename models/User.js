@@ -154,16 +154,35 @@ const userSchema = new mongoose.Schema(
       },
       // Enlaces a redes sociales
       social: {
-        twitter: {
+        facebook: {
           type: String,
           trim: true,
           validate: {
             validator: function(v) {
               if (!v) return true;
-              // Permitir tanto @username como URL completa
-              return /^@[a-zA-Z0-9_]+$/.test(v) || /^https?:\/\/(www\.)?(twitter|x)\.com\/.+/.test(v);
+              // Permitir username, /username, URL con o sin protocolo
+              return (
+                /^[a-zA-Z0-9._-]+$/.test(v) || 
+                /^\/[a-zA-Z0-9._-]+$/.test(v) || 
+                /^(https?:\/\/)?(www\.)?facebook\.com\/.+/.test(v)
+              );
             },
-            message: 'Twitter debe ser @username o una URL válida de Twitter/X'
+            message: 'Facebook debe ser username, /username o una URL válida de Facebook'
+          }
+        },
+        tiktok: {
+          type: String,
+          trim: true,
+          validate: {
+            validator: function(v) {
+              if (!v) return true;
+              // Permitir @username, username, URL con o sin protocolo
+              return (
+                /^@?[a-zA-Z0-9._]+$/.test(v) || 
+                /^(https?:\/\/)?(www\.)?tiktok\.com\/.+/.test(v)
+              );
+            },
+            message: 'TikTok debe ser @username o una URL válida de TikTok'
           }
         },
         linkedin: {
@@ -171,9 +190,14 @@ const userSchema = new mongoose.Schema(
           trim: true,
           validate: {
             validator: function(v) {
-              return !v || /^https?:\/\/(www\.)?linkedin\.com\/.+/.test(v);
+              if (!v) return true;
+              // Permitir in/username, URL con o sin protocolo
+              return (
+                /^in\/[a-zA-Z0-9_-]+$/.test(v) || 
+                /^(https?:\/\/)?(www\.)?linkedin\.com\/.+/.test(v)
+              );
             },
-            message: 'LinkedIn debe ser una URL válida de LinkedIn'
+            message: 'LinkedIn debe ser in/username o una URL válida de LinkedIn'
           }
         },
         github: {
@@ -182,8 +206,11 @@ const userSchema = new mongoose.Schema(
           validate: {
             validator: function(v) {
               if (!v) return true;
-              // Permitir tanto username como URL completa
-              return /^[a-zA-Z0-9_-]+$/.test(v) || /^https?:\/\/(www\.)?github\.com\/.+/.test(v);
+              // Permitir username, URL con o sin protocolo
+              return (
+                /^[a-zA-Z0-9_-]+$/.test(v) || 
+                /^(https?:\/\/)?(www\.)?github\.com\/.+/.test(v)
+              );
             },
             message: 'GitHub debe ser username o una URL válida de GitHub'
           }
@@ -468,7 +495,8 @@ userSchema.pre('save', function(next) {
       location: this.blogProfile?.location || '',
       expertise: this.blogProfile?.expertise || '',
       social: this.blogProfile?.social || {
-        twitter: '',
+        facebook: '',
+        tiktok: '',
         linkedin: '',
         github: '',
         orcid: ''
