@@ -17,7 +17,10 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'web-scuti', // Carpeta en Cloudinary
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
+    type: 'upload', // Tipo de upload público
+    access_mode: 'public', // ✅ IMPORTANTE: Hacer imágenes públicas
+    resource_type: 'auto',
     transformation: [
       {
         width: 2000,
@@ -60,8 +63,24 @@ export const getOptimizedUrl = (publicId, options = {}) => {
     width,
     quality,
     fetch_format: format,
-    secure: true
+    secure: true,
+    type: 'upload', // ✅ Asegurar que sea del tipo público
+    sign_url: false // ✅ No firmar URLs (acceso público)
   });
+};
+
+// ✅ Función para hacer una imagen pública (si fue subida como privada)
+export const makeImagePublic = async (publicId) => {
+  try {
+    const result = await cloudinary.uploader.explicit(publicId, {
+      type: 'upload',
+      access_mode: 'public'
+    });
+    return result;
+  } catch (error) {
+    console.error('Error al hacer imagen pública:', error);
+    throw error;
+  }
 };
 
 export default cloudinary;

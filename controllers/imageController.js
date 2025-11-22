@@ -143,6 +143,8 @@ export const uploadImage = async (req, res) => {
       const uploadOptions = {
         folder: 'web-scuti',
         resource_type: isSVG ? 'raw' : 'image',  // SVG como 'raw' en Cloudinary
+        type: 'upload', // ✅ Tipo de upload público
+        access_mode: 'public', // ✅ CRÍTICO: Hacer imágenes accesibles públicamente
         // Para SVG, agregar la extensión explícitamente en el public_id
         ...(isSVG ? { public_id: `${basePublicId}.svg` } : {}),
         // Solo aplicar transformaciones a imágenes raster (no SVG)

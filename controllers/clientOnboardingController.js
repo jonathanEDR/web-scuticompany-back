@@ -5,8 +5,8 @@ import logger from '../utils/logger.js';
 import { createWelcomeOnboarding } from '../utils/onboardingService.js';
 
 /**
- * 🔍 Verificar si el usuario cliente necesita onboarding
- * @desc    Verifica si el usuario ya tiene leads y mensajes
+ * 🔍 Verificar si el usuario registrado necesita onboarding
+ * @desc    Verifica si el usuario ya tiene leads y mensajes (aplica a usuarios USER)
  * @route   GET /api/client/onboarding-check
  * @access  Private (user)
  */
@@ -14,12 +14,12 @@ export const checkOnboardingStatus = async (req, res) => {
   try {
     const { clerkId: userId, role } = req.user;
     
-    // Solo para usuarios user (clientes) - verificar múltiples roles posibles
-    const validClientRoles = ['user', 'USER', 'client', 'CLIENT'];
-    if (!validClientRoles.includes(role)) {
+    // Solo para usuarios registrados (USER) - Los CLIENT tienen su propio flujo después
+    const validUserRoles = ['user', 'USER', 'client', 'CLIENT']; // Incluir CLIENT para retrocompatibilidad
+    if (!validUserRoles.includes(role)) {
       return res.json({
         needsOnboarding: false,
-        reason: `Usuario no es cliente (rol: ${role}). Roles válidos: ${validClientRoles.join(', ')}`,
+        reason: `Usuario no requiere onboarding automático (rol: ${role}). Este flujo es para usuarios registrados (USER).`,
         leadCount: 0,
         messageCount: 0,
         currentRole: role
@@ -68,7 +68,7 @@ export const checkOnboardingStatus = async (req, res) => {
 
 /**
  * 🎉 Ejecutar onboarding de bienvenida
- * @desc    Crear lead y mensaje de bienvenida para usuario cliente
+ * @desc    Crear lead y mensaje de bienvenida para usuario registrado (USER)
  * @route   POST /api/client/welcome-onboarding
  * @access  Private (user)
  */
@@ -77,12 +77,12 @@ export const executeWelcomeOnboarding = async (req, res) => {
     const { clerkId: userId, role } = req.user;
     const { clerkId, email, firstName, lastName } = req.body;
 
-    // Solo para usuarios user (clientes) - verificar múltiples roles posibles
-    const validClientRoles = ['user', 'USER', 'client', 'CLIENT'];
-    if (!validClientRoles.includes(role)) {
+    // Solo para usuarios registrados (USER) - Los CLIENT tienen su propio flujo después
+    const validUserRoles = ['user', 'USER', 'client', 'CLIENT']; // Incluir CLIENT para retrocompatibilidad
+    if (!validUserRoles.includes(role)) {
       return res.status(403).json({
         success: false,
-        message: `Solo usuarios cliente pueden usar el onboarding. Rol actual: ${role}`
+        message: `Solo usuarios registrados pueden usar este onboarding. Rol actual: ${role}`
       });
     }
 
@@ -129,7 +129,7 @@ export const executeWelcomeOnboarding = async (req, res) => {
     });
 
     if (onboardingResult.success) {
-      logger.success('✅ Onboarding completado para usuario CLIENT', {
+      logger.success('✅ Onboarding completado para usuario registrado (USER)', {
         userId,
         email,
         result: onboardingResult

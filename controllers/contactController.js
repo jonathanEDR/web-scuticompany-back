@@ -276,14 +276,24 @@ export const createContact = async (req, res) => {
         nombre: isAuthenticated ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}`.trim() : 'Sistema Público',
         email: isAuthenticated ? authenticatedUser.email : 'system@webscuti.com'
       },
-      // 🔗 Vincular con usuario si está autenticado
+      // 🔗 Vincular con usuario registrado si está autenticado
       ...(isAuthenticated && authenticatedUser?.id && { 
-        usuarioVinculado: authenticatedUser.id 
+        usuarioRegistrado: {
+          userId: authenticatedUser.clerkId, // Usar clerkId para consistencia
+          nombre: `${authenticatedUser.firstName} ${authenticatedUser.lastName}`.trim(),
+          email: authenticatedUser.email,
+          vinculadoEn: new Date(),
+          vinculadoPor: {
+            userId: authenticatedUser.clerkId,
+            nombre: `${authenticatedUser.firstName} ${authenticatedUser.lastName}`.trim()
+          }
+        }
       }),
       // Metadata adicional
       metadata: {
         ...metadata,
-        clerkId: authenticatedUser?.clerkId || null
+        clerkId: authenticatedUser?.clerkId || null,
+        mongoUserId: authenticatedUser?.id || null // Guardar también el ID de MongoDB
       },
       actividades: [{
         fecha: new Date(),
@@ -291,7 +301,7 @@ export const createContact = async (req, res) => {
         descripcion: isAuthenticated 
           ? `✅ Lead creado por usuario registrado: ${nombre} (${correo})`
           : `📝 Lead creado desde formulario público sin registro`,
-        usuarioId: authenticatedUser?.id || 'system',
+        usuarioId: authenticatedUser?.clerkId || 'system',
         usuarioNombre: isAuthenticated ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}`.trim() : 'Sistema Público'
       }]
     });

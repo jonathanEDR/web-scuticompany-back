@@ -159,7 +159,7 @@ export const canManageSpecificUser = async (req, res, next) => {
       });
     }
 
-    const { User } = await import('../models/User.js');
+    const User = (await import('../models/User.js')).default;
     const targetUserId = req.params.userId || req.params.id;
     
     if (!targetUserId) {

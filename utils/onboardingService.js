@@ -6,7 +6,8 @@ import logger from './logger.js';
 /**
  * 🎉 SISTEMA DE ONBOARDING AUTOMÁTICO
  * 
- * Se ejecuta cuando un nuevo usuario CLIENT se registra en el sistema
+ * Se ejecuta cuando un nuevo usuario registrado (USER) se registra en el sistema
+ * Nota: Todos los usuarios se registran como USER. El equipo interno asigna CLIENT después.
  * Crea automáticamente:
  * - Lead de bienvenida
  * - Mensaje de bienvenida del equipo
@@ -14,7 +15,8 @@ import logger from './logger.js';
  */
 
 /**
- * Crea un lead de bienvenida completo para un nuevo usuario CLIENT
+ * Crea un lead de bienvenida completo para un nuevo usuario registrado (USER)
+ * Nota: Este onboarding es para usuarios recién registrados, no para clientes asignados
  * 
  * @param {Object} userData - Datos del usuario recién registrado
  * @param {string} userData.clerkId - ID de Clerk del usuario
@@ -113,9 +115,9 @@ async function createWelcomeLead(userData) {
       celular: 'Por completar', // Placeholder temporal
       empresa: 'Por completar', // Placeholder temporal
       tipoServicio: 'consultoria',
-      descripcionProyecto: 'Proceso de onboarding - Nuevo cliente registrado en la plataforma. Bienvenida y configuración inicial.',
+      descripcionProyecto: 'Proceso de onboarding - Nuevo usuario registrado en la plataforma. Bienvenida y configuración inicial. Pendiente de calificación por equipo interno.',
       estado: 'nuevo',
-      prioridad: 'alta', // Alta prioridad para nuevos clientes
+      prioridad: 'alta', // Alta prioridad para nuevos registros
       origen: 'web',
       
       // Vinculación automática con el usuario
@@ -140,7 +142,7 @@ async function createWelcomeLead(userData) {
       actividades: [{
         fecha: new Date(),
         tipo: 'nota',
-        descripcion: `🎉 Nuevo cliente registrado: ${fullName} (${email}). Iniciando proceso de onboarding automático.`,
+        descripcion: `🎉 Nuevo usuario registrado: ${fullName} (${email}). Iniciando proceso de onboarding automático. Pendiente de calificación por equipo interno.`,
         usuarioId: 'system',
         usuarioNombre: 'Sistema de Onboarding',
         esPrivado: false,
@@ -227,7 +229,7 @@ El equipo de SCUTI Company 🚀`;
         userId: userData.clerkId,
         nombre: `${userData.firstName} ${userData.lastName}`.trim(),
         email: userData.email,
-        tipo: 'cliente'
+        rol: 'USER' // Usuario registrado, no cliente asignado
       },
       contenido: welcomeMessageContent,
       asunto: '¡Bienvenido/a a SCUTI Company! 🎉',

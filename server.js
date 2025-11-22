@@ -31,6 +31,7 @@ import eventRoutes from './routes/events.js';
 import agentAgendaRoutes from './routes/agentAgenda.js';
 import seoMonitorRoutes from './routes/seo-monitor.js';
 import agentsBlogSessionRoutes from './routes/agents-blog-session.js';
+import directMessagesRoutes from './routes/directMessages.js';
 import { cmsLogger } from './middleware/logger.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import { inicializarCategorias } from './utils/categoriaInitializer.js';
@@ -445,6 +446,7 @@ app.use('/api/events', eventRoutes); // 📅 Events/Agenda System Routes (NEW)
 app.use('/api/agents/agenda', agentAgendaRoutes); // 📅 Agenda for Agents (GerenteGeneral) (NEW)
 app.use('/api/agents/blog/session', agentsBlogSessionRoutes); // 💬 Blog Conversational Sessions (NEW)
 app.use('/api/seo-monitor', seoMonitorRoutes); // 📊 SEO Monitoring System (NEW)
+app.use('/api/direct-messages', directMessagesRoutes); // 📧 Direct Messages to Users (NEW)
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

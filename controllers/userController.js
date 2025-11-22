@@ -197,9 +197,10 @@ export const syncUser = async (req, res) => {
         });
       }
 
-      // 🎉 ONBOARDING AUTOMÁTICO PARA USUARIOS CLIENT
+      // 🎉 ONBOARDING AUTOMÁTICO PARA USUARIOS REGISTRADOS (USER)
+      // Nota: Los usuarios se registran como USER. El equipo interno les asigna CLIENT después.
       let onboardingResult = null;
-      if (newUser.role === 'CLIENT') {
+      if (newUser.role === 'USER') {
         try {
           // Si no se vinculó con leads existentes, crear onboarding completo
           const needsWelcomeOnboarding = !leadLinkResult?.success || leadLinkResult?.leadsLinked === 0;
@@ -213,14 +214,14 @@ export const syncUser = async (req, res) => {
             });
             
             if (onboardingResult.success) {
-              logger.success('🎉 Onboarding automático completado para nuevo cliente', {
+              logger.success('🎉 Onboarding automático completado para nuevo usuario registrado', {
                 userEmail: newUser.email,
                 leadCreated: onboardingResult.onboarding.leadCreated,
                 messagesSent: onboardingResult.onboarding.messagesSent
               });
             }
           } else {
-            logger.info('Cliente vinculado con leads existentes, omitiendo onboarding automático', {
+            logger.info('Usuario vinculado con leads existentes, omitiendo onboarding automático', {
               userEmail: newUser.email,
               existingLeads: leadLinkResult.leadsLinked
             });

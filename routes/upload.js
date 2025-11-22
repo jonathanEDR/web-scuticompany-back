@@ -151,4 +151,53 @@ router.post('/avatar', requireUser, async (req, res) => {
   }
 });
 
+// ============================================
+// 🌐 RUTAS PÚBLICAS (SIN AUTENTICACIÓN)
+// ============================================
+
+/**
+ * @desc    Obtener imagen por ID (público - para blog y páginas públicas)
+ * @route   GET /api/upload/public/images/:id
+ * @access  Public
+ */
+router.get('/public/images/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Buscar imagen en la base de datos
+    const image = await require('../models/Image.js').default.findById(id);
+    
+    if (!image) {
+      return res.status(404).json({
+        success: false,
+        message: 'Imagen no encontrada'
+      });
+    }
+    
+    // Retornar información pública de la imagen
+    res.json({
+      success: true,
+      data: {
+        _id: image._id,
+        filename: image.filename,
+        url: image.url,
+        cloudinaryUrl: image.cloudinaryUrl,
+        thumbnailUrl: image.thumbnailUrl,
+        alt: image.alt,
+        title: image.title,
+        width: image.width,
+        height: image.height,
+        format: image.format,
+        size: image.size
+      }
+    });
+  } catch (error) {
+    console.error('Error obteniendo imagen pública:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener la imagen'
+    });
+  }
+});
+
 export default router;

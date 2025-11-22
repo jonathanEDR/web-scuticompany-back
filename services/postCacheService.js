@@ -105,10 +105,10 @@ class PostCacheService {
       status: 'published',
       isFeatured: true
     })
-      .populate('author', 'firstName lastName')
+      .populate('author', 'firstName lastName email username profileImage')
       .populate('category', 'name slug color')
       .populate('tags', 'name slug color')
-      .select('title slug excerpt featuredImage publishedAt readingTime stats')
+      .select('title slug excerpt featuredImage publishedAt readingTime stats analytics.views analytics.likes')
       .sort('-publishedAt')
       .limit(20) // Cachear hasta 20, pero devolver según limit
       .lean();
