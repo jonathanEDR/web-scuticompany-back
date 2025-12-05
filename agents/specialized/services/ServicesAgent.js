@@ -18,15 +18,13 @@ import logger from '../../../utils/logger.js';
 export class ServicesAgent extends BaseAgent {
   constructor(skipDBConnection = false) {
     super(
-      'Asesor de Ventas SCUTI',
-      'Asesor de ventas especializado para SCUTI Company - Experto en servicios de desarrollo de software y tecnología',
+      'ServicesAgent', // 🔧 Nombre correcto para el orchestrator
+      'Agente especializado en gestión de servicios para el panel administrativo - Creación, edición y optimización de servicios',
       [
-        'sales_consultation', // 🎯 NUEVO - Asesoramiento de ventas
-        'service_catalog_access', // 🎯 NUEVO - Acceso al catálogo de servicios
-        'category_browsing', // 🎯 NUEVO - Navegación por categorías
-        'ai_content_generation', // ✅ Generación con OpenAI
+        'service_management', // 🎯 Gestión de servicios (admin)
         'service_creation',
         'service_editing',
+        'ai_content_generation', // ✅ Generación con OpenAI
         'content_blocks_generation', // ✅ 7 bloques específicos
         'pricing_strategy',
         'fallback_content', // ✅ Templates profesionales
@@ -63,6 +61,94 @@ export class ServicesAgent extends BaseAgent {
   }
 
   // ============================================================================
+  // 🔧 MÉTODO EXECUTEASK REQUERIDO POR BASEAGENT
+  // ============================================================================
+
+  /**
+   * Ejecutar tarea específica (requerido por BaseAgent)
+   * Delega al método apropiado según el tipo de tarea
+   * @override
+   */
+  async executeTask(task, context = {}) {
+    const { type, command, action } = task;
+    
+    logger.info(`🔧 ServicesAgent.executeTask() - Type: ${type}, Action: ${action}`);
+    logger.info(`📝 Command: "${(command || '').substring(0, 100)}..."`);
+
+    try {
+      // Para comandos de lenguaje natural, usar el chat handler
+      if (type === 'natural_language_command' || !type) {
+        const message = command || task.message || '';
+        
+        // 🔧 FIX: Usar sessionId del ServicesAgent basado en userId para persistir estado
+        // Esto asegura que el flujo de creación de servicios mantenga su estado
+        const userId = task.userId || context.userId || 'anonymous';
+        const sessionId = task.servicesSessionId || context.servicesSessionId || `services_admin_${userId}`;
+        
+        logger.info(`💬 Delegating to chat() with sessionId: ${sessionId} (userId: ${userId})`);
+        
+        const result = await this.chat(message, sessionId, {
+          ...context,
+          userId: task.userId || context.userId,
+          isPublic: false, // 🔧 FIX: En panel admin siempre es false
+          isAdminContext: true // 🆕 Marcar explícitamente como contexto administrativo
+        });
+
+        // Extraer mensaje para formato consistente
+        const responseMessage = result.data?.message || 
+                               result.message || 
+                               result.response ||
+                               'Tarea completada';
+
+        return {
+          success: result.success !== false,
+          message: responseMessage,
+          data: result.data,
+          metadata: result.metadata,
+          // Propagar canvas_data si existe
+          canvas_data: result.canvas_data || result.data?.canvas_data
+        };
+      }
+
+      // Para acciones específicas
+      switch (action) {
+        case 'create_service':
+          return await this.createService(task.serviceData || task, context);
+        
+        case 'edit_service':
+          return await this.editService(task.serviceId, task.instructions, context);
+        
+        case 'generate_content':
+          return await this.generateCompleteService(task.serviceId, task.options || {});
+        
+        case 'list_services':
+          return await this.listPublicServices(task.options || {});
+        
+        case 'list_categories':
+          return await this.listPublicCategories();
+        
+        default:
+          // Por defecto, tratar como comando de chat
+          const defaultMessage = command || task.message || '';
+          const defaultSessionId = task.sessionId || `session_${Date.now()}`;
+          
+          const chatResult = await this.chat(defaultMessage, defaultSessionId, context);
+          
+          return {
+            success: chatResult.success !== false,
+            message: chatResult.data?.message || chatResult.message || 'Tarea completada',
+            data: chatResult.data,
+            metadata: chatResult.metadata,
+            canvas_data: chatResult.canvas_data || chatResult.data?.canvas_data
+          };
+      }
+    } catch (error) {
+      logger.error('❌ Error in ServicesAgent.executeTask():', error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
   // 🚀 MÉTODOS PRINCIPALES CON INTEGRACIÓN OPENAI
   // ============================================================================
 
@@ -72,7 +158,8 @@ export class ServicesAgent extends BaseAgent {
    */
   async chat(message, sessionId, context = {}) {
     try {
-      logger.info(`💬 Asesor de Ventas SCUTI - Message: "${message.substring(0, 50)}..."`);
+      const contextType = context.isPublic ? 'PUBLIC (Ventas)' : 'ADMIN (Gestión)';
+      logger.info(`💬 ServicesAgent [${contextType}] - Message: "${message.substring(0, 50)}..."`);
       
       if (!this.chatHandler) {
         throw new Error('ChatHandler not initialized');

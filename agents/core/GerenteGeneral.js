@@ -564,9 +564,31 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
       // Si hay canvas_data en los resultados, agregarlo a la respuesta principal
       const canvasData = this.extractCanvasData(results);
 
+      // 🆕 Extraer mensaje real del primer agente que tenga uno significativo
+      let primaryMessage = 'Tarea coordinada exitosamente';
+      for (const agentResult of results) {
+        const result = agentResult.result;
+        // Buscar mensaje en diferentes niveles de anidamiento
+        const extractedMessage = result?.message ||
+                                result?.result?.message ||
+                                result?.data?.message ||
+                                result?.response ||
+                                result?.result?.response;
+        
+        // Solo usar si es un mensaje significativo (no genérico)
+        if (extractedMessage && 
+            extractedMessage !== 'Tarea coordinada exitosamente' &&
+            extractedMessage !== 'Tarea completada' &&
+            extractedMessage.length > 20) {
+          primaryMessage = extractedMessage;
+          logger.info(`✅ Extracted primary message from ${agentResult.agent}`);
+          break;
+        }
+      }
+
       return {
         success: true,
-        message: 'Tarea coordinada exitosamente',
+        message: primaryMessage,
         agents: targetAgents.map(a => a.agent),
         results,
         ...(canvasData && { canvas_data: canvasData })
