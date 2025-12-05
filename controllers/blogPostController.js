@@ -40,7 +40,7 @@ export const getAllPublishedPosts = async (req, res) => {
     }
     
     let postsQuery = BlogPost.find(query)
-      .populate('author', 'firstName lastName') // ✅ Removido email (no necesario en listado público)
+      .populate('author', 'firstName lastName username avatar profileImage blogProfile') // ✅ Incluir avatar y blogProfile para tarjetas
       .populate('category', 'name slug color')
       .populate('tags', 'name slug color')
       .sort(sortBy)

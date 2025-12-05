@@ -383,12 +383,40 @@ export const updatePage = async (req, res) => {
     
     // 🔧 SOLUCIÓN: Usar findOne + save() en lugar de findOneAndUpdate
     // porque findOneAndUpdate puede ignorar strict: false en algunos casos
-    const page = await Page.findOne({ pageSlug: slug });
+    let page = await Page.findOne({ pageSlug: slug });
     
+    // 🆕 UPSERT: Si la página no existe, crearla automáticamente
     if (!page) {
-      return res.status(404).json({
-        success: false,
-        message: `Página '${slug}' no encontrada`
+      console.log(`📝 [CMS] Creando nueva página: ${slug}`);
+      
+      // Mapear slugs a nombres legibles
+      const pageNames = {
+        'home': 'Página Principal',
+        'about': 'Sobre Nosotros',
+        'services': 'Servicios',
+        'contact': 'Contacto',
+        'blog': 'Blog'
+      };
+      
+      page = new Page({
+        pageSlug: slug,
+        pageName: updateData.pageName || pageNames[slug] || slug.charAt(0).toUpperCase() + slug.slice(1),
+        content: updateData.content || {},
+        seo: updateData.seo || {},
+        theme: updateData.theme || {},
+        isPublished: true,
+        lastUpdated: updateData.lastUpdated,
+        updatedBy: updateData.updatedBy
+      });
+      
+      await page.save();
+      
+      console.log(`✅ [CMS] Página ${slug} creada exitosamente`);
+      
+      return res.status(201).json({
+        success: true,
+        message: `Página '${slug}' creada correctamente`,
+        data: page
       });
     }
     
