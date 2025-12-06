@@ -20,6 +20,7 @@ export const getAllPublishedPosts = async (req, res) => {
       limit = 10,
       category,
       tag,
+      tags, // Soporte para array de tags
       author,
       featured,
       sortBy = '-publishedAt',
@@ -30,7 +31,14 @@ export const getAllPublishedPosts = async (req, res) => {
     
     // Filtros opcionales
     if (category) query.category = category;
-    if (tag) query.tags = tag;
+    // Soporte para tag único o array de tags
+    if (tag) {
+      query.tags = tag;
+    } else if (tags) {
+      // Si es un string con valores separados por coma, convertir a array
+      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+      query.tags = { $in: tagArray };
+    }
     if (author) query.author = author;
     if (featured !== undefined) query.isFeatured = featured === 'true';
     
@@ -95,6 +103,7 @@ export const getAllAdminPosts = async (req, res) => {
       limit = 10,
       category,
       tag,
+      tags, // Soporte para array de tags
       author,
       status,
       isPublished,
@@ -106,7 +115,13 @@ export const getAllAdminPosts = async (req, res) => {
     
     // Filtros opcionales
     if (category) query.category = category;
-    if (tag) query.tags = tag;
+    // Soporte para tag único o array de tags
+    if (tag) {
+      query.tags = tag;
+    } else if (tags) {
+      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+      query.tags = { $in: tagArray };
+    }
     if (author) query.author = author;
     if (status) query.status = status;
     if (isPublished !== undefined) query.isPublished = isPublished === 'true';
