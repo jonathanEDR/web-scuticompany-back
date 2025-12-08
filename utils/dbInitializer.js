@@ -563,6 +563,77 @@ export const initializeDatabase = async () => {
     }
 
     // ========================================
+    // 📄 PÁGINA CONTACT
+    // ========================================
+    const contactPage = await Page.findOne({ pageSlug: 'contact' });
+
+    if (!contactPage) {
+      logger.init('Página Contact no encontrada, creando configuración por defecto');
+
+      await Page.create({
+        pageSlug: 'contact',
+        pageName: 'Contacto',
+        content: {
+          contactPage: {
+            hero: {
+              title: '¡Trabajemos Juntos! 🚀',
+              subtitle: 'Cuéntanos sobre tu proyecto y te ayudaremos a convertir tus ideas en realidad digital. Nuestro equipo está listo para asesorarte.',
+              features: ['Respuesta en 24 horas', 'Cotización gratuita', 'Asesoría especializada'],
+              backgroundImage: { light: '', dark: '' },
+              backgroundOpacity: 1,
+              backgroundOverlay: false,
+              titleColor: '#111827',
+              titleColorDark: '#ffffff',
+              subtitleColor: '#4b5563',
+              subtitleColorDark: '#9ca3af'
+            },
+            form: {
+              backgroundImage: { light: '', dark: '' },
+              backgroundOpacity: 1,
+              backgroundOverlay: false
+            },
+            features: {
+              title: '¿Por qué elegir Scuti Company?',
+              items: [
+                { title: 'Desarrollo Rápido', description: 'Entregamos proyectos en tiempo récord sin comprometer la calidad.', iconBgColor: 'purple' },
+                { title: 'Calidad Garantizada', description: 'Cada proyecto pasa por rigurosas pruebas de calidad.', iconBgColor: 'blue' },
+                { title: 'Soporte Continuo', description: 'Te acompañamos durante todo el proceso y después del lanzamiento.', iconBgColor: 'green' }
+              ],
+              backgroundImage: { light: '', dark: '' },
+              backgroundOpacity: 1,
+              backgroundOverlay: false,
+              titleColor: '#111827',
+              titleColorDark: '#ffffff'
+            }
+          },
+          contact: {
+            phone: '+51 999 999 999',
+            email: 'contacto@scuticompany.com',
+            address: 'Lima, Perú',
+            socialLinks: []
+          }
+        },
+        seo: {
+          metaTitle: 'Contacto - SCUTI Company',
+          metaDescription: 'Contacta con SCUTI Company para discutir tu proyecto. Desarrollo web, apps móviles y soluciones digitales personalizadas.',
+          keywords: ['contacto', 'SCUTI', 'desarrollo web', 'consultoría', 'proyecto'],
+          ogTitle: 'Contacto - SCUTI Company',
+          ogDescription: 'Ponte en contacto con nuestro equipo de desarrollo',
+          ogImage: '',
+          twitterCard: 'summary_large_image'
+        },
+        isPublished: true,
+        updatedBy: 'system-init'
+      });
+      
+      logger.success('Página Contact creada exitosamente');
+      logger.database('CREATE', 'pages', { slug: 'contact' });
+    } else {
+      logger.success('✅ Página Contact encontrada');
+      logger.database('FOUND', 'pages', { slug: 'contact' });
+    }
+
+    // ========================================
     // 👤 SUPER ADMINISTRADOR
     // ========================================
     if (INIT_CONFIG.ENSURE_SUPER_ADMIN) {
