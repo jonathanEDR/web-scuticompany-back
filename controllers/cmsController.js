@@ -330,6 +330,17 @@ export const getPageBySlug = async (req, res) => {
       }
     }
     
+    // 🔍 DEBUG: Log específico para valores de tarjetas (about page)
+    if (pageObj.content?.values) {
+      console.log(`🎨 [CMS GET] Devolviendo values para "${slug}":`, {
+        hasCardBgColor: !!pageObj.content.values.cardBgColor,
+        cardBgColor: pageObj.content.values.cardBgColor,
+        cardBgUseGradient: pageObj.content.values.cardBgUseGradient,
+        cardBgGradientFrom: pageObj.content.values.cardBgGradientFrom,
+        allKeys: Object.keys(pageObj.content.values)
+      });
+    }
+    
     // Transformar URLs relativas a absolutas
     const pageWithAbsoluteUrls = transformImageUrls(pageObj);
     
@@ -438,6 +449,17 @@ export const updatePage = async (req, res) => {
         });
       }
       
+      // 🔍 DEBUG: Log específico para valores de tarjetas (about page)
+      if (updateData.content.values) {
+        console.log('🎨 [CMS] Guardando configuración de values:', {
+          hasCardBgColor: !!updateData.content.values.cardBgColor,
+          cardBgColor: updateData.content.values.cardBgColor,
+          cardBgUseGradient: updateData.content.values.cardBgUseGradient,
+          cardBgGradientFrom: updateData.content.values.cardBgGradientFrom,
+          cardBgGradientTo: updateData.content.values.cardBgGradientTo,
+          allKeys: Object.keys(updateData.content.values)
+        });
+      }
       
       page.content = updateData.content;
       page.markModified('content'); // ⚠️ CRÍTICO: Marcar como modificado para forzar guardado
