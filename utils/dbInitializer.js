@@ -634,6 +634,160 @@ export const initializeDatabase = async () => {
     }
 
     // ========================================
+    // 📄 PÁGINA SERVICIO DETALLE
+    // ========================================
+    const servicioDetailPage = await Page.findOne({ pageSlug: 'servicio-detail' });
+
+    if (!servicioDetailPage) {
+      logger.init('Página Servicio Detail no encontrada, creando configuración por defecto');
+
+      await Page.create({
+        pageSlug: 'servicio-detail',
+        pageName: 'Detalle de Servicio',
+        content: {
+          hero: {
+            title: 'Detalle del Servicio',
+            subtitle: 'Información completa sobre nuestros servicios',
+            description: 'Conoce todos los detalles, características y beneficios de nuestros servicios.',
+            backgroundImage: { light: '', dark: '' },
+            backgroundImageAlt: 'Servicio Detail background',
+            styles: {
+              light: { titleColor: '', subtitleColor: '', descriptionColor: '' },
+              dark: { titleColor: '', subtitleColor: '', descriptionColor: '' }
+            }
+          },
+          servicioDetailConfig: {
+            hero: {
+              showBreadcrumb: true,
+              showBackButton: true,
+              overlayOpacity: 50,
+              gradientColor: 'from-gray-900/80',
+              background: {
+                type: 'gradient',
+                gradientFrom: '#f9fafb',
+                gradientTo: '#ede9fe',
+                imageLight: '',
+                imageDark: '',
+                overlayOpacity: 0,
+                overlayColor: '#000000'
+              }
+            },
+            accordion: {
+              defaultOpenPanel: 'descripcion',
+              expandMultiple: false,
+              animationDuration: 300,
+              showPanelDescription: false,
+              panels: [
+                { id: 'descripcion', label: 'Descripción', icon: '📋', enabled: true, description: 'Información general del servicio' },
+                { id: 'caracteristicas', label: 'Características', icon: '✨', enabled: true, description: 'Qué ofrece este servicio' },
+                { id: 'beneficios', label: 'Beneficios', icon: '🎯', enabled: true, description: 'Ventajas para tu negocio' },
+                { id: 'incluye', label: 'Qué Incluye', icon: '✅', enabled: true, description: 'Detalle de inclusiones' },
+                { id: 'info', label: 'Información Adicional', icon: '💡', enabled: true, description: 'Detalles extras' },
+                { id: 'faq', label: 'Preguntas Frecuentes', icon: '❓', enabled: true, description: 'Dudas comunes' },
+                { id: 'multimedia', label: 'Multimedia', icon: '🎥', enabled: true, description: 'Videos y galería' }
+              ],
+              background: {
+                type: 'gradient',
+                gradientFrom: '#f9fafb',
+                gradientTo: '#ffffff',
+                overlayOpacity: 0,
+                overlayColor: '#000000',
+                imageLight: '',
+                imageDark: ''
+              },
+              styles: {
+                light: {
+                  panelBackground: 'rgba(255, 255, 255, 0.6)',
+                  panelBorder: '#e5e7eb',
+                  headerBackground: 'transparent',
+                  headerText: '#111827',
+                  headerIcon: '#8b5cf6',
+                  contentBackground: 'rgba(255, 255, 255, 0.5)',
+                  contentText: '#374151',
+                  accentGradientFrom: '#8b5cf6',
+                  accentGradientTo: '#06b6d4'
+                },
+                dark: {
+                  panelBackground: 'rgba(31, 41, 55, 0.4)',
+                  panelBorder: '#374151',
+                  headerBackground: 'transparent',
+                  headerText: '#ffffff',
+                  headerIcon: '#a78bfa',
+                  contentBackground: 'rgba(17, 24, 39, 0.3)',
+                  contentText: '#d1d5db',
+                  accentGradientFrom: '#a78bfa',
+                  accentGradientTo: '#22d3ee'
+                }
+              }
+            },
+            sidebar: {
+              showRelatedServices: true,
+              showCategoryTag: true,
+              showPriceRange: true,
+              showContactButton: true
+            },
+            design: {
+              panelBorderRadius: 'rounded-xl',
+              panelShadow: true,
+              headerStyle: 'minimal',
+              accentColor: '#7c3aed',
+              contentPadding: 'p-6'
+            },
+            cta: {
+              background: {
+                type: 'gradient',
+                gradientFrom: '#9333ea',
+                gradientTo: '#2563eb',
+                overlayOpacity: 0,
+                overlayColor: '#000000',
+                imageLight: '',
+                imageDark: ''
+              }
+            }
+          }
+        },
+        seo: {
+          metaTitle: 'Detalle de Servicio - SCUTI Company',
+          metaDescription: 'Información detallada sobre nuestros servicios de desarrollo de software y soluciones tecnológicas.',
+          keywords: ['servicio', 'detalle', 'SCUTI', 'desarrollo', 'software', 'tecnología'],
+          ogTitle: 'Servicio - SCUTI Company',
+          ogDescription: 'Conoce todos los detalles de nuestros servicios',
+          ogImage: '',
+          twitterCard: 'summary_large_image'
+        },
+        theme: {
+          default: 'light',
+          lightMode: {
+            primary: '#8B5CF6',
+            secondary: '#06B6D4',
+            background: '#FFFFFF',
+            text: '#1F2937',
+            textSecondary: '#6B7280',
+            cardBg: '#F9FAFB',
+            border: '#E5E7EB'
+          },
+          darkMode: {
+            primary: '#A78BFA',
+            secondary: '#22D3EE',
+            background: '#111827',
+            text: '#F9FAFB',
+            textSecondary: '#D1D5DB',
+            cardBg: '#1F2937',
+            border: '#374151'
+          }
+        },
+        isPublished: true,
+        updatedBy: 'system-init'
+      });
+      
+      logger.success('Página Servicio Detail creada exitosamente');
+      logger.database('CREATE', 'pages', { slug: 'servicio-detail' });
+    } else {
+      logger.success('✅ Página Servicio Detail encontrada');
+      logger.database('FOUND', 'pages', { slug: 'servicio-detail' });
+    }
+
+    // ========================================
     // 👤 SUPER ADMINISTRADOR
     // ========================================
     if (INIT_CONFIG.ENSURE_SUPER_ADMIN) {

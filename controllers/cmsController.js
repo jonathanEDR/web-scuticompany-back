@@ -354,16 +354,6 @@ export const updatePage = async (req, res) => {
   try {
     const { slug } = req.params;
     const updateData = req.body;
-    
-
-    
-    // 🔍 [DEBUG] Log específico para contactForm
-    if (updateData.content?.contactForm?.cardsDesign) {
-      
-    } else {
-      
-    }
-    
     // Obtener datos anteriores para comparar imágenes
     const oldPage = await Page.findOne({ pageSlug: slug });
     
@@ -422,7 +412,6 @@ export const updatePage = async (req, res) => {
     
     // Actualizar campos manualmente
     if (updateData.content) {
-      
       // 🔧 CORRECCIÓN: Limpiar IDs temporales de los logos antes de guardar
       if (updateData.content.clientLogos?.logos) {
         updateData.content.clientLogos.logos = updateData.content.clientLogos.logos.map(logo => {
@@ -440,8 +429,6 @@ export const updatePage = async (req, res) => {
       
       page.content = updateData.content;
       page.markModified('content'); // ⚠️ CRÍTICO: Marcar como modificado para forzar guardado
-      
-      
     }
     if (updateData.seo) {
       
@@ -460,24 +447,9 @@ export const updatePage = async (req, res) => {
     page.lastUpdated = updateData.lastUpdated;
     page.updatedBy = updateData.updatedBy;
     
-    // 🔍 [DEBUG] Logging antes del guardado
-    
-    if (page.content?.solutions?.cardsDesign?.light?.borderWidth) {
-      
-    }
-    
     // Guardar cambios
-    
     await page.save();
-    
-    
-    // 🔍 [DEBUG] Logging después del guardado
-    
-    const verifyPage = await Page.findOne({ pageSlug: slug });
-    if (verifyPage.content?.solutions?.cardsDesign?.light?.borderWidth) {
-      
-    }
-    
+    console.log(`✅ [CMS-BACKEND] Página '${slug}' guardada exitosamente`);
     
     
     // Actualizar referencias de imágenes
