@@ -31,14 +31,29 @@ export const getAllPublishedPosts = async (req, res) => {
     
     // Filtros opcionales
     if (category) query.category = category;
-    // Soporte para tag único o array de tags
-    if (tag) {
-      query.tags = tag;
-    } else if (tags) {
+    
+    // Soporte para tag único o array de tags (con validación mejorada)
+    if (tag && tag.trim()) {
+      // Validar que no sea un string solo-hex (ID) 
+      const cleanTag = tag.trim();
+      if (!/^[a-f0-9]+$/i.test(cleanTag)) {
+        query.tags = cleanTag;
+      }
+    } else if (tags && tags.length > 0) {
       // Si es un string con valores separados por coma, convertir a array
       const tagArray = Array.isArray(tags) ? tags : tags.split(',');
-      query.tags = { $in: tagArray };
+      // Filtrar valores vacíos, undefined, y strings que parecen IDs (solo hex)
+      const cleanTags = tagArray.filter(t => {
+        if (!t || !t.trim || t.trim() === '') return false;
+        // Filtrar strings que son solo caracteres hexadecimales (posibles ObjectIds)
+        if (/^[a-f0-9]+$/i.test(t.trim())) return false;
+        return true;
+      });
+      if (cleanTags.length > 0) {
+        query.tags = { $in: cleanTags };
+      }
     }
+    
     if (author) query.author = author;
     if (featured !== undefined) query.isFeatured = featured === 'true';
     

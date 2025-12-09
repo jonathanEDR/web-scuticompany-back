@@ -788,6 +788,308 @@ export const initializeDatabase = async () => {
     }
 
     // ========================================
+    // 📝 PÁGINA BLOG POST DETALLE
+    // ========================================
+    const blogPostDetailPage = await Page.findOne({ pageSlug: 'blog-post-detail' });
+
+    if (!blogPostDetailPage) {
+      logger.init('Página Blog Post Detail no encontrada, creando configuración por defecto');
+
+      await Page.create({
+        pageSlug: 'blog-post-detail',
+        pageName: 'Detalle de Post del Blog',
+        content: {
+          hero: {
+            title: 'Artículo del Blog',
+            subtitle: 'Contenido educativo y de valor',
+            description: 'Lee nuestros artículos sobre tecnología, desarrollo de software e inteligencia artificial.',
+            backgroundImage: { light: '', dark: '' },
+            backgroundImageAlt: 'Blog Post Detail background',
+            styles: {
+              light: { titleColor: '', subtitleColor: '', descriptionColor: '' },
+              dark: { titleColor: '', subtitleColor: '', descriptionColor: '' }
+            }
+          },
+          blogPostDetailConfig: {
+            // Configuración del Hero del Post
+            hero: {
+              variant: 'overlay', // 'overlay' | 'compact' | 'minimal'
+              showBreadcrumb: true,
+              showBackButton: true,
+              showCategory: true,
+              showReadingTime: true,
+              showPublishDate: true,
+              showAuthor: true,
+              overlayOpacity: 60,
+              background: {
+                type: 'image', // 'image' | 'gradient' | 'solid'
+                gradientFrom: '#0f0f0f',
+                gradientTo: '#1a1a1a',
+                overlayColor: '#000000'
+              },
+              styles: {
+                light: {
+                  titleColor: '#111827',
+                  subtitleColor: '#6b7280',
+                  metaColor: '#9ca3af'
+                },
+                dark: {
+                  titleColor: '#ffffff',
+                  subtitleColor: '#d4d4d4',
+                  metaColor: '#9ca3af'
+                }
+              }
+            },
+            // Configuración del contenido principal
+            content: {
+              maxWidth: '680px',
+              lineHeight: '1.8',
+              fontSize: '18px',
+              background: {
+                light: '#ffffff',
+                dark: '#0f0f0f'
+              },
+              textColor: {
+                light: '#374151',
+                dark: '#d4d4d4'
+              },
+              headingColor: {
+                light: '#111827',
+                dark: '#ffffff'
+              },
+              linkColor: {
+                light: '#3b82f6',
+                dark: '#60a5fa'
+              },
+              // Imagen de fondo de la sección de contenido
+              backgroundImage: {
+                light: '', // URL de la imagen para tema claro
+                dark: ''   // URL de la imagen para tema oscuro
+              },
+              backgroundOverlay: {
+                light: 80, // Opacidad del overlay para tema claro (0-100)
+                dark: 90   // Opacidad del overlay para tema oscuro (0-100)
+              }
+            },
+            // Tabla de contenidos (TOC)
+            tableOfContents: {
+              enabled: true,
+              position: 'right', // 'left' | 'right' | 'none'
+              sticky: true,
+              showProgress: true,
+              collapsible: true,
+              defaultExpanded: true,
+              maxDepth: 3, // H2 y H3
+              styles: {
+                light: {
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  border: '#e5e7eb',
+                  activeColor: '#3b82f6',
+                  textColor: '#374151',
+                  progressColor: '#3b82f6'
+                },
+                dark: {
+                  background: 'rgba(26, 26, 26, 0.8)',
+                  border: '#374151',
+                  activeColor: '#60a5fa',
+                  textColor: '#9ca3af',
+                  progressColor: '#60a5fa'
+                }
+              }
+            },
+            // Barra de progreso de lectura
+            readingProgress: {
+              enabled: true,
+              position: 'top', // 'top' | 'bottom'
+              height: '3px',
+              color: {
+                light: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
+                dark: 'linear-gradient(90deg, #60a5fa, #a78bfa)'
+              }
+            },
+            // Sección de autor
+            author: {
+              showCard: true,
+              showBio: true,
+              showSocialLinks: true,
+              cardPosition: 'bottom', // 'bottom' | 'sidebar'
+              styles: {
+                light: {
+                  background: '#f9fafb',
+                  border: '#e5e7eb',
+                  nameColor: '#111827',
+                  bioColor: '#6b7280'
+                },
+                dark: {
+                  background: '#1f2937',
+                  border: '#374151',
+                  nameColor: '#ffffff',
+                  bioColor: '#9ca3af'
+                }
+              }
+            },
+            // Sección de tags
+            tags: {
+              showSection: true,
+              maxVisible: 5,
+              styles: {
+                light: {
+                  background: '#eff6ff',
+                  textColor: '#1d4ed8',
+                  hoverBackground: '#dbeafe'
+                },
+                dark: {
+                  background: 'rgba(59, 130, 246, 0.2)',
+                  textColor: '#60a5fa',
+                  hoverBackground: 'rgba(59, 130, 246, 0.3)'
+                }
+              }
+            },
+            // Posts relacionados
+            relatedPosts: {
+              enabled: true,
+              maxPosts: 4,
+              showTitle: true,
+              title: 'Artículos Relacionados',
+              layout: 'grid', // 'grid' | 'carousel'
+              styles: {
+                light: {
+                  background: '#ffffff',
+                  cardBackground: '#f9fafb',
+                  titleColor: '#111827'
+                },
+                dark: {
+                  background: '#111827',
+                  cardBackground: '#1f2937',
+                  titleColor: '#ffffff'
+                }
+              }
+            },
+            // Navegación entre posts
+            navigation: {
+              enabled: true,
+              showPrevNext: true,
+              showThumbnails: false,
+              styles: {
+                light: {
+                  background: '#f9fafb',
+                  border: '#e5e7eb',
+                  textColor: '#374151',
+                  hoverBackground: '#eff6ff'
+                },
+                dark: {
+                  background: '#1f2937',
+                  border: '#374151',
+                  textColor: '#d1d5db',
+                  hoverBackground: '#374151'
+                }
+              }
+            },
+            // Comentarios
+            comments: {
+              enabled: true,
+              allowAnonymous: false,
+              moderationRequired: true,
+              maxDepth: 3,
+              styles: {
+                light: {
+                  background: '#ffffff',
+                  border: '#e5e7eb',
+                  authorColor: '#111827',
+                  textColor: '#374151'
+                },
+                dark: {
+                  background: '#1f2937',
+                  border: '#374151',
+                  authorColor: '#ffffff',
+                  textColor: '#d1d5db'
+                }
+              }
+            },
+            // Botones de compartir
+            shareButtons: {
+              enabled: true,
+              position: 'sidebar', // 'sidebar' | 'bottom' | 'both'
+              platforms: ['twitter', 'facebook', 'linkedin', 'whatsapp', 'copy'],
+              styles: {
+                light: {
+                  background: '#f3f4f6',
+                  iconColor: '#6b7280',
+                  hoverBackground: '#e5e7eb'
+                },
+                dark: {
+                  background: '#374151',
+                  iconColor: '#9ca3af',
+                  hoverBackground: '#4b5563'
+                }
+              }
+            },
+            // Estilos de bloques especiales
+            specialBlocks: {
+              callout: {
+                enabled: true,
+                defaultType: 'info', // 'info' | 'warning' | 'success' | 'error'
+                styles: {
+                  info: { background: '#eff6ff', border: '#3b82f6', icon: '💡' },
+                  warning: { background: '#fefce8', border: '#eab308', icon: '⚠️' },
+                  success: { background: '#f0fdf4', border: '#22c55e', icon: '✅' },
+                  error: { background: '#fef2f2', border: '#ef4444', icon: '❌' }
+                }
+              },
+              codeBlock: {
+                theme: 'dark', // 'dark' | 'light'
+                showLineNumbers: true,
+                showCopyButton: true
+              },
+              blockquote: {
+                style: 'modern', // 'classic' | 'modern' | 'minimal'
+                showQuoteIcon: true
+              }
+            }
+          }
+        },
+        seo: {
+          metaTitle: 'Blog Post - SCUTI Company',
+          metaDescription: 'Artículos sobre tecnología, desarrollo de software e inteligencia artificial para empresas.',
+          keywords: ['blog', 'artículo', 'tecnología', 'software', 'inteligencia artificial', 'SCUTI'],
+          ogTitle: 'Blog - SCUTI Company',
+          ogDescription: 'Lee nuestros artículos sobre tecnología y desarrollo',
+          ogImage: '',
+          twitterCard: 'summary_large_image'
+        },
+        theme: {
+          default: 'dark',
+          lightMode: {
+            primary: '#3B82F6',
+            secondary: '#8B5CF6',
+            background: '#FFFFFF',
+            text: '#1F2937',
+            textSecondary: '#6B7280',
+            cardBg: '#F9FAFB',
+            border: '#E5E7EB'
+          },
+          darkMode: {
+            primary: '#60A5FA',
+            secondary: '#A78BFA',
+            background: '#0F0F0F',
+            text: '#F9FAFB',
+            textSecondary: '#D1D5DB',
+            cardBg: '#1A1A1A',
+            border: '#374151'
+          }
+        },
+        isPublished: true,
+        updatedBy: 'system-init'
+      });
+      
+      logger.success('Página Blog Post Detail creada exitosamente');
+      logger.database('CREATE', 'pages', { slug: 'blog-post-detail' });
+    } else {
+      logger.success('✅ Página Blog Post Detail encontrada');
+      logger.database('FOUND', 'pages', { slug: 'blog-post-detail' });
+    }
+
+    // ========================================
     // 👤 SUPER ADMINISTRADOR
     // ========================================
     if (INIT_CONFIG.ENSURE_SUPER_ADMIN) {
