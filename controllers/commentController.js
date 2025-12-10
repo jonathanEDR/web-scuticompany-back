@@ -3,6 +3,7 @@ import CommentReport from '../models/CommentReport.js';
 import BlogPost from '../models/BlogPost.js';
 import { moderateNewComment } from '../utils/commentModerator.js';
 import { handleCommentNotifications } from '../utils/commentNotifier.js';
+import commentCacheService from '../services/commentCacheService.js';
 
 // ========================================
 // OBTENER COMENTARIOS DE UN POST
@@ -11,6 +12,7 @@ import { handleCommentNotifications } from '../utils/commentNotifier.js';
 /**
  * GET /api/blog/:slug/comments
  * Obtiene comentarios de un post específico
+ * ✅ Optimizado con caché
  */
 const getPostComments = async (req, res) => {
   try {
@@ -24,7 +26,7 @@ const getPostComments = async (req, res) => {
     } = req.query;
 
     // Buscar el post
-    const post = await BlogPost.findOne({ slug });
+    const post = await BlogPost.findOne({ slug }).select('_id').lean();
     if (!post) {
       return res.status(404).json({
         success: false,
@@ -32,13 +34,12 @@ const getPostComments = async (req, res) => {
       });
     }
 
-    // Obtener comentarios
-    const result = await BlogComment.getPostComments(post._id, {
+    // ✅ Usar caché para obtener comentarios
+    const result = await commentCacheService.getPostComments(post._id.toString(), {
       page: parseInt(page),
       limit: parseInt(limit),
       sortBy,
       sortOrder,
-      status: 'approved',
       includeReplies: includeReplies === 'true'
     });
 
@@ -106,6 +107,7 @@ const getComment = async (req, res) => {
 /**
  * POST /api/blog/:slug/comments
  * Crea un nuevo comentario
+ * ✅ Validación de límites por usuario
  */
 const createComment = async (req, res) => {
   try {
@@ -148,6 +150,25 @@ const createComment = async (req, res) => {
         success: false,
         message: 'Los comentarios están deshabilitados para este post'
       });
+    }
+
+    // ✅ NUEVO: Verificar límites de comentarios por usuario (solo para usuarios registrados)
+    if (req.userId) {
+      const isReply = !!parentCommentId;
+      const limitCheck = await commentCacheService.canUserComment(
+        post._id.toString(),
+        req.userId.toString(),
+        isReply
+      );
+      
+      if (!limitCheck.canComment) {
+        return res.status(429).json({
+          success: false,
+          message: limitCheck.reason,
+          code: 'COMMENT_LIMIT_EXCEEDED',
+          counts: limitCheck.counts
+        });
+      }
     }
 
     // Construir datos del autor
@@ -213,6 +234,15 @@ const createComment = async (req, res) => {
     
     // Guardar comentario
     await moderationResult.comment.save();
+
+    // ✅ NUEVO: Actualizar caché
+    const isReply = !!parentCommentId;
+    if (req.userId) {
+      // Incrementar conteo del usuario
+      commentCacheService.incrementUserCount(post._id.toString(), req.userId.toString(), isReply);
+    }
+    // Invalidar caché de comentarios del post
+    commentCacheService.invalidatePost(post._id.toString());
 
     // Enviar notificaciones
     try {
@@ -332,6 +362,7 @@ const updateComment = async (req, res) => {
 /**
  * DELETE /api/comments/:id
  * Elimina un comentario (solo el autor o moderador)
+ * ✅ Invalida caché al eliminar
  */
 const deleteComment = async (req, res) => {
   try {
@@ -357,11 +388,19 @@ const deleteComment = async (req, res) => {
       });
     }
 
+    // Guardar datos antes de eliminar para invalidar caché
+    const postId = comment.post.toString();
+    const authorUserId = comment.author.userId?.toString();
+    const isReply = !!comment.parentComment;
+
     // Si tiene respuestas, no eliminar físicamente sino ocultar
     if (comment.repliesCount > 0) {
       comment.content = '[Comentario eliminado por el usuario]';
       comment.status = 'hidden';
       await comment.save();
+
+      // ✅ Invalidar caché
+      commentCacheService.invalidatePost(postId);
 
       return res.json({
         success: true,
@@ -371,7 +410,13 @@ const deleteComment = async (req, res) => {
     }
 
     // Eliminar físicamente
-    await comment.remove();
+    await comment.deleteOne();
+
+    // ✅ Invalidar caché y decrementar conteo
+    commentCacheService.invalidatePost(postId);
+    if (authorUserId) {
+      commentCacheService.decrementUserCount(postId, authorUserId, isReply);
+    }
 
     res.json({
       success: true,
@@ -548,12 +593,13 @@ const reportComment = async (req, res) => {
 /**
  * GET /api/blog/:slug/comments/stats
  * Obtiene estadísticas de comentarios de un post
+ * ✅ Optimizado con caché
  */
 const getPostCommentStats = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const post = await BlogPost.findOne({ slug });
+    const post = await BlogPost.findOne({ slug }).select('_id').lean();
     if (!post) {
       return res.status(404).json({
         success: false,
@@ -561,7 +607,8 @@ const getPostCommentStats = async (req, res) => {
       });
     }
 
-    const stats = await BlogComment.getPostStats(post._id);
+    // ✅ Usar caché para estadísticas
+    const stats = await commentCacheService.getPostStats(post._id.toString());
 
     res.json({
       success: true,

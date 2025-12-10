@@ -3,6 +3,7 @@ const router = express.Router();
 
 // Middleware
 import { requireAuth, requirePermission, optionalAuth } from '../middleware/clerkAuth.js';
+import { generalLimiter, writeLimiter, contactLimiter } from '../middleware/securityMiddleware.js';
 
 // Alias para compatibilidad
 const hasPermission = requirePermission;
@@ -48,19 +49,19 @@ import {
  * GET /api/blog/:slug/comments
  * Query params: page, limit, sortBy, sortOrder, includeReplies
  */
-router.get('/blog/:slug/comments', getPostComments);
+router.get('/blog/:slug/comments', generalLimiter, getPostComments);
 
 /**
  * Obtener estadísticas de comentarios de un post
  * GET /api/blog/:slug/comments/stats
  */
-router.get('/blog/:slug/comments/stats', getPostCommentStats);
+router.get('/blog/:slug/comments/stats', generalLimiter, getPostCommentStats);
 
 /**
  * Obtener un comentario específico con su thread
  * GET /api/comments/:id
  */
-router.get('/comments/:id', getComment);
+router.get('/comments/:id', generalLimiter, getComment);
 
 /**
  * Crear un nuevo comentario
@@ -69,21 +70,21 @@ router.get('/comments/:id', getComment);
  * Si está autenticado, usa datos del usuario
  * Si no, requiere name y email
  */
-router.post('/blog/:slug/comments', optionalAuth, createComment);
+router.post('/blog/:slug/comments', contactLimiter, optionalAuth, createComment);
 
 /**
  * Votar un comentario (like/dislike)
  * POST /api/comments/:id/vote
  * Body: { type: 'like' | 'dislike' }
  */
-router.post('/comments/:id/vote', voteComment);
+router.post('/comments/:id/vote', writeLimiter, voteComment);
 
 /**
  * Reportar un comentario
  * POST /api/comments/:id/report
  * Body: { reason, description?, email? }
  */
-router.post('/comments/:id/report', reportComment);
+router.post('/comments/:id/report', writeLimiter, reportComment);
 
 // ========================================
 // RUTAS AUTENTICADAS - COMENTARIOS
