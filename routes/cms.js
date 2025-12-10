@@ -11,15 +11,26 @@ import { requireAuth } from '../middleware/clerkAuth.js';
 import { canManageContent, canManageSystem } from '../middleware/roleAuth.js';
 import { initializeDatabase, checkDatabaseHealth } from '../utils/dbInitializer.js';
 import validateCardStylesMiddleware from '../middleware/validateCardStyles.js';
+import { 
+  generalLimiter, 
+  writeLimiter,
+  validateCmsUpdate,
+  validators,
+  handleValidationErrors 
+} from '../middleware/securityMiddleware.js';
 
 const router = express.Router();
 
-// Rutas públicas (sin autenticación)
-router.get('/pages', getAllPages);
-router.get('/pages/:slug', getPageBySlug);
+// ============================================
+// 🌐 RUTAS PÚBLICAS (Con Rate Limiting)
+// ============================================
+
+// Rutas públicas (sin autenticación pero con rate limiting)
+router.get('/pages', generalLimiter, getAllPages);
+router.get('/pages/:slug', generalLimiter, validators.pageSlug, handleValidationErrors, getPageBySlug);
 
 // Health check de base de datos
-router.get('/health', async (req, res) => {
+router.get('/health', generalLimiter, async (req, res) => {
   try {
     const health = await checkDatabaseHealth();
     res.json({
@@ -35,30 +46,70 @@ router.get('/health', async (req, res) => {
   }
 });
 
+// ============================================
+// 🔒 RUTAS PROTEGIDAS (Autenticación + Rate Limiting)
+// ============================================
+
 // Rutas protegidas (requieren permisos de gestión de contenido)
-router.put('/pages/:slug', canManageContent, validateCardStylesMiddleware, updatePage);
-router.post('/pages', canManageContent, validateCardStylesMiddleware, createPage);
-router.post('/pages/init-home', canManageContent, initHomePage);
-router.post('/pages/init-all', canManageContent, initAllPages);
+// ⚠️ Operaciones críticas: rate limiting estricto
+router.put('/pages/:slug', 
+  writeLimiter,
+  canManageContent, 
+  validators.pageSlug,
+  validators.cmsContent,
+  handleValidationErrors,
+  validateCardStylesMiddleware, 
+  updatePage
+);
+
+router.post('/pages', 
+  writeLimiter,
+  canManageContent, 
+  validators.cmsContent,
+  handleValidationErrors,
+  validateCardStylesMiddleware, 
+  createPage
+);
+
+router.post('/pages/init-home', 
+  writeLimiter,
+  canManageContent, 
+  initHomePage
+);
+
+router.post('/pages/init-all', 
+  writeLimiter,
+  canManageContent, 
+  initAllPages
+);
+
+// ============================================
+// ⚠️ RUTAS DE SISTEMA (Solo Super Admins)
+// ============================================
 
 // Forzar re-inicialización de base de datos (solo para admins con permisos de sistema)
-router.post('/init-database', canManageSystem, async (req, res) => {
-  try {
-    console.log('🔄 Forzando re-inicialización de base de datos...');
-    await initializeDatabase();
-    
-    res.json({
-      success: true,
-      message: 'Base de datos inicializada correctamente'
-    });
-  } catch (error) {
-    console.error('Error al inicializar base de datos:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al inicializar base de datos',
-      error: error.message
-    });
+// ⚠️ Operación MUY crítica: rate limiting muy estricto
+router.post('/init-database', 
+  writeLimiter,
+  canManageSystem, 
+  async (req, res) => {
+    try {
+      console.log('🔄 Forzando re-inicialización de base de datos...');
+      await initializeDatabase();
+      
+      res.json({
+        success: true,
+        message: 'Base de datos inicializada correctamente'
+      });
+    } catch (error) {
+      console.error('Error al inicializar base de datos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al inicializar base de datos',
+        error: error.message
+      });
+    }
   }
-});
+);
 
 export default router;

@@ -13,54 +13,123 @@ import {
   removeImageReference
 } from '../controllers/imageController.js';
 import { canUploadFiles, canManageUploads, requireUser } from '../middleware/roleAuth.js';
+import { 
+  uploadLimiter, 
+  generalLimiter, 
+  writeLimiter,
+  validateImageMetadata,
+  validators,
+  handleValidationErrors 
+} from '../middleware/securityMiddleware.js';
 
 const router = express.Router();
 
-// Rutas de upload y gestión de imágenes (todas protegidas con autenticación)
+// ============================================
+// 📤 RUTAS DE UPLOAD (PROTEGIDAS)
+// ============================================
 
 // Upload de imagen (requiere permiso de upload)
-router.post('/image', canUploadFiles, uploadImage);
+// ⚠️ Rate limiting: 10 uploads/hora por usuario
+router.post('/image', 
+  uploadLimiter,         // 🚦 10 uploads/hora
+  canUploadFiles, 
+  uploadImage
+);
 
 // Listar todas las imágenes con filtros (requiere permiso de gestión)
-router.get('/images', canManageUploads, listImages);
+router.get('/images', 
+  generalLimiter,
+  canManageUploads, 
+  listImages
+);
 
 // Buscar imágenes (requiere permiso de gestión)
-router.get('/images/search', canManageUploads, searchImages);
+router.get('/images/search', 
+  generalLimiter,
+  canManageUploads, 
+  searchImages
+);
 
 // Obtener estadísticas (requiere gestión de uploads)
-router.get('/images/stats', canManageUploads, getImageStatistics);
+router.get('/images/stats', 
+  generalLimiter,
+  canManageUploads, 
+  getImageStatistics
+);
 
 // Obtener imágenes huérfanas (requiere gestión de uploads)
-router.get('/images/orphans', canManageUploads, getOrphanImages);
+router.get('/images/orphans', 
+  generalLimiter,
+  canManageUploads, 
+  getOrphanImages
+);
 
 // Limpiar imágenes huérfanas (requiere gestión de uploads)
-router.post('/images/cleanup', canManageUploads, cleanupOrphanImages);
+// ⚠️ Operación crítica: rate limiting estricto
+router.post('/images/cleanup', 
+  writeLimiter,
+  canManageUploads, 
+  cleanupOrphanImages
+);
 
 // Obtener imagen por ID (requiere usuario autenticado)
-router.get('/images/:id', requireUser, getImageById);
+router.get('/images/:id', 
+  generalLimiter,
+  requireUser,
+  validators.mongoId,
+  handleValidationErrors,
+  getImageById
+);
 
 // Actualizar metadatos de imagen (requiere gestión de uploads)
-router.patch('/images/:id', canManageUploads, updateImageMetadata);
+router.patch('/images/:id', 
+  writeLimiter,
+  canManageUploads,
+  validateImageMetadata,   // ✅ Validar ID y metadatos
+  updateImageMetadata
+);
 
 // Eliminar imagen (requiere gestión de uploads)
-router.delete('/images/:id', canManageUploads, deleteImage);
+router.delete('/images/:id', 
+  writeLimiter,
+  canManageUploads,
+  validators.mongoId,
+  handleValidationErrors,
+  deleteImage
+);
 
 // Agregar referencia de uso - internal (requiere gestión de uploads)
-router.post('/images/:id/reference', canManageUploads, addImageReference);
+router.post('/images/:id/reference', 
+  writeLimiter,
+  canManageUploads,
+  validators.mongoId,
+  handleValidationErrors,
+  addImageReference
+);
 
 // Eliminar referencia de uso - internal (requiere gestión de uploads)
-router.delete('/images/:id/reference', canManageUploads, removeImageReference);
+router.delete('/images/:id/reference', 
+  writeLimiter,
+  canManageUploads,
+  validators.mongoId,
+  handleValidationErrors,
+  removeImageReference
+);
 
 // ============================================
-// RUTAS DE PERFIL (AVATARES)
+// 👤 RUTAS DE PERFIL (AVATARES)
 // ============================================
 
 /**
  * @desc    Upload de avatar para perfil
  * @route   POST /api/upload/avatar
  * @access  Private (usuario autenticado)
+ * ⚠️ Rate limiting: 10 uploads/hora por usuario
  */
-router.post('/avatar', requireUser, async (req, res) => {
+router.post('/avatar', 
+  uploadLimiter,         // 🚦 10 uploads/hora
+  requireUser, 
+  async (req, res) => {
   try {
     // Importar dinámicamente para evitar dependencias circulares
     const { uploadAvatar } = await import('../utils/cloudinary.js');
@@ -159,8 +228,13 @@ router.post('/avatar', requireUser, async (req, res) => {
  * @desc    Obtener imagen por ID (público - para blog y páginas públicas)
  * @route   GET /api/upload/public/images/:id
  * @access  Public
+ * 🚦 Rate limiting para prevenir scraping
  */
-router.get('/public/images/:id', async (req, res) => {
+router.get('/public/images/:id', 
+  generalLimiter,
+  validators.mongoId,
+  handleValidationErrors,
+  async (req, res) => {
   try {
     const { id } = req.params;
     

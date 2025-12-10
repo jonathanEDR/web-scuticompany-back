@@ -3,6 +3,50 @@ import logger from '../utils/logger.js';
 import { normalizeRole, getDefaultRole } from '../utils/roleNormalizer.js';
 import { autoLinkUserToLeads } from '../utils/leadAutoLinker.js';
 import { createWelcomeOnboarding } from '../utils/onboardingService.js';
+import { sanitizeUserData, sanitizeName, sanitizeEmail, sanitizeUrl } from '../utils/sanitizer.js';
+
+/**
+ * 🔒 Helper: Formatear y sanitizar datos de usuario para respuesta
+ * Elimina datos sensibles y sanitiza campos de texto
+ */
+const formatUserResponse = (user) => {
+  if (!user) return null;
+  
+  // Convertir a objeto plano si es documento Mongoose
+  const userData = user.toObject ? user.toObject() : { ...user };
+  
+  return {
+    _id: userData._id,
+    clerkId: userData.clerkId,
+    email: sanitizeEmail(userData.email) || userData.email,
+    firstName: sanitizeName(userData.firstName) || '',
+    lastName: sanitizeName(userData.lastName) || '',
+    username: sanitizeName(userData.username) || '',
+    fullName: sanitizeName(userData.fullName || `${userData.firstName || ''} ${userData.lastName || ''}`.trim()),
+    profileImage: sanitizeUrl(userData.profileImage) || '',
+    emailVerified: userData.emailVerified || false,
+    role: userData.role,
+    customPermissions: userData.customPermissions || [],
+    isActive: userData.isActive,
+    roleAssignedBy: userData.roleAssignedBy,
+    roleAssignedAt: userData.roleAssignedAt,
+    lastLogin: userData.lastLogin,
+    createdAt: userData.createdAt,
+    updatedAt: userData.updatedAt,
+    // Blog profile sanitizado
+    blogProfile: userData.blogProfile ? {
+      displayName: sanitizeName(userData.blogProfile.displayName) || '',
+      bio: userData.blogProfile.bio ? userData.blogProfile.bio.substring(0, 500) : '',
+      avatar: sanitizeUrl(userData.blogProfile.avatar) || '',
+      website: sanitizeUrl(userData.blogProfile.website) || '',
+      location: sanitizeName(userData.blogProfile.location) || '',
+      expertise: userData.blogProfile.expertise || [],
+      social: userData.blogProfile.social || {},
+      isPublicProfile: userData.blogProfile.isPublicProfile,
+      profileCompleteness: userData.blogProfile.profileCompleteness
+    } : null
+  };
+};
 
 /**
  * @desc    Sincronizar usuario de Clerk con MongoDB
@@ -91,31 +135,12 @@ export const syncUser = async (req, res) => {
       logger.database('UPDATE', 'users', { clerkId: updated.clerkId });
       logger.api('POST', '/api/users/sync', 200, Date.now() - startTime);
 
+      // 🔒 Sanitizar respuesta de usuario
       return res.status(200).json({
         success: true,
         message: 'Usuario actualizado correctamente',
         synced: true,
-        user: {
-          _id: updated._id,
-          clerkId: updated.clerkId,
-          email: updated.email,
-          firstName: updated.firstName,
-          lastName: updated.lastName,
-          username: updated.username,
-          fullName: updated.fullName || `${updated.firstName || ''} ${updated.lastName || ''}`.trim(),
-          profileImage: updated.profileImage,
-          emailVerified: updated.emailVerified || false,
-          role: updated.role,
-          customPermissions: updated.customPermissions || [],
-          isActive: updated.isActive,
-          roleAssignedBy: updated.roleAssignedBy,
-          roleAssignedAt: updated.roleAssignedAt,
-          lastLogin: updated.lastLogin,
-          createdAt: updated.createdAt,
-          updatedAt: updated.updatedAt,
-          clerkCreatedAt: updated.clerkCreatedAt,
-          clerkUpdatedAt: updated.clerkUpdatedAt
-        }
+        user: formatUserResponse(updated)
       });
     } else {
       logger.startup('Creando nuevo usuario en la base de datos', {
@@ -238,33 +263,14 @@ export const syncUser = async (req, res) => {
       logger.database('CREATE', 'users', { clerkId: newUser.clerkId });
       logger.api('POST', '/api/users/sync', 201, Date.now() - startTime);
 
+      // 🔒 Sanitizar respuesta de usuario nuevo
       return res.status(201).json({
         success: true,
         message: 'Usuario creado correctamente',
         synced: true,
         leadLinking: leadLinkResult, // Información de vinculación de leads
         onboarding: onboardingResult, // Información de onboarding automático
-        user: {
-          _id: newUser._id,
-          clerkId: newUser.clerkId,
-          email: newUser.email,
-          firstName: newUser.firstName,
-          lastName: newUser.lastName,
-          username: newUser.username,
-          fullName: newUser.fullName || `${newUser.firstName || ''} ${newUser.lastName || ''}`.trim(),
-          profileImage: newUser.profileImage,
-          emailVerified: newUser.emailVerified || false,
-          role: newUser.role,
-          customPermissions: newUser.customPermissions || [],
-          isActive: newUser.isActive,
-          roleAssignedBy: newUser.roleAssignedBy,
-          roleAssignedAt: newUser.roleAssignedAt,
-          lastLogin: newUser.lastLogin,
-          createdAt: newUser.createdAt,
-          updatedAt: newUser.updatedAt,
-          clerkCreatedAt: newUser.clerkCreatedAt,
-          clerkUpdatedAt: newUser.clerkUpdatedAt
-        }
+        user: formatUserResponse(newUser)
       });
     }
 
@@ -298,22 +304,10 @@ export const getUserProfile = async (req, res) => {
       });
     }
 
+    // 🔒 Sanitizar respuesta de perfil
     return res.status(200).json({
       success: true,
-      user: {
-        id: user._id,
-        clerkId: user.clerkId,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        username: user.username,
-        profileImage: user.profileImage,
-        emailVerified: user.emailVerified,
-        role: user.role,
-        isActive: user.isActive,
-        lastLogin: user.lastLogin,
-        createdAt: user.createdAt
-      }
+      user: formatUserResponse(user)
     });
 
   } catch (error) {

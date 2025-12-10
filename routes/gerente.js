@@ -1,43 +1,47 @@
 /**
  * Rutas para el Gerente General
  * Endpoints centralizados para coordinación de agentes
+ * 
+ * 🔒 SEGURIDAD: Rate limiting centralizado desde securityMiddleware.js
  */
 
 import express from 'express';
 import { requireAuth, requireRole } from '../middleware/clerkAuth.js';
-import rateLimit from 'express-rate-limit';
-
+import { body, validationResult } from 'express-validator';
+// ✅ Importar rate limiters centralizados (SIEMPRE activos)
+import { 
+  aiChatLimiter, 
+  generalLimiter,
+  handleValidationErrors 
+} from '../middleware/securityMiddleware.js';
 import agentController from '../controllers/agentController.js';
 
 const router = express.Router();
 
 // ============================================================================
-// RATE LIMITERS
+// 🔒 VALIDADORES DE SEGURIDAD
 // ============================================================================
 
-// Rate limiter general para endpoints del Gerente
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: process.env.NODE_ENV === 'production' ? 30 : 100,
-  message: {
-    success: false,
-    error: 'Demasiadas peticiones al Gerente General, intenta de nuevo más tarde'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Rate limiter para comandos (más restrictivo)
-const commandLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutos
-  max: process.env.NODE_ENV === 'production' ? 10 : 50,
-  message: {
-    success: false,
-    error: 'Demasiados comandos al Gerente, intenta de nuevo más tarde'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+const validateCommand = [
+  body('command')
+    .trim()
+    .notEmpty().withMessage('El comando es requerido')
+    .isLength({ min: 1, max: 2000 }).withMessage('El comando debe tener entre 1 y 2000 caracteres')
+    .custom((value) => {
+      const dangerousPatterns = [
+        /<script/i, /javascript:/i, /on\w+\s*=/i,
+        /\$\{.*\}/, /\{\{.*\}\}/,
+        /process\.env/i, /require\s*\(/i
+      ];
+      for (const pattern of dangerousPatterns) {
+        if (pattern.test(value)) {
+          throw new Error('Contenido no permitido');
+        }
+      }
+      return true;
+    }),
+  handleValidationErrors
+];
 
 // ============================================================================
 // RUTAS PÚBLICAS (solo autenticación)
@@ -46,6 +50,7 @@ const commandLimiter = rateLimit({
 /**
  * GET /api/gerente/health
  * Health check del Gerente General
+ * 🔒 Rate limit: 30 req/min (generalLimiter)
  */
 router.get(
   '/health',
@@ -55,11 +60,24 @@ router.get(
 /**
  * POST /api/gerente/test-routing
  * Testing endpoint para probar routing del GerenteGeneral con acceso a agentes reales
- * Sin autenticación requerida (solo para desarrollo)
+ * 🔒 SEGURIDAD: Solo disponible en desarrollo + requiere SUPER_ADMIN
  */
 router.post(
   '/test-routing',
-  generalLimiter,
+  aiChatLimiter,
+  // 🔒 Solo permitir en desarrollo
+  (req, res, next) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        success: false,
+        error: 'Este endpoint no está disponible en producción'
+      });
+    }
+    next();
+  },
+  requireAuth,
+  requireRole('SUPER_ADMIN'),
+  validateCommand,
   async (req, res) => {
     try {
       const { command, action = 'coordinate', servicioId } = req.body;
@@ -94,10 +112,10 @@ router.post(
         });
       }
 
-      // Crear contexto de prueba
+      // Crear contexto de prueba usando el usuario autenticado
       const context = {
-        userId: 'test-user',
-        userRole: 'SUPER_ADMIN',
+        userId: req.user?.id || 'test-user',
+        userRole: req.user?.role || 'SUPER_ADMIN',
         sessionId: `routing-${Date.now()}`,
         source: 'test-endpoint'
       };
@@ -118,7 +136,7 @@ router.post(
       res.json({
         success: result.success !== false,
         data: result,
-        note: 'Endpoint temporal con acceso a agentes reales',
+        note: 'Endpoint de desarrollo - solo para testing',
         orchestratorInfo: {
           totalAgents: AgentOrchestrator.agents?.size || 0,
           activeAgents: Array.from(AgentOrchestrator.activeAgents || []),
@@ -160,7 +178,7 @@ router.get(
 router.post(
   '/command',
   requireAuth,
-  commandLimiter,
+  aiChatLimiter,
   agentController.processGerenteCommand
 );
 

@@ -90,54 +90,52 @@ import {
   canManagePaquetes
 } from '../middleware/roleAuth.js';
 
-// Rate limiters para endpoints de AI
-import rateLimit from 'express-rate-limit';
-import { ipKeyGenerator } from 'express-rate-limit';
+// ✅ Importar rate limiters y validadores centralizados (SIEMPRE activos)
+import { body, validationResult } from 'express-validator';
+import { 
+  publicChatLimiter,
+  aiChatLimiter, 
+  generalLimiter,
+  handleValidationErrors 
+} from '../middleware/securityMiddleware.js';
+import logger from '../utils/logger.js';
 
-// 🔒 Rate limiter ESTRICTO para chat público (por IP)
-const publicChatLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutos
-  max: 20, // Máximo 20 mensajes cada 10 minutos por IP
-  message: {
-    success: false,
-    error: '⏱️ Has alcanzado el límite de mensajes. Por favor espera unos minutos antes de continuar.',
-    retryAfter: 600 // segundos
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: false, // Contar todas las requests
-  skipFailedRequests: false,
-  // ✅ Usar ipKeyGenerator para soporte IPv6
-  keyGenerator: ipKeyGenerator,
-  // Handler personalizado para logging
-  handler: (req, res) => {
-    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
-    console.warn(`🚫 [RATE LIMIT] Chat público bloqueado para IP: ${ip}`);
-    res.status(429).json({
-      success: false,
-      error: '⏱️ Has alcanzado el límite de mensajes. Por favor espera unos minutos.',
-      retryAfter: 600
-    });
-  }
-});
+// ============================================================================
+// 🔒 VALIDADORES DE SEGURIDAD PARA CHAT PÚBLICO
+// ============================================================================
 
-// Rate limiter estándar para agente (usuarios autenticados)
-const agentLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 30, // 30 requests por ventana
-  message: 'Demasiadas solicitudes al agente, intenta nuevamente más tarde',
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
-// Rate limiter para comandos AI intensivos
-const aiCommandLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutos
-  max: 10, // 10 comandos AI por ventana
-  message: 'Límite de comandos AI excedido, espera unos minutos',
-  standardHeaders: true,
-  legacyHeaders: false
-});
+// Validador para mensajes de chat público (MÁS ESTRICTO)
+const validatePublicChatMessage = [
+  body('message')
+    .trim()
+    .notEmpty().withMessage('El mensaje es requerido')
+    .isLength({ min: 1, max: 1000 }).withMessage('El mensaje debe tener entre 1 y 1000 caracteres')
+    .custom((value) => {
+      // Detectar patrones peligrosos
+      const dangerousPatterns = [
+        /<script/i, /javascript:/i, /on\w+\s*=/i, // XSS
+        /\$\{.*\}/, /\{\{.*\}\}/, // Template injection
+        /process\.env/i, /require\s*\(/i, /import\s*\(/i, // Code injection
+        /system\s*prompt/i, /ignore\s*(previous|all)\s*instructions/i, // Prompt injection
+        /you\s*are\s*now/i, /pretend\s*you/i, /act\s*as\s*if/i // Role manipulation
+      ];
+      for (const pattern of dangerousPatterns) {
+        if (pattern.test(value)) {
+          logger.warn(`🚫 [SECURITY] Patrón peligroso detectado en chat público: ${pattern}`);
+          throw new Error('Contenido no permitido');
+        }
+      }
+      return true;
+    }),
+  body('sessionId')
+    .optional()
+    .isString()
+    .isLength({ max: 100 }).withMessage('sessionId inválido'),
+  body('servicioId')
+    .optional()
+    .isMongoId().withMessage('servicioId inválido'),
+  handleValidationErrors
+];
 
 const router = express.Router();
 
@@ -145,26 +143,31 @@ const router = express.Router();
 // RUTAS DEL SERVICESAGENT (antes de todo)
 // ============================================
 // 🆕 ENDPOINTS PÚBLICOS (sin autenticación requerida)
-// 🔒 Chat público con rate limiting ESTRICTO por IP
-router.post('/agent/chat/public', publicChatLimiter, chatWithServicesAgentPublic);
+// 🔒 Chat público con rate limiting ESTRICTO por IP + VALIDACIÓN
+router.post('/agent/chat/public', 
+  publicChatLimiter,           // ✅ Rate limiter centralizado (15 req/10min)
+  validatePublicChatMessage,   // ✅ Validación anti-injection
+  chatWithServicesAgentPublic
+);
+
 // Listados con rate limiting estándar
-router.get('/agent/public/services', agentLimiter, listPublicServices); // 🗂️ Listar servicios
-router.get('/agent/public/categories', agentLimiter, listPublicCategories); // 📂 Listar categorías
+router.get('/agent/public/services', generalLimiter, listPublicServices); // 🗂️ Listar servicios
+router.get('/agent/public/categories', generalLimiter, listPublicCategories); // 📂 Listar categorías
 
 // Chat con el agente (autenticado)
-router.post('/agent/chat', requireAuth, ...requireUser, agentLimiter, chatWithServicesAgent);
+router.post('/agent/chat', requireAuth, ...requireUser, aiChatLimiter, chatWithServicesAgent);
 
 // Crear servicio con IA
-router.post('/agent/create', requireAuth, canCreateServices, aiCommandLimiter, createServiceWithAgent);
+router.post('/agent/create', requireAuth, canCreateServices, aiChatLimiter, createServiceWithAgent);
 
 // Análisis de portfolio
-router.post('/agent/analyze-portfolio', requireAuth, ...requireUser, agentLimiter, analyzePortfolio);
+router.post('/agent/analyze-portfolio', requireAuth, ...requireUser, aiChatLimiter, analyzePortfolio);
 
 // Sugerir pricing
-router.post('/agent/suggest-pricing', requireAuth, ...requireUser, agentLimiter, suggestPricing);
+router.post('/agent/suggest-pricing', requireAuth, ...requireUser, aiChatLimiter, suggestPricing);
 
 // Optimizar paquetes
-router.post('/agent/optimize-packages', requireAuth, ...requireUser, aiCommandLimiter, optimizePackagesPricing);
+router.post('/agent/optimize-packages', requireAuth, ...requireUser, aiChatLimiter, optimizePackagesPricing);
 
 // Métricas del agente (admin)
 router.get('/agent/metrics', requireAuth, ...requireModerator, getAgentMetrics);
@@ -255,7 +258,7 @@ router.post('/:id/agent/edit',
   canEditService, 
   validateServiceUpdate,
   serviceOperationLogger('agent_edit'),
-  aiCommandLimiter, 
+  aiChatLimiter, 
   editServiceWithAgent
 );
 router.post('/:id/agent/analyze', 
@@ -263,7 +266,7 @@ router.post('/:id/agent/analyze',
   requireAuth, 
   ...requireUser, 
   serviceOperationLogger('agent_analyze'),
-  agentLimiter, 
+  aiChatLimiter, 
   analyzeServiceWithAgent
 );
 // ❌ ENDPOINT DEPRECADO - Usar /generate-complete en su lugar
@@ -272,7 +275,7 @@ router.post('/:id/agent/analyze',
 //   requireAuth, 
 //   ...requireUser, 
 //   serviceOperationLogger('agent_generate'),
-//   agentLimiter, 
+//   aiChatLimiter, 
 //   generateContentWithAgent
 // );
 
@@ -282,7 +285,7 @@ router.post('/:id/agent/generate-complete',
   requireAuth, 
   ...requireUser, 
   serviceOperationLogger('agent_generate_unified'),
-  agentLimiter, 
+  aiChatLimiter, 
   generateCompleteServiceWithAgent
 );
 // 🔄 Legacy endpoint para compatibilidad (deprecar eventualmente)
@@ -291,7 +294,7 @@ router.post('/:id/agent/generate-all-content',
   requireAuth, 
   ...requireUser, 
   serviceOperationLogger('agent_generate_bulk'),
-  agentLimiter, 
+  aiChatLimiter, 
   generateAllContentWithAgent
 );
 router.post('/:id/agent/analyze-pricing', 
@@ -299,7 +302,7 @@ router.post('/:id/agent/analyze-pricing',
   requireAuth, 
   ...requireUser, 
   serviceOperationLogger('agent_pricing'),
-  agentLimiter, 
+  aiChatLimiter, 
   analyzePricing
 );
 

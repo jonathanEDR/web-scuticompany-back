@@ -14,6 +14,13 @@ import {
   getCategoriasTipoServicio
 } from '../controllers/contactController.js';
 import { requireAuth, requirePermission, optionalAuth } from '../middleware/clerkAuth.js';
+import { 
+  contactLimiter, 
+  generalLimiter, 
+  writeLimiter,
+  validators,
+  handleValidationErrors 
+} from '../middleware/securityMiddleware.js';
 
 const router = express.Router();
 
@@ -24,16 +31,16 @@ const router = express.Router();
  */
 
 // GET /api/contact/categorias-tipos - Obtener mapeo de categorías a tipos de servicio
-router.get('/categorias-tipos', getCategoriasTipoServicio);
-
-// GET /api/contact/categorias-tipos - Obtener mapeo de categorías (público)
-router.get('/categorias-tipos', getCategoriasTipoServicio);
+// Aplicar rate limiting general para evitar scraping
+router.get('/categorias-tipos', generalLimiter, getCategoriasTipoServicio);
 
 // POST /api/contact - Crear nuevo contacto desde formulario público
+// ⚠️ RUTA CRÍTICA: Rate limiting estricto para prevenir spam
 router.post(
   '/',
-  optionalAuth, // ✅ Detecta auth pero no la requiere
-  validateContactCreation,
+  contactLimiter,           // 🚦 3 contactos/minuto máximo por IP
+  optionalAuth,             // ✅ Detecta auth pero no la requiere
+  validateContactCreation,  // ✅ Validación del controlador
   createContact
 );
 
@@ -45,6 +52,7 @@ router.post(
 // GET /api/contact - Listar todos los contactos (con paginación y filtros)
 router.get(
   '/',
+  generalLimiter,
   requireAuth,
   requirePermission('VIEW_CONTACTS'),
   getContacts
@@ -53,6 +61,7 @@ router.get(
 // GET /api/contact/stats - Obtener estadísticas de contactos
 router.get(
   '/stats',
+  generalLimiter,
   requireAuth,
   requirePermission('VIEW_CONTACTS'),
   getEstadisticas
@@ -61,6 +70,7 @@ router.get(
 // GET /api/contact/pendientes - Obtener contactos pendientes (nuevos/en proceso)
 router.get(
   '/pendientes',
+  generalLimiter,
   requireAuth,
   requirePermission('VIEW_CONTACTS'),
   getContactosPendientes
@@ -69,6 +79,7 @@ router.get(
 // GET /api/contact/buscar - Buscar contactos por texto
 router.get(
   '/buscar',
+  generalLimiter,
   requireAuth,
   requirePermission('VIEW_CONTACTS'),
   buscarContactos
@@ -77,40 +88,55 @@ router.get(
 // GET /api/contact/:id - Obtener un contacto por ID
 router.get(
   '/:id',
+  generalLimiter,
   requireAuth,
   requirePermission('VIEW_CONTACTS'),
+  validators.mongoId,
+  handleValidationErrors,
   getContactById
 );
 
 // PATCH /api/contact/:id - Actualizar contacto
 router.patch(
   '/:id',
+  writeLimiter,
   requireAuth,
   requirePermission('MANAGE_CONTACTS'),
+  validators.mongoId,
+  handleValidationErrors,
   updateContact
 );
 
 // PATCH /api/contact/:id/estado - Cambiar estado del contacto
 router.patch(
   '/:id/estado',
+  writeLimiter,
   requireAuth,
   requirePermission('MANAGE_CONTACTS'),
+  validators.mongoId,
+  handleValidationErrors,
   cambiarEstado
 );
 
 // POST /api/contact/:id/notas - Agregar nota al contacto
 router.post(
   '/:id/notas',
+  writeLimiter,
   requireAuth,
   requirePermission('MANAGE_CONTACTS'),
+  validators.mongoId,
+  handleValidationErrors,
   agregarNota
 );
 
 // DELETE /api/contact/:id - Eliminar contacto
 router.delete(
   '/:id',
+  writeLimiter,
   requireAuth,
   requirePermission('DELETE_CONTACTS'),
+  validators.mongoId,
+  handleValidationErrors,
   deleteContact
 );
 

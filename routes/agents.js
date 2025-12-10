@@ -1,12 +1,20 @@
 /**
  * Rutas para el sistema de agentes AI
  * Endpoints para interactuar con el cerebro central y agentes especializados
+ * 
+ * 🔒 SEGURIDAD: Rate limiting centralizado desde securityMiddleware.js
  */
 
 import express from 'express';
 import { requireAuth, requireAnyRole } from '../middleware/clerkAuth.js';
 import { requireAdmin, requireModerator, requireUser, requireSuperAdmin } from '../middleware/roleAuth.js';
-import rateLimit from 'express-rate-limit';
+import { body, param, validationResult } from 'express-validator';
+// ✅ Importar rate limiters centralizados (SIEMPRE activos, incluso en desarrollo)
+import { 
+  aiChatLimiter, 
+  generalLimiter,
+  handleValidationErrors 
+} from '../middleware/securityMiddleware.js';
 import {
   getAgentStatus,
   processCommand,
@@ -42,28 +50,62 @@ import { testAgentConfiguration } from '../controllers/testController.js';
 
 const router = express.Router();
 
-// Rate limiting específico para agentes (más restrictivo)
-const agentLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: process.env.NODE_ENV === 'production' ? 30 : 100, // 30 en prod, 100 en dev
-  message: 'Demasiadas peticiones al sistema de agentes, intenta de nuevo más tarde.',
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === 'development'
-});
+// ============================================================================
+// 🔒 VALIDADORES DE SEGURIDAD PARA AGENTES
+// ============================================================================
 
-// Rate limiting más estricto para comandos de IA
-const aiCommandLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutos
-  max: process.env.NODE_ENV === 'production' ? 10 : 50, // 10 en prod, 50 en dev
-  message: 'Límite de comandos de IA alcanzado, espera unos minutos.',
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === 'development'
-});
+// Validador para comandos de texto
+const validateCommand = [
+  body('command')
+    .trim()
+    .notEmpty().withMessage('El comando es requerido')
+    .isLength({ min: 1, max: 2000 }).withMessage('El comando debe tener entre 1 y 2000 caracteres')
+    .custom((value) => {
+      // Detectar patrones peligrosos
+      const dangerousPatterns = [
+        /<script/i, /javascript:/i, /on\w+\s*=/i,
+        /\$\{.*\}/, /\{\{.*\}\}/,
+        /process\.env/i, /require\s*\(/i, /import\s*\(/i
+      ];
+      for (const pattern of dangerousPatterns) {
+        if (pattern.test(value)) {
+          throw new Error('Contenido no permitido en comando');
+        }
+      }
+      return true;
+    }),
+  handleValidationErrors
+];
 
-// Aplicar rate limiting a todas las rutas de agentes
-router.use(agentLimiter);
+// Validador para contenido de blog
+const validateBlogContent = [
+  body('content')
+    .optional()
+    .trim()
+    .isLength({ max: 50000 }).withMessage('El contenido excede el límite permitido'),
+  body('title')
+    .optional()
+    .trim()
+    .isLength({ max: 500 }).withMessage('El título es demasiado largo'),
+  handleValidationErrors
+];
+
+// Validador para mensajes de chat
+const validateChatMessage = [
+  body('message')
+    .trim()
+    .notEmpty().withMessage('El mensaje es requerido')
+    .isLength({ min: 1, max: 2000 }).withMessage('El mensaje debe tener entre 1 y 2000 caracteres'),
+  body('sessionId')
+    .optional()
+    .isString()
+    .isLength({ max: 100 }).withMessage('sessionId inválido'),
+  handleValidationErrors
+];
+
+// Aplicar rate limiting general a todas las rutas de agentes
+// ✅ generalLimiter SIEMPRE activo (no se salta en desarrollo)
+router.use(generalLimiter);
 
 // ============================================================================
 // RUTAS PÚBLICAS (solo información básica)
@@ -102,10 +144,12 @@ router.get('/status', getAgentStatus);
  * POST /api/agents/command
  * Procesar comando de lenguaje natural
  * Requiere: Usuario autenticado
+ * 🔒 Rate limit: 5 req/min (aiChatLimiter)
  */
 router.post('/command', 
-  aiCommandLimiter,
+  aiChatLimiter,  // ✅ Rate limiter centralizado
   ...requireUser,
+  validateCommand, // ✅ Validación de entrada
   processCommand
 );
 
@@ -117,9 +161,12 @@ router.post('/command',
  * POST /api/agents/blog/optimize
  * Optimizar contenido específico de blog
  * Requiere: Moderador o superior
+ * 🔒 Rate limit: 5 req/min (aiChatLimiter)
  */
 router.post('/blog/optimize',
+  aiChatLimiter,
   ...requireModerator,
+  validateBlogContent,
   optimizeBlogContent
 );
 
@@ -127,9 +174,12 @@ router.post('/blog/optimize',
  * POST /api/agents/blog/analyze
  * Analizar contenido de blog
  * Requiere: Usuario autenticado
+ * 🔒 Rate limit: 5 req/min (aiChatLimiter)
  */
 router.post('/blog/analyze',
+  aiChatLimiter,
   ...requireUser,
+  validateBlogContent,
   analyzeBlogContent
 );
 
@@ -137,9 +187,12 @@ router.post('/blog/analyze',
  * POST /api/agents/blog/tags
  * Generar tags para contenido
  * Requiere: Usuario autenticado
+ * 🔒 Rate limit: 5 req/min (aiChatLimiter)
  */
 router.post('/blog/tags',
+  aiChatLimiter,
   ...requireUser,
+  validateBlogContent,
   generateBlogTags
 );
 
@@ -147,9 +200,12 @@ router.post('/blog/tags',
  * POST /api/agents/blog/seo
  * Optimizar SEO de contenido
  * Requiere: Usuario autenticado
+ * 🔒 Rate limit: 5 req/min (aiChatLimiter)
  */
 router.post('/blog/seo',
+  aiChatLimiter,
   ...requireUser,
+  validateBlogContent,
   optimizeSEO
 );
 
@@ -157,10 +213,12 @@ router.post('/blog/seo',
  * POST /api/agents/blog/chat
  * Chat conversacional con BlogAgent
  * Requiere: Usuario autenticado
+ * 🔒 Rate limit: 5 req/min (aiChatLimiter)
  */
 router.post('/blog/chat',
-  aiCommandLimiter,
+  aiChatLimiter,  // ✅ Centralizado
   ...requireUser,
+  validateChatMessage, // ✅ Validación
   chatWithBlogAgent
 );
 
@@ -168,10 +226,12 @@ router.post('/blog/chat',
  * POST /api/agents/blog/generate-content
  * Generar contenido con BlogAgent
  * Requiere: Usuario autenticado
+ * 🔒 Rate limit: 5 req/min (aiChatLimiter)
  */
 router.post('/blog/generate-content',
-  aiCommandLimiter,
+  aiChatLimiter,  // ✅ Centralizado
   ...requireUser,
+  validateBlogContent,
   generateContent
 );
 
@@ -180,9 +240,10 @@ router.post('/blog/generate-content',
  * Procesar patrón contextual #...#
  * Sistema avanzado de sugerencias con patrones
  * Requiere: Usuario autenticado
+ * 🔒 Rate limit: 5 req/min (aiChatLimiter)
  */
 router.post('/blog/process-pattern',
-  aiCommandLimiter,
+  aiChatLimiter,  // ✅ Centralizado
   ...requireUser,
   processContextPattern
 );
@@ -452,7 +513,7 @@ router.put('/config/SEOAgent/training',
 router.post('/seo/test',
   requireAuth,
   ...requireSuperAdmin,
-  aiCommandLimiter,
+  aiChatLimiter,
   async (req, res, next) => {
     try {
       const { input } = req.body;
@@ -478,7 +539,7 @@ router.post('/seo/test',
 router.post('/seo/execute',
   requireAuth,
   requireAnyRole(['admin', 'super_admin', 'moderator']),
-  aiCommandLimiter,
+  aiChatLimiter,
   async (req, res, next) => {
     try {
       const { taskType, params } = req.body;
@@ -504,7 +565,7 @@ router.post('/seo/execute',
 router.post('/seo/chat',
   requireAuth,
   requireAnyRole(['admin', 'super_admin', 'moderator']),
-  aiCommandLimiter,
+  aiChatLimiter,
   async (req, res, next) => {
     try {
       const { message, context } = req.body;
@@ -538,7 +599,7 @@ router.post('/seo/chat',
 router.post('/seo/optimize',
   requireAuth,
   requireAnyRole(['admin', 'super_admin', 'moderator']),
-  aiCommandLimiter,
+  aiChatLimiter,
   async (req, res, next) => {
     try {
       const { content, title, optimize = true } = req.body;
@@ -571,7 +632,7 @@ router.post('/seo/optimize',
 router.post('/seo/analyze',
   requireAuth,
   requireAnyRole(['admin', 'super_admin', 'moderator']),
-  aiCommandLimiter,
+  aiChatLimiter,
   async (req, res, next) => {
     try {
       const { content, title, keywords, description } = req.body;
@@ -605,7 +666,7 @@ router.post('/seo/analyze',
 router.post('/seo/structure',
   requireAuth,
   requireAnyRole(['admin', 'super_admin', 'moderator']),
-  aiCommandLimiter,
+  aiChatLimiter,
   async (req, res, next) => {
     try {
       const { topic, keywords, targetAudience } = req.body;
@@ -638,7 +699,7 @@ router.post('/seo/structure',
 router.post('/seo/review',
   requireAuth,
   requireAnyRole(['admin', 'super_admin', 'moderator']),
-  aiCommandLimiter,
+  aiChatLimiter,
   async (req, res, next) => {
     try {
       const { content, title, description, keywords } = req.body;
@@ -672,7 +733,7 @@ router.post('/seo/review',
 router.post('/seo/keywords',
   requireAuth,
   requireAnyRole(['admin', 'super_admin', 'moderator']),
-  aiCommandLimiter,
+  aiChatLimiter,
   async (req, res, next) => {
     try {
       const { content, targetKeywords } = req.body;
@@ -704,7 +765,7 @@ router.post('/seo/keywords',
 router.post('/seo/competitors',
   requireAuth,
   requireAnyRole(['admin', 'super_admin', 'moderator']),
-  aiCommandLimiter,
+  aiChatLimiter,
   async (req, res, next) => {
     try {
       const { keywords, industry, competitors } = req.body;
@@ -796,7 +857,7 @@ router.post('/seo/config',
 router.post('/services/generate-all-blocks', 
   requireAuth, 
   requireUser, 
-  aiCommandLimiter,
+  aiChatLimiter,
   generateAllBlocks
 );
 
@@ -804,7 +865,7 @@ router.post('/services/generate-all-blocks',
 router.post('/services/generate-caracteristicas', 
   requireAuth, 
   requireUser, 
-  aiCommandLimiter,
+  aiChatLimiter,
   generateCaracteristicas
 );
 
@@ -812,7 +873,7 @@ router.post('/services/generate-caracteristicas',
 router.post('/services/generate-precios', 
   requireAuth, 
   requireUser, 
-  aiCommandLimiter,
+  aiChatLimiter,
   generatePrecios
 );
 
@@ -820,7 +881,7 @@ router.post('/services/generate-precios',
 router.post('/services/generate-contenido', 
   requireAuth, 
   requireUser, 
-  aiCommandLimiter,
+  aiChatLimiter,
   generateContenido
 );
 
@@ -828,7 +889,7 @@ router.post('/services/generate-contenido',
 router.post('/services/generate-faq', 
   requireAuth, 
   requireUser, 
-  aiCommandLimiter,
+  aiChatLimiter,
   generateFAQ
 );
 
@@ -836,7 +897,7 @@ router.post('/services/generate-faq',
 router.post('/services/generate-incluye', 
   requireAuth, 
   requireUser, 
-  aiCommandLimiter,
+  aiChatLimiter,
   generateQueIncluye
 );
 
@@ -844,7 +905,7 @@ router.post('/services/generate-incluye',
 router.post('/services/generate-configuraciones', 
   requireAuth, 
   requireUser, 
-  aiCommandLimiter,
+  aiChatLimiter,
   generateConfiguraciones
 );
 

@@ -2,6 +2,7 @@ import Contact from '../models/Contact.js';
 import Lead from '../models/Lead.js';
 import { body, validationResult } from 'express-validator';
 import logger from '../utils/logger.js';
+import { validators } from '../middleware/securityMiddleware.js';
 
 /**
  * 🗂️ MAPEO DINÁMICO DE CATEGORÍAS
@@ -187,28 +188,60 @@ export const validateContactCreation = [
   body('nombre')
     .trim()
     .notEmpty().withMessage('El nombre es requerido')
-    .isLength({ min: 2, max: 100 }).withMessage('El nombre debe tener entre 2 y 100 caracteres'),
+    .isLength({ min: 2, max: 100 }).withMessage('El nombre debe tener entre 2 y 100 caracteres')
+    .custom((value) => {
+      // Detectar patrones de inyección en nombre
+      const dangerousPatterns = [
+        /<script/i, /javascript:/i, /on\w+\s*=/i, // XSS
+        /['";].*(?:OR|AND|UNION|SELECT)/i, // SQL injection
+        /\$\{.*\}/, /\{\{.*\}\}/, // Template injection
+      ];
+      for (const pattern of dangerousPatterns) {
+        if (pattern.test(value)) {
+          throw new Error('Contenido no permitido detectado');
+        }
+      }
+      return true;
+    }),
   
   body('celular')
     .trim()
     .notEmpty().withMessage('El celular es requerido')
-    .matches(/^[\d\s\+\-\(\)]+$/).withMessage('Formato de celular inválido'),
+    .matches(/^[\d\s\+\-\(\)]+$/).withMessage('Formato de celular inválido')
+    .isLength({ min: 6, max: 20 }).withMessage('El celular debe tener entre 6 y 20 caracteres'),
   
   body('correo')
     .trim()
     .notEmpty().withMessage('El correo es requerido')
     .isEmail().withMessage('Formato de correo inválido')
-    .normalizeEmail(),
+    .normalizeEmail()
+    .isLength({ max: 254 }).withMessage('El correo es demasiado largo'),
   
   body('mensaje')
     .trim()
     .notEmpty().withMessage('El mensaje es requerido')
-    .isLength({ min: 10, max: 2000 }).withMessage('El mensaje debe tener entre 10 y 2000 caracteres'),
+    .isLength({ min: 10, max: 2000 }).withMessage('El mensaje debe tener entre 10 y 2000 caracteres')
+    .custom((value) => {
+      // Detectar patrones de inyección en mensaje
+      const dangerousPatterns = [
+        /<script/i, /javascript:/i, /on\w+\s*=/i, // XSS
+        /['";].*(?:OR|AND|UNION|SELECT|DROP|DELETE|INSERT|UPDATE)/i, // SQL injection
+        /\$\{.*\}/, /\{\{.*\}\}/, // Template injection
+        /data:text\/html/i, // Data URI attacks
+      ];
+      for (const pattern of dangerousPatterns) {
+        if (pattern.test(value)) {
+          throw new Error('Contenido no permitido detectado');
+        }
+      }
+      return true;
+    }),
     
   body('categoria')
     .optional()
     .trim()
     .isLength({ max: 100 }).withMessage('La categoría no puede tener más de 100 caracteres')
+    .escape() // Sanitizar HTML
 ];
 
 /**

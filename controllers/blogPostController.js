@@ -7,6 +7,7 @@ import { calculateReadingTime } from '../utils/readingTimeCalculator.js';
 import { generatePostMetaTags, validatePostSEO } from '../utils/seoGenerator.js';
 import { generateArticleSchema } from '../utils/schemaGenerator.js';
 import postCacheService from '../services/postCacheService.js';
+import { sanitizeBlogPost } from '../utils/sanitizer.js';
 
 /**
  * @desc    Obtener todos los posts publicados (público)
@@ -78,11 +79,14 @@ export const getAllPublishedPosts = async (req, res) => {
     const posts = await postsQuery.lean();
     const total = await BlogPost.countDocuments(query);
     
+    // 🔒 Sanitizar posts antes de enviar
+    const sanitizedPosts = posts.map(post => sanitizeBlogPost(post));
+    
     // ✅ Estructura consistente con getAllAdminPosts
     res.json({
       success: true,
       data: {
-        data: posts,
+        data: sanitizedPosts,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -219,11 +223,15 @@ export const getPostBySlug = async (req, res) => {
     // Obtener posts relacionados
     const relatedPosts = await BlogPost.getRelatedPosts(post._id, 3);
     
+    // 🔒 Sanitizar post y relacionados antes de enviar
+    const sanitizedPost = sanitizeBlogPost(post);
+    const sanitizedRelated = relatedPosts.map(p => sanitizeBlogPost(p));
+    
     res.json({
       success: true,
       data: {
-        post,
-        relatedPosts
+        post: sanitizedPost,
+        relatedPosts: sanitizedRelated
       }
     });
     
@@ -290,10 +298,13 @@ export const getFeaturedPosts = async (req, res) => {
     // ✅ Usar caché para posts destacados
     const posts = await postCacheService.getFeaturedPosts(parseInt(limit));
     
+    // 🔒 Sanitizar posts antes de enviar
+    const sanitizedPosts = posts.map(post => sanitizeBlogPost(post));
+    
     res.json({
       success: true,
-      data: posts,
-      count: posts.length
+      data: sanitizedPosts,
+      count: sanitizedPosts.length
     });
     
   } catch (error) {
@@ -323,10 +334,13 @@ export const getHeaderMenuPosts = async (req, res) => {
       .limit(5)
       .lean();
     
+    // 🔒 Sanitizar posts antes de enviar
+    const sanitizedPosts = posts.map(post => sanitizeBlogPost(post));
+    
     res.json({
       success: true,
-      data: posts,
-      count: posts.length
+      data: sanitizedPosts,
+      count: sanitizedPosts.length
     });
     
   } catch (error) {

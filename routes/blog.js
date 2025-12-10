@@ -28,6 +28,16 @@ import {
   noCache
 } from '../middleware/httpCache.js';
 
+// 🔒 Middlewares de seguridad
+import {
+  generalLimiter,
+  writeLimiter,
+  aiChatLimiter,
+  validateBlogPost,
+  validators,
+  handleValidationErrors
+} from '../middleware/securityMiddleware.js';
+
 // ============================================
 // CONTROLADORES
 // ============================================
@@ -126,64 +136,64 @@ const router = express.Router();
 // ========================================
 
 // Rutas admin de posts (deben ir ANTES de las rutas públicas) - SIN CACHE
-router.get('/admin/posts', noCache, ...canViewAllPosts, getAllAdminPosts);
-router.get('/admin/posts/:id', noCache, ...canViewAllPosts, getPostById);
-router.get('/admin/cache-stats', noCache, ...canViewAllPosts, getCacheStats);
-router.post('/admin/invalidate-cache', noCache, ...canManageBlogCategories, invalidateCache);
+router.get('/admin/posts', generalLimiter, noCache, ...canViewAllPosts, getAllAdminPosts);
+router.get('/admin/posts/:id', generalLimiter, noCache, ...canViewAllPosts, validators.mongoId, handleValidationErrors, getPostById);
+router.get('/admin/cache-stats', generalLimiter, noCache, ...canViewAllPosts, getCacheStats);
+router.post('/admin/invalidate-cache', writeLimiter, noCache, ...canManageBlogCategories, invalidateCache);
 
-// ✅ Rutas públicas de posts - CON CACHE HTTP
-router.get('/posts', cachePublicPosts, getAllPublishedPosts);
-router.get('/posts/featured', cacheFeaturedPosts, getFeaturedPosts);
-router.get('/posts/header-menu', cacheFeaturedPosts, getHeaderMenuPosts);
-router.get('/posts/popular', cacheFeaturedPosts, getPopularPosts);
-router.get('/posts/search', cachePublicPosts, searchPosts);
-router.get('/posts/user/:username', cachePublicPosts, getPostsByUser);
-router.get('/posts/:slug', cachePostDetail, getPostBySlug);
+// ✅ Rutas públicas de posts - CON CACHE HTTP + Rate Limiting
+router.get('/posts', generalLimiter, cachePublicPosts, getAllPublishedPosts);
+router.get('/posts/featured', generalLimiter, cacheFeaturedPosts, getFeaturedPosts);
+router.get('/posts/header-menu', generalLimiter, cacheFeaturedPosts, getHeaderMenuPosts);
+router.get('/posts/popular', generalLimiter, cacheFeaturedPosts, getPopularPosts);
+router.get('/posts/search', generalLimiter, cachePublicPosts, searchPosts);
+router.get('/posts/user/:username', generalLimiter, cachePublicPosts, getPostsByUser);
+router.get('/posts/:slug', generalLimiter, cachePostDetail, validators.slug, handleValidationErrors, getPostBySlug);
 
-// Rutas protegidas de posts
-router.post('/posts', ...canCreateBlogPosts, createPost);
-router.put('/posts/:id', ...canEditOwnBlogPosts, checkPostOwnership, updatePost);
-router.delete('/posts/:id', ...canDeleteOwnBlogPosts, checkPostOwnership, deletePost);
+// Rutas protegidas de posts - CON VALIDACIÓN Y RATE LIMITING
+router.post('/posts', writeLimiter, ...canCreateBlogPosts, validateBlogPost, createPost);
+router.put('/posts/:id', writeLimiter, ...canEditOwnBlogPosts, validators.mongoId, handleValidationErrors, checkPostOwnership, updatePost);
+router.delete('/posts/:id', writeLimiter, ...canDeleteOwnBlogPosts, validators.mongoId, handleValidationErrors, checkPostOwnership, deletePost);
 
 // Acciones especiales de posts
-router.patch('/posts/:id/publish', ...canPublishBlogPosts, publishPost);
-router.patch('/posts/:id/unpublish', ...canPublishBlogPosts, unpublishPost);
-router.post('/posts/:id/duplicate', ...canDuplicateBlogPosts, duplicatePost);
+router.patch('/posts/:id/publish', writeLimiter, ...canPublishBlogPosts, validators.mongoId, handleValidationErrors, publishPost);
+router.patch('/posts/:id/unpublish', writeLimiter, ...canPublishBlogPosts, validators.mongoId, handleValidationErrors, unpublishPost);
+router.post('/posts/:id/duplicate', writeLimiter, ...canDuplicateBlogPosts, validators.mongoId, handleValidationErrors, duplicatePost);
 
 // Interacciones de usuario con posts
-router.post('/posts/:id/like', requireAuth, toggleLike);
-router.post('/posts/:id/bookmark', requireAuth, toggleBookmark);
+router.post('/posts/:id/like', generalLimiter, requireAuth, validators.mongoId, handleValidationErrors, toggleLike);
+router.post('/posts/:id/bookmark', generalLimiter, requireAuth, validators.mongoId, handleValidationErrors, toggleBookmark);
 
 // ========================================
 // RUTAS DE CATEGORÍAS
 // ========================================
 
-// ✅ Rutas públicas de categorías - CON CACHE
-router.get('/categories', cacheTaxonomy, getAllCategories);
-router.get('/categories/:slug', cacheTaxonomy, getCategoryBySlug);
-router.get('/categories/:slug/posts', cachePublicPosts, getCategoryPosts);
+// ✅ Rutas públicas de categorías - CON CACHE + Rate Limiting
+router.get('/categories', generalLimiter, cacheTaxonomy, getAllCategories);
+router.get('/categories/:slug', generalLimiter, cacheTaxonomy, validators.slug, handleValidationErrors, getCategoryBySlug);
+router.get('/categories/:slug/posts', generalLimiter, cachePublicPosts, validators.slug, handleValidationErrors, getCategoryPosts);
 
-// Rutas protegidas de categorías
-router.post('/categories', ...canManageBlogCategories, createCategory);
-router.put('/categories/:id', ...canManageBlogCategories, updateCategory);
-router.delete('/categories/:id', ...canManageBlogCategories, deleteCategory);
-router.put('/categories/reorder', ...canManageBlogCategories, reorderCategories);
+// Rutas protegidas de categorías - CON VALIDACIÓN
+router.post('/categories', writeLimiter, ...canManageBlogCategories, createCategory);
+router.put('/categories/:id', writeLimiter, ...canManageBlogCategories, validators.mongoId, handleValidationErrors, updateCategory);
+router.delete('/categories/:id', writeLimiter, ...canManageBlogCategories, validators.mongoId, handleValidationErrors, deleteCategory);
+router.put('/categories/reorder', writeLimiter, ...canManageBlogCategories, reorderCategories);
 
 // ========================================
 // RUTAS DE TAGS
 // ========================================
 
-// ✅ Rutas públicas de tags - CON CACHE
-router.get('/tags', cacheTaxonomy, getAllTags);
-router.get('/tags/popular', cacheTaxonomy, getPopularTags);
-router.get('/tags/:slug', cacheTaxonomy, getTagBySlug);
-router.get('/tags/:slug/posts', cachePublicPosts, getTagPosts);
+// ✅ Rutas públicas de tags - CON CACHE + Rate Limiting
+router.get('/tags', generalLimiter, cacheTaxonomy, getAllTags);
+router.get('/tags/popular', generalLimiter, cacheTaxonomy, getPopularTags);
+router.get('/tags/:slug', generalLimiter, cacheTaxonomy, validators.slug, handleValidationErrors, getTagBySlug);
+router.get('/tags/:slug/posts', generalLimiter, cachePublicPosts, validators.slug, handleValidationErrors, getTagPosts);
 
-// Rutas protegidas de tags
-router.post('/tags', ...canManageBlogTags, createTag);
-router.post('/tags/bulk', ...canManageBlogTags, bulkCreateTags);
-router.put('/tags/:id', ...canManageBlogTags, updateTag);
-router.delete('/tags/:id', ...canManageBlogTags, deleteTag);
+// Rutas protegidas de tags - CON VALIDACIÓN
+router.post('/tags', writeLimiter, ...canManageBlogTags, createTag);
+router.post('/tags/bulk', writeLimiter, ...canManageBlogTags, bulkCreateTags);
+router.put('/tags/:id', writeLimiter, ...canManageBlogTags, validators.mongoId, handleValidationErrors, updateTag);
+router.delete('/tags/:id', writeLimiter, ...canManageBlogTags, validators.mongoId, handleValidationErrors, deleteTag);
 
 // ========================================
 // RUTAS DE ESTADÍSTICAS Y ANALYTICS (Futuro)
@@ -235,30 +245,30 @@ router.get('/schema/blog', getBlogSchema);
 // RUTAS DE AI SEO - Sprint 3 🤖
 // ========================================
 
-// Metadata AI y formatos para LLMs (públicos)
-router.get('/ai/metadata/:slug', getAIMetadata);
-router.get('/ai/conversational/:slug', getConversationalFormat);
-router.get('/ai/qa/:slug', getQAFormat);
-router.get('/ai/llm-metadata/:slug', getLLMMetadata);
-router.get('/ai/markdown/:slug', getMarkdownFormat);
-router.get('/ai/json-ld-extended/:slug', getExtendedJSONLD);
+// Metadata AI y formatos para LLMs (públicos pero con rate limiting)
+router.get('/ai/metadata/:slug', generalLimiter, validators.slug, handleValidationErrors, getAIMetadata);
+router.get('/ai/conversational/:slug', generalLimiter, validators.slug, handleValidationErrors, getConversationalFormat);
+router.get('/ai/qa/:slug', generalLimiter, validators.slug, handleValidationErrors, getQAFormat);
+router.get('/ai/llm-metadata/:slug', generalLimiter, validators.slug, handleValidationErrors, getLLMMetadata);
+router.get('/ai/markdown/:slug', generalLimiter, validators.slug, handleValidationErrors, getMarkdownFormat);
+router.get('/ai/json-ld-extended/:slug', generalLimiter, validators.slug, handleValidationErrors, getExtendedJSONLD);
 
-// Análisis semántico (públicos)
-router.get('/ai/semantic-analysis/:slug', getSemanticAnalysis);
-router.get('/ai/keywords/:slug', getKeywords);
-router.get('/ai/entities/:slug', getEntities);
-router.get('/ai/topics/:slug', getTopics);
-router.get('/ai/readability/:slug', getReadabilityAnalysis);
-router.get('/ai/sentiment/:slug', getSentimentAnalysis);
-router.get('/ai/structure/:slug', getStructureAnalysis);
+// Análisis semántico (públicos con rate limiting)
+router.get('/ai/semantic-analysis/:slug', generalLimiter, validators.slug, handleValidationErrors, getSemanticAnalysis);
+router.get('/ai/keywords/:slug', generalLimiter, validators.slug, handleValidationErrors, getKeywords);
+router.get('/ai/entities/:slug', generalLimiter, validators.slug, handleValidationErrors, getEntities);
+router.get('/ai/topics/:slug', generalLimiter, validators.slug, handleValidationErrors, getTopics);
+router.get('/ai/readability/:slug', generalLimiter, validators.slug, handleValidationErrors, getReadabilityAnalysis);
+router.get('/ai/sentiment/:slug', generalLimiter, validators.slug, handleValidationErrors, getSentimentAnalysis);
+router.get('/ai/structure/:slug', generalLimiter, validators.slug, handleValidationErrors, getStructureAnalysis);
 
-// Sugerencias y mejoras (requiere autenticación)
-router.get('/ai/suggestions/:slug', requireAuth, getImprovementSuggestions);
-router.get('/ai/suggest-tags/:slug', requireAuth, getSuggestedTags);
-router.get('/ai/suggest-keywords/:slug', requireAuth, getSuggestedKeywords);
-router.get('/ai/content-score/:slug', requireAuth, getContentScore);
+// Sugerencias y mejoras (requiere autenticación) - ⚠️ Rate limit estricto para AI
+router.get('/ai/suggestions/:slug', aiChatLimiter, requireAuth, validators.slug, handleValidationErrors, getImprovementSuggestions);
+router.get('/ai/suggest-tags/:slug', aiChatLimiter, requireAuth, validators.slug, handleValidationErrors, getSuggestedTags);
+router.get('/ai/suggest-keywords/:slug', aiChatLimiter, requireAuth, validators.slug, handleValidationErrors, getSuggestedKeywords);
+router.get('/ai/content-score/:slug', aiChatLimiter, requireAuth, validators.slug, handleValidationErrors, getContentScore);
 
-// Optimización automática (requiere autenticación + permisos de edición)
-router.post('/ai/optimize/:slug', requireAuth, canEditOwnBlogPosts, optimizePost);
+// Optimización automática (requiere autenticación + permisos de edición) - ⚠️ Muy costoso
+router.post('/ai/optimize/:slug', aiChatLimiter, requireAuth, canEditOwnBlogPosts, validators.slug, handleValidationErrors, optimizePost);
 
 export default router;
