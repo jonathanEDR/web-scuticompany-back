@@ -28,17 +28,17 @@ const baseRateLimitConfig = {
 
 /**
  * Rate limiter general para todas las API
- * Permite: 30 requests/minuto por IP
+ * Permite: 200 requests por 15 minutos por IP (más razonable para SPAs)
  */
 export const generalLimiter = rateLimit({
   ...baseRateLimitConfig,
-  windowMs: 1 * 60 * 1000,         // 1 minuto
-  max: 30,                         // 30 requests
+  windowMs: 15 * 60 * 1000,        // 15 minutos
+  max: 200,                        // 200 requests por ventana
   message: {
     success: false,
-    message: 'Demasiadas peticiones. Intenta en 1 minuto.',
+    message: 'Demasiadas peticiones. Intenta en 15 minutos.',
     code: 'RATE_LIMIT_EXCEEDED',
-    retryAfter: 60
+    retryAfter: 900
   },
   standardHeaders: true,           // Retorna info en RateLimit-* headers
   legacyHeaders: false,
@@ -49,12 +49,18 @@ export const generalLimiter = rateLimit({
   },
   handler: (req, res) => {
     const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.ip;
-    logger.warn(`🚫 Rate limit exceeded for IP: ${ip} - Path: ${req.path}`);
+    // Solo loguear en nivel info, no warn (para reducir ruido en producción)
+    if (process.env.NODE_ENV === 'production') {
+      // En producción, loguear menos frecuentemente
+      console.log(`[RATE_LIMIT] IP: ${ip} - Path: ${req.path}`);
+    } else {
+      logger.warn(`🚫 Rate limit exceeded for IP: ${ip} - Path: ${req.path}`);
+    }
     res.status(429).json({
       success: false,
       message: 'Demasiadas peticiones. Intenta más tarde.',
       code: 'RATE_LIMIT_EXCEEDED',
-      retryAfter: 60
+      retryAfter: 900
     });
   }
 });
