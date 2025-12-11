@@ -1090,6 +1090,156 @@ export const initializeDatabase = async () => {
     }
 
     // ========================================
+    // 📄 PÁGINA DASHBOARD SIDEBAR
+    // ========================================
+    const dashboardSidebarPage = await Page.findOne({ pageSlug: 'dashboard-sidebar' });
+
+    if (!dashboardSidebarPage && INIT_CONFIG.CREATE_DASHBOARD_SIDEBAR_PAGE !== false) {
+      logger.init('Página Dashboard Sidebar no encontrada, creando configuración por defecto');
+      
+      await Page.create({
+        pageSlug: 'dashboard-sidebar',
+        pageName: 'Configuración del Sidebar del Dashboard',
+        content: {
+          dashboardSidebar: {
+            admin: {
+              headerGradientFrom: '#3b82f6',
+              headerGradientVia: '#a855f7',
+              headerGradientTo: '#ec4899',
+              headerGradientFromDark: '#2563eb',
+              headerGradientViaDark: '#7c3aed',
+              headerGradientToDark: '#4f46e5',
+              activeItemGradientFrom: '#3b82f6',
+              activeItemGradientTo: '#a855f7',
+              activeItemGradientFromDark: '#7c3aed',
+              activeItemGradientToDark: '#2563eb',
+              sidebarBgLight: 'rgba(255, 255, 255, 0.8)',
+              sidebarBgDark: 'rgba(17, 24, 39, 0.9)',
+              navBgLight: 'rgba(248, 250, 252, 0.8)',
+              navBgDark: 'rgba(17, 24, 39, 0.8)',
+              navBgTransparent: false,
+              navTextColor: '#334155',
+              navTextColorDark: '#e5e7eb',
+              navHoverBgLight: 'rgba(241, 245, 249, 0.8)',
+              navHoverBgDark: 'rgba(31, 41, 55, 0.8)',
+              navHoverBgTransparent: false,
+              hoverBorderGradientEnabled: false,
+              hoverBorderGradientFrom: '#3b82f6',
+              hoverBorderGradientTo: '#a855f7',
+              footerBgLight: 'rgba(241, 245, 249, 0.8)',
+              footerBgDark: 'rgba(3, 7, 18, 0.8)',
+              logoutButtonGradientFrom: '#ef4444',
+              logoutButtonGradientTo: '#dc2626'
+            },
+            client: {
+              headerGradientFrom: '#22c55e',
+              headerGradientVia: '#3b82f6',
+              headerGradientTo: '#a855f7',
+              headerGradientFromDark: '#2563eb',
+              headerGradientViaDark: '#7c3aed',
+              headerGradientToDark: '#4f46e5',
+              activeItemGradientFrom: '#22c55e',
+              activeItemGradientTo: '#3b82f6',
+              activeItemGradientFromDark: '#2563eb',
+              activeItemGradientToDark: '#7c3aed',
+              sidebarBgLight: 'rgba(255, 255, 255, 0.8)',
+              sidebarBgDark: 'rgba(17, 24, 39, 0.9)',
+              navBgLight: 'rgba(248, 250, 252, 0.8)',
+              navBgDark: 'rgba(17, 24, 39, 0.8)',
+              navBgTransparent: false,
+              navTextColor: '#334155',
+              navTextColorDark: '#e5e7eb',
+              navHoverBgLight: 'rgba(241, 245, 249, 0.8)',
+              navHoverBgDark: 'rgba(31, 41, 55, 0.8)',
+              navHoverBgTransparent: false,
+              hoverBorderGradientEnabled: false,
+              hoverBorderGradientFrom: '#22c55e',
+              hoverBorderGradientTo: '#3b82f6',
+              footerBgLight: 'rgba(241, 245, 249, 0.8)',
+              footerBgDark: 'rgba(3, 7, 18, 0.8)',
+              logoutButtonGradientFrom: '#ef4444',
+              logoutButtonGradientTo: '#dc2626'
+            },
+            global: {
+              logoUrl: '/logos/logo-white.svg',
+              logoAlt: 'Web Scuti',
+              borderColorLight: 'rgba(226, 232, 240, 0.6)',
+              borderColorDark: 'rgba(55, 65, 81, 0.6)',
+              expandedWidth: '18rem',
+              collapsedWidth: '4rem',
+              themeToggleIconLight: 'Moon',
+              themeToggleIconDark: 'Sun',
+              themeToggleColorLight: '#f59e0b',
+              themeToggleColorDark: '#fbbf24',
+              fontFamily: 'Montserrat',
+              fontSizeBase: '0.875rem',
+              fontSizeMenu: '0.9375rem',
+              fontSizeHeader: '1rem',
+              fontWeightNormal: '500',
+              fontWeightBold: '600'
+            },
+            menuIcons: {
+              dashboard: { iconName: 'LayoutDashboard', iconColorLight: '#6366f1', iconColorDark: '#818cf8' },
+              profile: { iconName: 'User', iconColorLight: '#8b5cf6', iconColorDark: '#a78bfa' },
+              servicios: { iconName: 'Rocket', iconColorLight: '#ec4899', iconColorDark: '#f472b6' },
+              cms: { iconName: 'FileEdit', iconColorLight: '#14b8a6', iconColorDark: '#2dd4bf' },
+              solicitudes: { iconName: 'ClipboardList', iconColorLight: '#f59e0b', iconColorDark: '#fbbf24' },
+              mensajes: { iconName: 'MessageSquare', iconColorLight: '#3b82f6', iconColorDark: '#60a5fa' },
+              agenda: { iconName: 'Calendar', iconColorLight: '#10b981', iconColorDark: '#34d399' },
+              media: { iconName: 'Image', iconColorLight: '#f97316', iconColorDark: '#fb923c' },
+              blog: { iconName: 'PenTool', iconColorLight: '#06b6d4', iconColorDark: '#22d3ee' },
+              agentesIA: { iconName: 'Bot', iconColorLight: '#8b5cf6', iconColorDark: '#a78bfa' },
+              scutiAI: { iconName: 'Sparkles', iconColorLight: '#ec4899', iconColorDark: '#f472b6' },
+              configuracion: { iconName: 'Settings', iconColorLight: '#6b7280', iconColorDark: '#9ca3af' },
+              actividad: { iconName: 'Activity', iconColorLight: '#22c55e', iconColorDark: '#4ade80' },
+              usuarios: { iconName: 'Users', iconColorLight: '#0ea5e9', iconColorDark: '#38bdf8' }
+            }
+          }
+        },
+        seo: {
+          metaTitle: 'Dashboard Sidebar - SCUTI Company',
+          metaDescription: 'Configuración del sidebar del dashboard',
+          keywords: ['dashboard', 'sidebar', 'configuración'],
+          ogTitle: 'Dashboard Sidebar',
+          ogDescription: 'Configuración del sidebar del dashboard',
+          ogImage: '',
+          twitterCard: 'summary'
+        },
+        theme: {
+          default: 'dark',
+          lightMode: {
+            primary: '#3B82F6',
+            secondary: '#8B5CF6',
+            background: '#FFFFFF',
+            text: '#1F2937',
+            textSecondary: '#6B7280',
+            cardBg: '#F9FAFB',
+            border: '#E5E7EB'
+          },
+          darkMode: {
+            primary: '#60A5FA',
+            secondary: '#A78BFA',
+            background: '#0F0F0F',
+            text: '#F9FAFB',
+            textSecondary: '#D1D5DB',
+            cardBg: '#1A1A1A',
+            border: '#374151'
+          }
+        },
+        isPublished: true,
+        updatedBy: 'system-init'
+      });
+      
+      logger.success('✅ Página Dashboard Sidebar creada exitosamente');
+      logger.database('CREATE', 'pages', { slug: 'dashboard-sidebar' });
+    } else if (!dashboardSidebarPage) {
+      logger.warn('⚠️  Página Dashboard Sidebar no encontrada (CREATE_DASHBOARD_SIDEBAR_PAGE = false)');
+    } else {
+      logger.success('✅ Página Dashboard Sidebar encontrada');
+      logger.database('FOUND', 'pages', { slug: 'dashboard-sidebar' });
+    }
+
+    // ========================================
     // 👤 SUPER ADMINISTRADOR
     // ========================================
     if (INIT_CONFIG.ENSURE_SUPER_ADMIN) {
