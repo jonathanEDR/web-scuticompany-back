@@ -334,6 +334,23 @@ export const initializeDatabase = async () => {
   const startTime = Date.now();
   
   try {
+    // Verificar si hay alguna inicialización activa
+    const hasActiveInits = INIT_CONFIG.CREATE_HOME_PAGE || 
+                          INIT_CONFIG.CREATE_SERVICES_PAGE || 
+                          INIT_CONFIG.CREATE_ABOUT_PAGE ||
+                          INIT_CONFIG.AUTO_UPDATE_CHATBOT;
+    
+    if (!hasActiveInits) {
+      // Modo producción - solo verificar que existan las páginas
+      const homePage = await Page.findOne({ pageSlug: 'home' });
+      if (homePage) {
+        logger.success('✅ Página Home verificada');
+      } else {
+        logger.warn('⚠️ Página Home no encontrada en BD');
+      }
+      return;
+    }
+    
     logger.init('Verificando estado de la base de datos', 'progress');
 
     // ========================================

@@ -39,6 +39,7 @@ import { inicializarPlantillasMensajes } from './utils/messageInitializer.js';
 import { inicializarCache } from './utils/cacheInitializer.js';
 import { initializeAllAgents } from './utils/agentInitializer.js';
 import logger from './utils/logger.js';
+import INIT_CONFIG, { isProductionMode } from './config/initConfig.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,18 +65,23 @@ async function initializeServer() {
     await connectDB();
     logger.success('Conexión a MongoDB establecida');
     
-    // 2. Inicializar datos base de datos
+    // 2. Verificar modo de inicialización
+    if (isProductionMode()) {
+      logger.info('🚀 Modo PRODUCCIÓN: Inicializaciones de datos desactivadas');
+    } else {
+      logger.info('🔧 Modo DESARROLLO: Ejecutando inicializaciones activas...');
+    }
+    
+    // 3. Inicializar datos (respetan INIT_CONFIG internamente)
     await initializeDatabase();
     await inicializarCategorias();
     await inicializarPlantillasMensajes();
     await inicializarCache();
-    
-    // 3. Inicializar configuraciones de agentes con datos de entrenamiento
     await initializeAllAgents();
     
     // 4. Marcar DB como lista
     isDbReady = true;
-    logger.success('✅ Base de datos y configuraciones inicializadas');
+    logger.success('✅ Base de datos conectada y lista');
     
   } catch (err) {
     logger.error('❌ Error durante inicialización:', err);
