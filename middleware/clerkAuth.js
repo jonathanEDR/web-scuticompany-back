@@ -32,12 +32,16 @@ export const requireAuth = async (req, res, next) => {
     // Validar token con Clerk
     let clerkUser;
     try {
+      // Tolerancia de 60 segundos para desfase de reloj (clock skew)
+      const CLOCK_TOLERANCE_SECONDS = 60;
+      
       // En desarrollo, permitir tokens de prueba locales PRIMERO
       if (process.env.NODE_ENV === 'development' && process.env.JWT_SECRET) {
         try {
           clerkUser = jwt.verify(token, process.env.JWT_SECRET, {
             algorithms: ['HS256'],
-            ignoreExpiration: false
+            ignoreExpiration: false,
+            clockTolerance: CLOCK_TOLERANCE_SECONDS
           });
           logger.info('✅ Token de prueba local validado');
         } catch (localError) {
@@ -50,12 +54,14 @@ export const requireAuth = async (req, res, next) => {
           try {
             clerkUser = jwt.verify(token, process.env.CLERK_SECRET_KEY, {
               algorithms: ['HS256', 'RS256'],
-              ignoreExpiration: false
+              ignoreExpiration: false,
+              clockTolerance: CLOCK_TOLERANCE_SECONDS
             });
           } catch (clerkJwtError) {
             // Intentar con SDK de Clerk como último recurso
             clerkUser = await verifyToken(token, {
-              secretKey: process.env.CLERK_SECRET_KEY
+              secretKey: process.env.CLERK_SECRET_KEY,
+              clockSkewInMs: CLOCK_TOLERANCE_SECONDS * 1000
             });
           }
         }
@@ -69,9 +75,10 @@ export const requireAuth = async (req, res, next) => {
           });
         }
         
-        // En producción, usar la SDK de Clerk
+        // En producción, usar la SDK de Clerk con tolerancia de clock skew
         clerkUser = await verifyToken(token, {
-          secretKey: process.env.CLERK_SECRET_KEY
+          secretKey: process.env.CLERK_SECRET_KEY,
+          clockSkewInMs: CLOCK_TOLERANCE_SECONDS * 1000
         });
       }
 

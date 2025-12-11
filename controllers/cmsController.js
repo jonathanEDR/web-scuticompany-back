@@ -1,6 +1,50 @@
 import Page from '../models/Page.js';
 import { transformImageUrls } from '../utils/urlTransformer.js';
 import { updateImageReferences } from '../utils/imageTracker.js';
+import { sanitizeCmsHtml, sanitizePlainText, sanitizeUrl } from '../utils/sanitizer.js';
+
+// Helper: Sanitizar contenido CMS recursivamente
+const sanitizeCmsContent = (content) => {
+  if (!content || typeof content !== 'object') return content;
+  
+  const sanitized = { ...content };
+  
+  // Función recursiva para sanitizar strings
+  const sanitizeValue = (value, key) => {
+    if (typeof value === 'string') {
+      // Campos que típicamente contienen URLs
+      if (['url', 'href', 'src', 'backgroundImage', 'image', 'logo', 'icon', 'avatar'].some(k => key.toLowerCase().includes(k.toLowerCase()))) {
+        // Si es un string de URL, sanitizarla
+        if (value.startsWith('http') || value.startsWith('/') || value.startsWith('data:image')) {
+          return value; // URLs de imágenes son seguras en este contexto
+        }
+      }
+      // Campos que pueden contener HTML
+      if (['description', 'content', 'text', 'body', 'html'].some(k => key.toLowerCase().includes(k.toLowerCase()))) {
+        return sanitizeCmsHtml(value);
+      }
+      // Campos de texto plano
+      return sanitizePlainText(value, 5000);
+    }
+    if (Array.isArray(value)) {
+      return value.map((item, idx) => sanitizeValue(item, `${key}[${idx}]`));
+    }
+    if (typeof value === 'object' && value !== null) {
+      const sanitizedObj = {};
+      for (const [k, v] of Object.entries(value)) {
+        sanitizedObj[k] = sanitizeValue(v, k);
+      }
+      return sanitizedObj;
+    }
+    return value;
+  };
+  
+  for (const [key, value] of Object.entries(content)) {
+    sanitized[key] = sanitizeValue(value, key);
+  }
+  
+  return sanitized;
+};
 
 // Helper: Convertir estructura de botones simplificada (nuevo formato)
 const convertButtonsToBackend = (buttons) => {
@@ -245,10 +289,16 @@ export const getAllPages = async (req, res) => {
     // Transformar URLs relativas a absolutas
     const pagesWithAbsoluteUrls = transformImageUrls(pagesWithConvertedButtons);
     
+    // 🔒 Sanitizar contenido CMS antes de enviar
+    const sanitizedPages = pagesWithAbsoluteUrls.map(page => ({
+      ...page,
+      content: sanitizeCmsContent(page.content)
+    }));
+    
     res.json({
       success: true,
-      count: pagesWithAbsoluteUrls.length,
-      data: pagesWithAbsoluteUrls
+      count: sanitizedPages.length,
+      data: sanitizedPages
     });
   } catch (error) {
     
@@ -333,9 +383,15 @@ export const getPageBySlug = async (req, res) => {
     // Transformar URLs relativas a absolutas
     const pageWithAbsoluteUrls = transformImageUrls(pageObj);
     
+    // 🔒 Sanitizar contenido CMS antes de enviar
+    const sanitizedPage = {
+      ...pageWithAbsoluteUrls,
+      content: sanitizeCmsContent(pageWithAbsoluteUrls.content)
+    };
+    
     res.json({
       success: true,
-      data: pageWithAbsoluteUrls
+      data: sanitizedPage
     });
   } catch (error) {
     
@@ -354,16 +410,6 @@ export const updatePage = async (req, res) => {
   try {
     const { slug } = req.params;
     const updateData = req.body;
-    
-
-    
-    // 🔍 [DEBUG] Log específico para contactForm
-    if (updateData.content?.contactForm?.cardsDesign) {
-      
-    } else {
-      
-    }
-    
     // Obtener datos anteriores para comparar imágenes
     const oldPage = await Page.findOne({ pageSlug: slug });
     
@@ -383,18 +429,45 @@ export const updatePage = async (req, res) => {
     
     // 🔧 SOLUCIÓN: Usar findOne + save() en lugar de findOneAndUpdate
     // porque findOneAndUpdate puede ignorar strict: false en algunos casos
-    const page = await Page.findOne({ pageSlug: slug });
+    let page = await Page.findOne({ pageSlug: slug });
     
+    // 🆕 UPSERT: Si la página no existe, crearla automáticamente
     if (!page) {
-      return res.status(404).json({
-        success: false,
-        message: `Página '${slug}' no encontrada`
+      console.log(`📝 [CMS] Creando nueva página: ${slug}`);
+      
+      // Mapear slugs a nombres legibles
+      const pageNames = {
+        'home': 'Página Principal',
+        'about': 'Sobre Nosotros',
+        'services': 'Servicios',
+        'contact': 'Contacto',
+        'blog': 'Blog'
+      };
+      
+      page = new Page({
+        pageSlug: slug,
+        pageName: updateData.pageName || pageNames[slug] || slug.charAt(0).toUpperCase() + slug.slice(1),
+        content: updateData.content || {},
+        seo: updateData.seo || {},
+        theme: updateData.theme || {},
+        isPublished: true,
+        lastUpdated: updateData.lastUpdated,
+        updatedBy: updateData.updatedBy
+      });
+      
+      await page.save();
+      
+      console.log(`✅ [CMS] Página ${slug} creada exitosamente`);
+      
+      return res.status(201).json({
+        success: true,
+        message: `Página '${slug}' creada correctamente`,
+        data: page
       });
     }
     
     // Actualizar campos manualmente
     if (updateData.content) {
-      
       // 🔧 CORRECCIÓN: Limpiar IDs temporales de los logos antes de guardar
       if (updateData.content.clientLogos?.logos) {
         updateData.content.clientLogos.logos = updateData.content.clientLogos.logos.map(logo => {
@@ -410,11 +483,8 @@ export const updatePage = async (req, res) => {
         });
       }
       
-      
       page.content = updateData.content;
       page.markModified('content'); // ⚠️ CRÍTICO: Marcar como modificado para forzar guardado
-      
-      
     }
     if (updateData.seo) {
       
@@ -433,24 +503,9 @@ export const updatePage = async (req, res) => {
     page.lastUpdated = updateData.lastUpdated;
     page.updatedBy = updateData.updatedBy;
     
-    // 🔍 [DEBUG] Logging antes del guardado
-    
-    if (page.content?.solutions?.cardsDesign?.light?.borderWidth) {
-      
-    }
-    
     // Guardar cambios
-    
     await page.save();
-    
-    
-    // 🔍 [DEBUG] Logging después del guardado
-    
-    const verifyPage = await Page.findOne({ pageSlug: slug });
-    if (verifyPage.content?.solutions?.cardsDesign?.light?.borderWidth) {
-      
-    }
-    
+    console.log(`✅ [CMS-BACKEND] Página '${slug}' guardada exitosamente`);
     
     
     // Actualizar referencias de imágenes

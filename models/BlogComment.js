@@ -273,6 +273,9 @@ blogCommentSchema.index({ 'author.email': 1 });
 blogCommentSchema.index({ status: 1, isReported: 1 });
 blogCommentSchema.index({ isPinned: 1, createdAt: -1 });
 
+// ✅ NUEVO: Índice para conteo de comentarios por usuario por post (límites)
+blogCommentSchema.index({ post: 1, 'author.userId': 1, parentComment: 1, status: 1 });
+
 // Índice de texto para búsqueda
 blogCommentSchema.index({ content: 'text' });
 

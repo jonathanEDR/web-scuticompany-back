@@ -58,11 +58,22 @@ class ServicesChatHandler {
         sessionId = `services_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       }
 
+      // 🔍 DEBUG: Log para rastrear sesiones
+      logger.info(`📍 [SESSION DEBUG] Received sessionId: ${sessionId}`);
+      logger.info(`📍 [SESSION DEBUG] Context isPublic: ${context.isPublic}, isAdminContext: ${context.isAdminContext}`);
+      logger.info(`📍 [SESSION DEBUG] Total sessions in global storage: ${this.sessions.size}`);
+      
       // Validar entrada
       this.validateInput(message, sessionId);
 
       // Obtener o crear sesión
       const session = this.getOrCreateSession(sessionId);
+      
+      // 🔍 DEBUG: Estado del formulario
+      logger.info(`📍 [SESSION DEBUG] Session formState.isCollecting: ${session.formState.isCollecting}`);
+      if (session.formState.isCollecting) {
+        logger.info(`📍 [SESSION DEBUG] Current field: ${session.formState.currentField}, Completed: ${JSON.stringify(session.formState.completedFields)}`);
+      }
 
       // Agregar mensaje del usuario al contexto
       session.messages.push({
@@ -73,6 +84,7 @@ class ServicesChatHandler {
 
       // 🆕 VERIFICAR SI ESTAMOS EN MODO RECOPILACIÓN
       if (session.formState.isCollecting) {
+        logger.success(`✅ [FORM_MODE] Continuing form collection for session: ${sessionId}`);
         return await this.handleFormCollection(message, session, context);
       }
 

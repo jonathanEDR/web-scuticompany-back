@@ -1150,12 +1150,17 @@ export const processGerenteCommand = async (req, res) => {
     });
 
     // Construir contexto - obtener userId de múltiples fuentes
-    // Prioridad: req.userId (MongoDB _id del middleware) > req.user.id > params.userId (Clerk ID del frontend)
+    // 🔧 FIX: Usar clerkId para sesiones (consistente con frontend)
+    // El clerkId es el que usa el frontend para consultar sesiones
+    const clerkId = req.auth?.userId || req.user?.clerkId;
+    const mongoUserId = req.userId || req.user?.id;
+    
     const context = {
       sessionId,
-      userId: req.userId || req.user?.id || params.userId,
+      userId: clerkId || mongoUserId || params.userId, // Priorizar clerkId para sesiones
+      mongoUserId: mongoUserId, // Mantener MongoDB ID para operaciones de DB
       userRole: req.user?.role || 'guest',
-      clerkId: req.auth?.userId || req.user?.clerkId // Mantener clerkId por si acaso
+      clerkId: clerkId
     };
 
     // Validar que tengamos userId
@@ -1278,16 +1283,19 @@ export const getUserSessions = async (req, res) => {
     }
 
     // Verificar permisos: solo el mismo usuario o admin
-    const requestUserId = req.auth?.userId || req.user?.clerkId;
+    const requestClerkId = req.auth?.userId || req.user?.clerkId;
     const userRole = req.user?.role;
 
-    if (requestUserId !== userId && userRole !== 'admin' && userRole !== 'superadmin') {
+    // El userId del parámetro es un clerkId del frontend
+    if (requestClerkId !== userId && userRole !== 'admin' && userRole !== 'superadmin') {
+      logger.warn(`⚠️ Acceso denegado: requestClerkId=${requestClerkId}, userId=${userId}`);
       return res.status(403).json({
         success: false,
         error: 'No tienes permisos para acceder a estas sesiones'
       });
     }
 
+    logger.info(`📋 Buscando sesiones para userId (clerkId): ${userId}`);
     const sessions = await centralizedContext.getUserSessions(userId, parseInt(limit));
 
     res.json({

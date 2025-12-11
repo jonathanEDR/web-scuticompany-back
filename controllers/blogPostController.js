@@ -7,6 +7,7 @@ import { calculateReadingTime } from '../utils/readingTimeCalculator.js';
 import { generatePostMetaTags, validatePostSEO } from '../utils/seoGenerator.js';
 import { generateArticleSchema } from '../utils/schemaGenerator.js';
 import postCacheService from '../services/postCacheService.js';
+import { sanitizeBlogPost } from '../utils/sanitizer.js';
 
 /**
  * @desc    Obtener todos los posts publicados (público)
@@ -20,6 +21,7 @@ export const getAllPublishedPosts = async (req, res) => {
       limit = 10,
       category,
       tag,
+      tags, // Soporte para array de tags
       author,
       featured,
       sortBy = '-publishedAt',
@@ -30,7 +32,29 @@ export const getAllPublishedPosts = async (req, res) => {
     
     // Filtros opcionales
     if (category) query.category = category;
-    if (tag) query.tags = tag;
+    
+    // Soporte para tag único o array de tags (con validación mejorada)
+    if (tag && tag.trim()) {
+      // Validar que no sea un string solo-hex (ID) 
+      const cleanTag = tag.trim();
+      if (!/^[a-f0-9]+$/i.test(cleanTag)) {
+        query.tags = cleanTag;
+      }
+    } else if (tags && tags.length > 0) {
+      // Si es un string con valores separados por coma, convertir a array
+      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+      // Filtrar valores vacíos, undefined, y strings que parecen IDs (solo hex)
+      const cleanTags = tagArray.filter(t => {
+        if (!t || !t.trim || t.trim() === '') return false;
+        // Filtrar strings que son solo caracteres hexadecimales (posibles ObjectIds)
+        if (/^[a-f0-9]+$/i.test(t.trim())) return false;
+        return true;
+      });
+      if (cleanTags.length > 0) {
+        query.tags = { $in: cleanTags };
+      }
+    }
+    
     if (author) query.author = author;
     if (featured !== undefined) query.isFeatured = featured === 'true';
     
@@ -40,7 +64,7 @@ export const getAllPublishedPosts = async (req, res) => {
     }
     
     let postsQuery = BlogPost.find(query)
-      .populate('author', 'firstName lastName') // ✅ Removido email (no necesario en listado público)
+      .populate('author', 'firstName lastName username avatar profileImage blogProfile') // ✅ Incluir avatar y blogProfile para tarjetas
       .populate('category', 'name slug color')
       .populate('tags', 'name slug color')
       .sort(sortBy)
@@ -55,11 +79,14 @@ export const getAllPublishedPosts = async (req, res) => {
     const posts = await postsQuery.lean();
     const total = await BlogPost.countDocuments(query);
     
+    // 🔒 Sanitizar posts antes de enviar
+    const sanitizedPosts = posts.map(post => sanitizeBlogPost(post));
+    
     // ✅ Estructura consistente con getAllAdminPosts
     res.json({
       success: true,
       data: {
-        data: posts,
+        data: sanitizedPosts,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -95,6 +122,7 @@ export const getAllAdminPosts = async (req, res) => {
       limit = 10,
       category,
       tag,
+      tags, // Soporte para array de tags
       author,
       status,
       isPublished,
@@ -106,7 +134,13 @@ export const getAllAdminPosts = async (req, res) => {
     
     // Filtros opcionales
     if (category) query.category = category;
-    if (tag) query.tags = tag;
+    // Soporte para tag único o array de tags
+    if (tag) {
+      query.tags = tag;
+    } else if (tags) {
+      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+      query.tags = { $in: tagArray };
+    }
     if (author) query.author = author;
     if (status) query.status = status;
     if (isPublished !== undefined) query.isPublished = isPublished === 'true';
@@ -189,11 +223,15 @@ export const getPostBySlug = async (req, res) => {
     // Obtener posts relacionados
     const relatedPosts = await BlogPost.getRelatedPosts(post._id, 3);
     
+    // 🔒 Sanitizar post y relacionados antes de enviar
+    const sanitizedPost = sanitizeBlogPost(post);
+    const sanitizedRelated = relatedPosts.map(p => sanitizeBlogPost(p));
+    
     res.json({
       success: true,
       data: {
-        post,
-        relatedPosts
+        post: sanitizedPost,
+        relatedPosts: sanitizedRelated
       }
     });
     
@@ -260,10 +298,13 @@ export const getFeaturedPosts = async (req, res) => {
     // ✅ Usar caché para posts destacados
     const posts = await postCacheService.getFeaturedPosts(parseInt(limit));
     
+    // 🔒 Sanitizar posts antes de enviar
+    const sanitizedPosts = posts.map(post => sanitizeBlogPost(post));
+    
     res.json({
       success: true,
-      data: posts,
-      count: posts.length
+      data: sanitizedPosts,
+      count: sanitizedPosts.length
     });
     
   } catch (error) {
@@ -293,10 +334,13 @@ export const getHeaderMenuPosts = async (req, res) => {
       .limit(5)
       .lean();
     
+    // 🔒 Sanitizar posts antes de enviar
+    const sanitizedPosts = posts.map(post => sanitizeBlogPost(post));
+    
     res.json({
       success: true,
-      data: posts,
-      count: posts.length
+      data: sanitizedPosts,
+      count: sanitizedPosts.length
     });
     
   } catch (error) {

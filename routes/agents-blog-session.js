@@ -1,20 +1,67 @@
 /**
  * Rutas para sesiones conversacionales de blog
  * Endpoints para crear contenido mediante conversación guiada
+ * 
+ * 🔒 SEGURIDAD: Rate limiting centralizado desde securityMiddleware.js
  */
 
 import express from 'express';
 import { requireAuth } from '../middleware/clerkAuth.js';
+import { body, param } from 'express-validator';
+import { 
+  aiChatLimiter, 
+  generalLimiter,
+  handleValidationErrors 
+} from '../middleware/securityMiddleware.js';
 import * as blogSessionController from '../controllers/blogSessionController.js';
 
 const router = express.Router();
 
+// ============================================================================
+// 🔒 VALIDADORES DE SEGURIDAD
+// ============================================================================
+
+const validateSessionMessage = [
+  param('sessionId')
+    .isString()
+    .isLength({ min: 1, max: 100 }).withMessage('sessionId inválido'),
+  body('message')
+    .trim()
+    .notEmpty().withMessage('El mensaje es requerido')
+    .isLength({ min: 1, max: 2000 }).withMessage('El mensaje debe tener máximo 2000 caracteres')
+    .custom((value) => {
+      const dangerousPatterns = [
+        /<script/i, /javascript:/i,
+        /\$\{.*\}/, /\{\{.*\}\}/,
+        /process\.env/i, /require\s*\(/i
+      ];
+      for (const pattern of dangerousPatterns) {
+        if (pattern.test(value)) {
+          throw new Error('Contenido no permitido');
+        }
+      }
+      return true;
+    }),
+  handleValidationErrors
+];
+
+const validateSessionId = [
+  param('sessionId')
+    .isString()
+    .isLength({ min: 1, max: 100 }).withMessage('sessionId inválido'),
+  handleValidationErrors
+];
+
 // Todas las rutas requieren autenticación
 router.use(requireAuth);
+
+// Aplicar rate limiting general
+router.use(generalLimiter);
 
 /**
  * POST /api/agents/blog/session/start
  * Iniciar nueva sesión conversacional
+ * 🔒 Rate limit: 5 req/min (aiChatLimiter)
  * 
  * Body: {
  *   startedFrom?: string // 'dashboard', 'toolbar', etc
@@ -31,11 +78,12 @@ router.use(requireAuth);
  *   }
  * }
  */
-router.post('/start', blogSessionController.startSession);
+router.post('/start', aiChatLimiter, blogSessionController.startSession);
 
 /**
  * POST /api/agents/blog/session/:sessionId/message
  * Enviar mensaje en la conversación
+ * 🔒 Rate limit: 5 req/min (aiChatLimiter) + Validación
  * 
  * Body: {
  *   message: string // Respuesta del usuario (max 2000 chars)
@@ -53,11 +101,12 @@ router.post('/start', blogSessionController.startSession);
  *   }
  * }
  */
-router.post('/:sessionId/message', blogSessionController.sendMessage);
+router.post('/:sessionId/message', aiChatLimiter, validateSessionMessage, blogSessionController.sendMessage);
 
 /**
  * POST /api/agents/blog/session/:sessionId/generate
  * Generar contenido (endpoint directo)
+ * 🔒 Rate limit: 5 req/min (aiChatLimiter)
  * 
  * Response: {
  *   success: true,
@@ -70,7 +119,7 @@ router.post('/:sessionId/message', blogSessionController.sendMessage);
  *   }
  * }
  */
-router.post('/:sessionId/generate', blogSessionController.generateContent);
+router.post('/:sessionId/generate', aiChatLimiter, validateSessionId, blogSessionController.generateContent);
 
 /**
  * GET /api/agents/blog/session/:sessionId
@@ -91,7 +140,7 @@ router.post('/:sessionId/generate', blogSessionController.generateContent);
  *   }
  * }
  */
-router.get('/:sessionId', blogSessionController.getSession);
+router.get('/:sessionId', validateSessionId, blogSessionController.getSession);
 
 /**
  * POST /api/agents/blog/session/:sessionId/save
@@ -115,7 +164,7 @@ router.get('/:sessionId', blogSessionController.getSession);
  *   }
  * }
  */
-router.post('/:sessionId/save', blogSessionController.saveDraft);
+router.post('/:sessionId/save', validateSessionId, blogSessionController.saveDraft);
 
 /**
  * DELETE /api/agents/blog/session/:sessionId
@@ -130,7 +179,7 @@ router.post('/:sessionId/save', blogSessionController.saveDraft);
  *   }
  * }
  */
-router.delete('/:sessionId', blogSessionController.cancelSession);
+router.delete('/:sessionId', validateSessionId, blogSessionController.cancelSession);
 
 /**
  * GET /api/agents/blog/sessions

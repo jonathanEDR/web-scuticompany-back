@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fileUpload from 'express-fileupload';
-import rateLimit from 'express-rate-limit';
 import mongoose from 'mongoose';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -33,6 +32,14 @@ import seoMonitorRoutes from './routes/seo-monitor.js';
 import agentsBlogSessionRoutes from './routes/agents-blog-session.js';
 import directMessagesRoutes from './routes/directMessages.js';
 import { cmsLogger } from './middleware/logger.js';
+import { 
+  initializeSecurityMiddleware, 
+  generalLimiter, 
+  authLimiter, 
+  contactLimiter, 
+  aiChatLimiter,
+  auditLog 
+} from './middleware/securityMiddleware.js';
 import { initializeDatabase, checkDatabaseHealth } from './utils/dbInitializer.js';
 import { inicializarCategorias } from './utils/categoriaInitializer.js';
 import { inicializarPlantillasMensajes } from './utils/messageInitializer.js';
@@ -96,6 +103,14 @@ initializeServer();
 // porque necesitan el raw body para verificar la firma
 app.use('/api/webhooks', webhooksRoutes);
 
+// ========================================
+// 🛡️ SECURITY MIDDLEWARE (HELMET + HEADERS)
+// ========================================
+initializeSecurityMiddleware(app);
+
+// Audit logging para todas las requests
+app.use(auditLog);
+
 // Middlewares
 // CORS configurado para permitir frontend específico con fallbacks seguros
 const allowedOrigins = process.env.FRONTEND_URL
@@ -145,77 +160,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // ========================================
-// 🚦 RATE LIMITING OPTIMIZADO
-// ========================================
-
-// Rate Limiting General - Para todas las rutas API
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 500, // 500 requests / 15min = ~33/min (más realista que 100)
-  message: {
-    success: false,
-    message: 'Demasiadas peticiones desde esta IP. Intenta de nuevo en 15 minutos.',
-    code: 'RATE_LIMIT_EXCEEDED',
-    retryAfter: 900
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === 'development', // Deshabilitar en desarrollo
-  handler: (req, res) => {
-    logger.warn(`Rate limit exceeded for IP: ${req.ip}`);
-    res.status(429).json({
-      success: false,
-      message: 'Demasiadas peticiones. Intenta de nuevo más tarde.',
-      retryAfter: 900
-    });
-  }
-});
-
-// Rate Limiting para Autenticación (más estricto)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30, // 30 intentos / 15min (aumentado de 20)
-  message: {
-    success: false,
-    message: 'Demasiados intentos de autenticación. Intenta más tarde.',
-    code: 'AUTH_RATE_LIMIT'
-  },
-  skipSuccessfulRequests: true, // No contar requests exitosos
-  skip: () => process.env.NODE_ENV === 'development'
-});
-
-// Rate Limiting para Lectura Pública (muy permisivo)
-const publicReadLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minuto
-  max: 60, // 60 requests/min para lectura pública
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => req.method !== 'GET' || process.env.NODE_ENV === 'development'
-});
-
-// Rate Limiting para Escritura (más restrictivo)
-const writeLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100, // 100 writes / 15min
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => req.method === 'GET' || process.env.NODE_ENV === 'development'
-});
-
-// Aplicar rate limiting general solo en producción
-if (process.env.NODE_ENV === 'production') {
-  app.use('/api/', (req, res, next) => {
-    // Skip rate limiting para rutas de agent (tienen su propio limiter)
-    if (req.path.includes('/agent/') || req.path.includes('/agents')) {
-      return next();
-    }
-    limiter(req, res, next);
-  });
-}
-
-// ========================================
 // 🛡️ MIDDLEWARE DE SEGURIDAD Y LÍMITES
 // ========================================
+// NOTA: Rate limiting ahora se aplica por ruta específica en la sección de rutas
+// usando los limiters importados desde securityMiddleware.js
 
 // Limitar tamaño de payload JSON (previene ataques de memoria)
 app.use(express.json({ 
@@ -428,31 +376,43 @@ app.get('/api/project-info', async (req, res) => {
   }
 });
 
-// Rutas de la API
-app.use('/api/servicios', serviciosRoutes);
-app.use('/api/paquetes', paquetesRoutes);
-app.use('/api/users', usersRoutes);
-app.use('/api/cms', cmsRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/demo', demoRoutes);
-app.use('/api/crm', crmRoutes); // 💼 CRM Routes
-app.use('/api/contact', contactRoutes); // 📧 Contact Routes (público + admin)
-app.use('/api/categorias', categoriasRoutes); // 📁 Categorías Routes
-app.use('/api/client', clientRoutes); // 🎉 Client Onboarding Routes
-app.use('/api/blog', blogRoutes); // 📝 Blog Routes (Sprint 1)
+// ========================================
+// 🛡️ RUTAS CON RATE LIMITING ESPECÍFICO
+// ========================================
+
+// Rutas públicas con rate limiting general
+app.use('/api/servicios', generalLimiter, serviciosRoutes);
+app.use('/api/paquetes', generalLimiter, paquetesRoutes);
+app.use('/api/categorias', generalLimiter, categoriasRoutes); // 📁 Categorías Routes
+app.use('/api/blog', generalLimiter, blogRoutes); // 📝 Blog Routes (Sprint 1)
+
+// Rutas de contacto con rate limiting ESTRICTO (previene spam)
+app.use('/api/contact', contactLimiter, contactRoutes); // 📧 Contact Routes (público + admin)
+
+// Rutas de autenticación/usuarios con rate limiting anti-brute-force
+app.use('/api/users', authLimiter, usersRoutes);
+app.use('/api/admin', authLimiter, adminRoutes);
+app.use('/api/profile', authLimiter, profileRoutes); // 👤 Profile Routes (Social System)
+
+// Rutas de AI con rate limiting específico (costosas en recursos)
+app.use('/api/agents', aiChatLimiter, agentsRoutes); // 🤖 AI Agents System Routes
+app.use('/api/gerente', aiChatLimiter, gerenteRoutes); // 👔 Gerente General Routes (Coordinator)
+app.use('/api/ai', aiChatLimiter, aiAnalyticsRoutes); // 📊 AI Analytics & Tracking Routes
+app.use('/api/agents/testing', aiChatLimiter, agentTestingRoutes); // 🧪 Advanced AI Testing Suite
+app.use('/api/agents/agenda', aiChatLimiter, agentAgendaRoutes); // 📅 Agenda for Agents (GerenteGeneral)
+app.use('/api/agents/blog/session', aiChatLimiter, agentsBlogSessionRoutes); // 💬 Blog Conversational Sessions
+
+// Rutas protegidas con rate limiting general
+app.use('/api/cms', generalLimiter, cmsRoutes);
+app.use('/api/upload', generalLimiter, uploadRoutes);
+app.use('/api/demo', generalLimiter, demoRoutes);
+app.use('/api/crm', generalLimiter, crmRoutes); // 💼 CRM Routes
+app.use('/api/client', generalLimiter, clientRoutes); // 🎉 Client Onboarding Routes
 app.use('/api', commentsRoutes); // 💬 Comments & Moderation Routes (Sprint 4)
-app.use('/api/profile', profileRoutes); // 👤 Profile Routes (Social System)
-app.use('/api/user-blog', userBlogRoutes); // 📚 User Blog Activity Routes (Dashboard)
-app.use('/api/agents', agentsRoutes); // 🤖 AI Agents System Routes (NEW)
-app.use('/api/gerente', gerenteRoutes); // 👔 Gerente General Routes (Coordinator)
-app.use('/api/ai', aiAnalyticsRoutes); // 📊 AI Analytics & Tracking Routes (NEW)
-app.use('/api/agents/testing', agentTestingRoutes); // 🧪 Advanced AI Testing Suite (NEW)
-app.use('/api/events', eventRoutes); // 📅 Events/Agenda System Routes (NEW)
-app.use('/api/agents/agenda', agentAgendaRoutes); // 📅 Agenda for Agents (GerenteGeneral) (NEW)
-app.use('/api/agents/blog/session', agentsBlogSessionRoutes); // 💬 Blog Conversational Sessions (NEW)
-app.use('/api/seo-monitor', seoMonitorRoutes); // 📊 SEO Monitoring System (NEW)
-app.use('/api/direct-messages', directMessagesRoutes); // 📧 Direct Messages to Users (NEW)
+app.use('/api/user-blog', generalLimiter, userBlogRoutes); // 📚 User Blog Activity Routes (Dashboard)
+app.use('/api/events', generalLimiter, eventRoutes); // 📅 Events/Agenda System Routes
+app.use('/api/seo-monitor', generalLimiter, seoMonitorRoutes); // 📊 SEO Monitoring System
+app.use('/api/direct-messages', generalLimiter, directMessagesRoutes); // 📧 Direct Messages to Users
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {
