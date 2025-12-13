@@ -1,0 +1,107 @@
+# ========================================
+# 🚀 RENDER BLUEPRINT - Web Scuti Backend
+# ========================================
+# Este archivo configura el despliegue en Render.com
+# Documentación: https://render.com/docs/blueprint-spec
+#
+# Para usar este blueprint:
+# 1. Conecta tu repo a Render
+# 2. Render detectará automáticamente este archivo
+# 3. O manualmente: Dashboard > Blueprints > New Blueprint Instance
+
+services:
+  # ========================================
+  # 🌐 WEB SERVICE - Backend API
+  # ========================================
+  - type: web
+    name: web-scuticompany-back
+    runtime: node
+    region: oregon  # Cambiar según tu preferencia (oregon, frankfurt, singapore, ohio)
+    
+    # ========================================
+    # 📦 BUILD & START
+    # ========================================
+    buildCommand: npm install
+    startCommand: npm start
+    
+    # ========================================
+    # 🔧 CONFIGURACIÓN DE INSTANCIA
+    # ========================================
+    plan: starter  # free, starter, standard, pro (ajustar según necesidades)
+    numInstances: 1  # Aumentar a 2+ para alta disponibilidad
+    
+    # ========================================
+    # 💓 HEALTH CHECK (CRÍTICO para uptime)
+    # ========================================
+    healthCheckPath: /health
+    # Render envía GET a /health cada pocos segundos
+    # Si falla 15 segundos seguidos, deja de enviar tráfico
+    # Si falla 60 segundos seguidos, reinicia el servicio
+    
+    # ========================================
+    # 🌍 VARIABLES DE ENTORNO
+    # ========================================
+    envVars:
+      - key: NODE_ENV
+        value: production
+      
+      - key: PORT
+        value: 10000  # Puerto por defecto de Render
+      
+      # ⚠️ SECRETOS - Configurar en Dashboard de Render
+      # No incluir valores reales aquí
+      - key: MONGODB_URI
+        sync: false  # Configurar manualmente en dashboard
+      
+      - key: CLERK_SECRET_KEY
+        sync: false
+      
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      
+      - key: OPENAI_API_KEY
+        sync: false
+      
+      - key: RESEND_API_KEY
+        sync: false
+      
+      - key: FRONTEND_URL
+        sync: false  # Ejemplo: https://web-scuticompany.vercel.app
+
+# ========================================
+# 📝 NOTAS DE DESPLIEGUE
+# ========================================
+# 
+# 1. HEALTH CHECK:
+#    - El endpoint /health retorna 200 solo cuando el servidor está listo
+#    - Verifica conexión a MongoDB antes de retornar OK
+#    - Render usa esto para zero-downtime deploys
+#
+# 2. GRACEFUL SHUTDOWN:
+#    - El servidor maneja SIGTERM correctamente
+#    - Cierra conexiones MongoDB antes de terminar
+#    - Timeout de 25s para completar cierre
+#
+# 3. MÚLTIPLES INSTANCIAS (Recomendado para producción):
+#    - Cambiar numInstances a 2 o más
+#    - Render distribuye entre diferentes nodos
+#    - Si una instancia falla, las otras siguen funcionando
+#
+# 4. MONITOREO EXTERNO (Opcional pero recomendado):
+#    - Configurar probe externo (HeyOnCall, Better Stack)
+#    - Monitorea desde fuera de Render
+#    - Notificaciones más rápidas de caídas
+#
+# 5. LOGS:
+#    - El servidor loggea CF-Ray ID para debugging
+#    - Ver logs en: Dashboard > Service > Logs
+#

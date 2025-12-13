@@ -63,17 +63,8 @@ const connectDB = async () => {
       console.log('✅ MongoDB reconnected successfully');
     });
 
-    // Manejar cierre gracioso
-    process.on('SIGINT', async () => {
-      try {
-        await mongoose.connection.close(false);
-        console.log('✓ MongoDB connection closed through app termination');
-        process.exit(0);
-      } catch (err) {
-        console.error('Error closing MongoDB connection:', err);
-        process.exit(1);
-      }
-    });
+    // NOTA: El manejador SIGINT se gestiona en server.js para evitar duplicación
+    // Ver: gracefulShutdown() en server.js
 
   } catch (error) {
     console.error('MongoDB connection failed:', error.message);

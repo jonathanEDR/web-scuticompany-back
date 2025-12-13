@@ -62,6 +62,7 @@ const PORT = process.env.PORT || 5000;
 // ========================================
 // IMPORTANTE: No iniciar servidor hasta que DB esté lista
 let isDbReady = false;
+let isShuttingDown = false; // Flag para graceful shutdown
 
 // Función de inicialización asíncrona
 async function initializeServer() {
@@ -90,14 +91,14 @@ async function initializeServer() {
     isDbReady = true;
     logger.success('✅ Base de datos conectada y lista');
     
+    return true;
   } catch (err) {
     logger.error('❌ Error durante inicialización:', err);
-    process.exit(1); // Salir si no puede inicializar
+    throw err; // Re-lanzar para manejar en el startup
   }
 }
 
-// Iniciar proceso de inicialización
-initializeServer();
+// NO iniciar aquí - se hace al final con startServer()
 
 // IMPORTANTE: Webhooks deben ir ANTES de los middlewares de JSON
 // porque necesitan el raw body para verificar la firma
@@ -160,7 +161,38 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // ========================================
-// 🛡️ MIDDLEWARE DE SEGURIDAD Y LÍMITES
+// � LOGGING CF-RAY HEADER (Render/Cloudflare)
+// ========================================
+app.use((req, res, next) => {
+  const cfRay = req.headers['cf-ray'];
+  if (cfRay) {
+    // Agregar CF-Ray al request para logging posterior
+    req.cfRay = cfRay;
+    // Log temprano de la request para debugging en Render
+    if (process.env.NODE_ENV === 'production') {
+      logger.debug(`[CF-Ray: ${cfRay}] ${req.method} ${req.path}`);
+    }
+  }
+  next();
+});
+
+// ========================================
+// 🛑 MIDDLEWARE DE GRACEFUL SHUTDOWN
+// ========================================
+app.use((req, res, next) => {
+  if (isShuttingDown) {
+    res.set('Connection', 'close');
+    return res.status(503).json({
+      success: false,
+      message: 'Servidor reiniciándose. Intenta de nuevo en unos segundos.',
+      code: 'SERVER_SHUTTING_DOWN'
+    });
+  }
+  next();
+});
+
+// ========================================
+// �🛡️ MIDDLEWARE DE SEGURIDAD Y LÍMITES
 // ========================================
 // NOTA: Rate limiting ahora se aplica por ruta específica en la sección de rutas
 // usando los limiters importados desde securityMiddleware.js
@@ -231,15 +263,65 @@ app.get('/', (req, res) => {
   });
 });
 
-// Simple health check (sin db check para rapidez)
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Backend is running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    version: '1.0.0'
-  });
+// ========================================
+// 💓 HEALTH CHECK PARA RENDER
+// ========================================
+// Este endpoint es usado por Render para verificar que el servicio está listo
+// Debe retornar 200 SOLO cuando el servidor está completamente operativo
+app.get('/health', async (req, res) => {
+  // Si está cerrándose, retornar 503
+  if (isShuttingDown) {
+    return res.status(503).json({
+      success: false,
+      message: 'Server is shutting down',
+      ready: false
+    });
+  }
+  
+  // Si la DB no está lista, retornar 503 (Render reintentará)
+  if (!isDbReady) {
+    return res.status(503).json({
+      success: false,
+      message: 'Database not ready',
+      ready: false
+    });
+  }
+  
+  // Verificar conexión real a MongoDB
+  try {
+    const dbState = mongoose.connection.readyState;
+    // 1 = connected, 2 = connecting
+    if (dbState !== 1) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection lost',
+        dbState: dbState,
+        ready: false
+      });
+    }
+    
+    // Todo OK - servicio saludable
+    res.status(200).json({
+      success: true,
+      message: 'Backend is healthy',
+      ready: true,
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      version: '1.0.0',
+      uptime: Math.round(process.uptime()),
+      memory: {
+        heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024)
+      }
+    });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      message: 'Health check failed',
+      error: error.message,
+      ready: false
+    });
+  }
 });
 
 // Health check endpoint
@@ -432,45 +514,80 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Iniciar servidor
-const server = app.listen(PORT, '0.0.0.0', () => {
-  logger.startup(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
-  logger.startup(`API available at: http://localhost:${PORT}/api`);
-  logger.success('Web Scuti Backend Server iniciado correctamente');
-});
+// ========================================
+// 🚀 INICIO DEL SERVIDOR
+// ========================================
+let server;
+
+async function startServer() {
+  try {
+    // 1. Primero inicializar todo (DB, agentes, etc.)
+    await initializeServer();
+    
+    // 2. Solo después de inicializar, empezar a escuchar
+    server = app.listen(PORT, '0.0.0.0', () => {
+      logger.startup(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+      logger.startup(`API available at: http://localhost:${PORT}/api`);
+      logger.startup(`Health check: http://localhost:${PORT}/health`);
+      logger.success('✅ Web Scuti Backend Server iniciado y listo para recibir tráfico');
+    });
+    
+    // 3. Configurar timeout del servidor (importante para Render)
+    server.keepAliveTimeout = 65000; // Ligeramente mayor que el de Cloudflare (60s)
+    server.headersTimeout = 66000; // Ligeramente mayor que keepAliveTimeout
+    
+  } catch (error) {
+    logger.error('💥 Error fatal al iniciar servidor:', error);
+    process.exit(1);
+  }
+}
+
+// Iniciar el servidor
+startServer();
 
 // ========================================
-// 🛡️ GRACEFUL SHUTDOWN MEJORADO
+// 🛡️ GRACEFUL SHUTDOWN MEJORADO PARA RENDER
 // ========================================
 const gracefulShutdown = async (signal) => {
+  // Evitar múltiples llamadas
+  if (isShuttingDown) {
+    console.log(`⚠️ ${signal} received but shutdown already in progress`);
+    return;
+  }
+  
+  isShuttingDown = true;
   console.log(`\n📡 ${signal} received: iniciando cierre gracioso del servidor...`);
+  logger.warn(`Graceful shutdown iniciado por: ${signal}`);
   
   // 1. Dejar de aceptar nuevas conexiones
   server.close(() => {
     console.log('✓ HTTP server cerrado - no acepta nuevas conexiones');
   });
   
-  // 2. Timeout de seguridad (forzar cierre después de 30s)
+  // 2. Timeout de seguridad (Render espera hasta 30s, usamos 25s)
   const forceShutdownTimeout = setTimeout(() => {
-    console.error('⚠️ Forzando cierre después de timeout (30s)');
+    console.error('⚠️ Forzando cierre después de timeout (25s)');
     process.exit(1);
-  }, 30000);
+  }, 25000);
   
   try {
-    // 3. Cerrar conexión a MongoDB
+    // 3. Esperar un momento para que requests en curso terminen
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // 4. Cerrar conexión a MongoDB
     if (mongoose.connection.readyState === 1) {
       await mongoose.connection.close(false);
       console.log('✓ Conexión a MongoDB cerrada correctamente');
     }
     
-    // 4. Cerrar otras conexiones (Redis, etc.) cuando se implementen
+    // 5. Cerrar otras conexiones (Redis, etc.) cuando se implementen
     // TODO: Agregar cierre de Redis cuando se implemente
     // if (redis && redis.status === 'ready') {
     //   await redis.quit();
     //   console.log('✓ Conexión a Redis cerrada correctamente');
     // }
     
-    // 5. Limpiar timeout y salir limpiamente
+    // 6. Limpiar timeout y salir limpiamente
     clearTimeout(forceShutdownTimeout);
     console.log('✅ Graceful shutdown completado exitosamente');
     process.exit(0);
