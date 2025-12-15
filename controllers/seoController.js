@@ -41,13 +41,17 @@ import BlogPost from '../models/BlogPost.js';
 import BlogCategory from '../models/BlogCategory.js';
 import BlogTag from '../models/BlogTag.js';
 
+// URL base del frontend para SEO/Sitemaps
+const FRONTEND_BASE_URL = process.env.SITEMAP_BASE_URL || 'https://scuticompany.com';
+
 /**
  * GET /api/blog/sitemap.xml
  * Servir sitemap principal del blog
  */
 export const getSitemap = async (req, res) => {
   try {
-    const baseUrl = req.protocol + '://' + req.get('host');
+    // Usar URL del frontend, no del backend
+    const baseUrl = FRONTEND_BASE_URL;
     const sitemap = await generateBlogSitemap(baseUrl);
     
     res.set('Content-Type', 'application/xml');
@@ -67,7 +71,7 @@ export const getSitemap = async (req, res) => {
  */
 export const getImageSitemap = async (req, res) => {
   try {
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     const sitemap = await generateImageSitemap(baseUrl);
     
     res.set('Content-Type', 'application/xml');
@@ -87,7 +91,7 @@ export const getImageSitemap = async (req, res) => {
  */
 export const getNewsSitemap = async (req, res) => {
   try {
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     const sitemap = await generateNewsSitemap(baseUrl);
     
     res.set('Content-Type', 'application/xml');
@@ -130,7 +134,7 @@ export const getSitemapStatistics = async (req, res) => {
  */
 export const getRSSFeed = async (req, res) => {
   try {
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     const limit = parseInt(req.query.limit) || 50;
     
     const feed = await generateRSSFeed(baseUrl, limit);
@@ -152,7 +156,7 @@ export const getRSSFeed = async (req, res) => {
  */
 export const getAtomFeed = async (req, res) => {
   try {
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     const limit = parseInt(req.query.limit) || 50;
     
     const feed = await generateAtomFeed(baseUrl, limit);
@@ -174,7 +178,7 @@ export const getAtomFeed = async (req, res) => {
  */
 export const getJSONFeed = async (req, res) => {
   try {
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     const limit = parseInt(req.query.limit) || 50;
     
     const feed = await generateJSONFeed(baseUrl, limit);
@@ -196,7 +200,7 @@ export const getJSONFeed = async (req, res) => {
 export const getCategoryFeed = async (req, res) => {
   try {
     const { slug } = req.params;
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     const limit = parseInt(req.query.limit) || 50;
     
     const feed = await generateCategoryRSSFeed(slug, baseUrl, limit);
@@ -244,7 +248,7 @@ export const getFeedStatistics = async (req, res) => {
  */
 export const getRobotsTxt = async (req, res) => {
   try {
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     
     const robotsTxt = `# Robots.txt para Web Scuti Blog
 User-agent: *
@@ -288,7 +292,7 @@ Crawl-delay: 1
 export const getPostSchemas = async (req, res) => {
   try {
     const { slug } = req.params;
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     
     const post = await BlogPost.findOne({ slug, isPublished: true })
       .populate('author', 'firstName lastName email')
@@ -325,7 +329,7 @@ export const getPostSchemas = async (req, res) => {
 export const getPostMetaTags = async (req, res) => {
   try {
     const { slug } = req.params;
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     
     const post = await BlogPost.findOne({ slug, isPublished: true })
       .populate('author', 'firstName lastName')
@@ -361,7 +365,7 @@ export const getPostMetaTags = async (req, res) => {
 export const getCategoryMetaTags = async (req, res) => {
   try {
     const { slug } = req.params;
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     
     const category = await BlogCategory.findOne({ slug, isActive: true }).lean();
     
@@ -394,7 +398,7 @@ export const getCategoryMetaTags = async (req, res) => {
 export const getTagMetaTags = async (req, res) => {
   try {
     const { slug } = req.params;
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     
     const tag = await BlogTag.findOne({ slug }).lean();
     
@@ -426,7 +430,7 @@ export const getTagMetaTags = async (req, res) => {
  */
 export const getBlogHomeMetaTags = async (req, res) => {
   try {
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     const metaTags = generateBlogHomeMetaTags(baseUrl);
     
     res.json({ metaTags });
@@ -480,7 +484,7 @@ export const validatePostSEOScore = async (req, res) => {
  */
 export const getOrganizationSchema = async (req, res) => {
   try {
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     const schema = generateOrganizationSchema(baseUrl);
     
     res.json({
@@ -502,7 +506,7 @@ export const getOrganizationSchema = async (req, res) => {
  */
 export const getWebSiteSchema = async (req, res) => {
   try {
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     const schema = generateWebSiteSchema(baseUrl);
     
     res.json({
@@ -524,7 +528,7 @@ export const getWebSiteSchema = async (req, res) => {
  */
 export const getBlogSchema = async (req, res) => {
   try {
-    const baseUrl = req.protocol + '://' + req.get('host');
+    const baseUrl = FRONTEND_BASE_URL;
     const schema = await generateBlogSchema(baseUrl);
     
     res.json({
