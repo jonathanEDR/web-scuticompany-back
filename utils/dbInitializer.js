@@ -127,6 +127,9 @@ const defaultHomePageData = {
       ]
     },
     featuredBlog: {
+      headerIcon: 'Newspaper',
+      headerIconColor: '#8B5CF6',
+      fontFamily: 'Montserrat',
       title: 'Webinars y blogs',
       subtitle: 'Accede a nuestros webinars y blogs para conocer más sobre nuestras soluciones y servicios',
       description: '',

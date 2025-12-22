@@ -371,6 +371,9 @@ const PageSchema = new mongoose.Schema({
       }]
     },
     featuredBlog: {
+      headerIcon: { type: String, default: 'Newspaper' },
+      headerIconColor: { type: String, default: '#8B5CF6' },
+      fontFamily: { type: String, default: 'Montserrat' },
       title: { type: String, default: 'Webinars y blogs' },
       subtitle: { type: String, default: 'Accede a nuestros webinars y blogs para conocer más sobre nuestras soluciones y servicios' },
       description: { type: String, default: '' },
