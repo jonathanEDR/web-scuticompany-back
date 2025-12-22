@@ -49,10 +49,50 @@ export class GerenteGeneral extends BaseAgent {
     // Flag para indicar si la configuración ya fue cargada
     this.configurationLoaded = false;
     
-    // NO cargar configuración aquí - esperar a activate() para lazy initialization
+    // 🆕 Lazy loading: NO cargar configuración aquí - esperar a activate() para lazy initialization
     // this.loadConfiguration(); // ← REMOVIDO: causa problemas en deploy
     
     logger.info('👔 GerenteGeneral initialized (configuration will load on activation)');
+  }
+
+  /**
+   * Activar GerenteGeneral y cargar configuración
+   * @override
+   */
+  async activate() {
+    try {
+      // 🆕 Cargar configuración solo cuando se activa
+      if (!this.configurationLoaded) {
+        logger.info('🔄 Loading GerenteGeneral configuration on activation...');
+        await this.loadConfiguration();
+      }
+      
+      // Llamar al activate de BaseAgent
+      return await super.activate();
+    } catch (error) {
+      logger.error('❌ Error activating GerenteGeneral:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Activar GerenteGeneral y cargar configuración
+   * @override
+   */
+  async activate() {
+    try {
+      // 🆕 Cargar configuración solo cuando se activa
+      if (!this.configurationLoaded) {
+        logger.info('🔄 Loading GerenteGeneral configuration on activation...');
+        await this.loadConfiguration();
+      }
+      
+      // Llamar al activate de BaseAgent
+      return await super.activate();
+    } catch (error) {
+      logger.error('❌ Error activating GerenteGeneral:', error);
+      return { success: false, error: error.message };
+    }
   }
 
   /**
@@ -1075,6 +1115,7 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
 
   /**
    * Delegar tarea a agente específico
+   * 🆕 Con activación bajo demanda (Lazy Loading)
    * @private
    */
   async delegateToAgent(agentName, action, params, sessionId) {
@@ -1087,6 +1128,27 @@ Para ayudarte mejor, podría delegar esta tarea a uno de nuestros agentes especi
           success: false,
           error: `Agente ${agentName} no disponible`
         };
+      }
+
+      // ========================================
+      // 🆕 LAZY ACTIVATION: Activar agente bajo demanda
+      // ========================================
+      const isActive = this.orchestrator.activeAgents.has(agentName) || 
+                       this.orchestrator.activeAgents.has(agent.id);
+      
+      if (!isActive) {
+        logger.info(`🔄 Activating ${agentName} on demand...`);
+        const activationResult = await this.orchestrator.activateAgentOnDemand(agentName);
+        
+        if (!activationResult.success) {
+          logger.error(`❌ Failed to activate ${agentName}:`, activationResult.error);
+          return {
+            success: false,
+            error: `No se pudo activar el agente ${agentName}: ${activationResult.error}`
+          };
+        }
+        
+        logger.success(`✅ ${agentName} activated successfully`);
       }
 
       logger.info(`📤 Delegando a ${agentName}: ${action.substring(0, 60)}...`);

@@ -62,10 +62,10 @@ export class BlogAgent extends BaseAgent {
     // Usar servicio de conversación singleton (sin instanciar)
     this.conversationService = blogConversationService;
 
-    // Cargar configuración desde base de datos
-    this.loadConfiguration();
+    // 🆕 Lazy loading: No cargar configuración hasta activate()
+    this.configurationLoaded = false;
 
-    logger.info('📝 BlogAgent initialized (Refactored Version)');
+    logger.info('📝 BlogAgent initialized (Refactored Version - Lazy Config)');
   }
 
   /**
@@ -110,6 +110,27 @@ export class BlogAgent extends BaseAgent {
         responseConfig: this.getDefaultResponse(),
         promptConfig: this.getDefaultPrompts()
       };
+    }
+  }
+
+  /**
+   * Activar agente y cargar configuración (lazy loading)
+   * @override
+   */
+  async activate() {
+    try {
+      // 🆕 Cargar configuración solo cuando se activa el agente
+      if (!this.configurationLoaded) {
+        logger.info('🔄 Loading BlogAgent configuration on activation...');
+        await this.loadConfiguration();
+        this.configurationLoaded = true;
+      }
+      
+      // Llamar al activate de BaseAgent
+      return await super.activate();
+    } catch (error) {
+      logger.error('❌ Error activating BlogAgent:', error);
+      return { success: false, error: error.message };
     }
   }
 

@@ -14,78 +14,74 @@ import openaiService from '../agents/services/OpenAIService.js';
 import AgentConfig from '../models/AgentConfig.js';
 import logger from '../utils/logger.js';
 
-// Inicializar y registrar agentes
+// ============================================
+// 🚀 LAZY INITIALIZATION - OPTIMIZACIÓN
+// ============================================
+// Solo GerenteGeneral se activa al inicio
+// Los demás agentes se activan bajo demanda
+
 let isInitialized = false;
 const initializeAgents = async () => {
   if (isInitialized) return;
   
   try {
-    logger.info('🚀 Initializing Agent System...');
+    logger.info('🚀 Initializing Agent System (Lazy Mode)...');
     
     // Inicializar configuraciones por defecto si no existen
     logger.info('📋 Checking agent configurations...');
     await AgentConfig.initializeDefaults();
     
-    // Crear y registrar BlogAgent
+    // ========================================
+    // 📦 REGISTRAR AGENTES (sin activar)
+    // ========================================
+    
+    // Crear y registrar BlogAgent (LAZY)
     const blogAgent = new BlogAgent();
-    const blogRegistrationResult = await AgentOrchestrator.registerAgent(blogAgent);
-    
-    if (blogRegistrationResult.success) {
-      logger.success('✅ Agent BlogAgent registered and activated');
-      logger.info('📊 BlogAgent registered with personalized configuration');
-    } else {
-      logger.error('❌ Failed to register BlogAgent:', blogRegistrationResult.error);
+    const blogResult = AgentOrchestrator.registerAgentLazy(blogAgent);
+    if (blogResult.success) {
+      logger.info('📦 BlogAgent registered (lazy) - will activate on demand');
     }
 
-    // Registrar SEOAgent (ya viene inicializado como singleton)
-    const seoRegistrationResult = await AgentOrchestrator.registerAgent(seoAgent);
-    
-    if (seoRegistrationResult.success) {
-      logger.success('✅ Agent SEOAgent registered and activated');
-      logger.info('📊 SEOAgent registered with specialized SEO configuration');
-    } else {
-      logger.error('❌ Failed to register SEOAgent:', seoRegistrationResult.error);
+    // Registrar SEOAgent (LAZY)
+    const seoResult = AgentOrchestrator.registerAgentLazy(seoAgent);
+    if (seoResult.success) {
+      logger.info('📦 SEOAgent registered (lazy) - will activate on demand');
     }
 
-    // Crear y registrar ServicesAgent
+    // Crear y registrar ServicesAgent (LAZY)
     const servicesAgent = new ServicesAgent();
-    const servicesRegistrationResult = await AgentOrchestrator.registerAgent(servicesAgent);
-    
-    if (servicesRegistrationResult.success) {
-      logger.success('✅ Agent ServicesAgent registered and activated');
-      logger.info('📊 ServicesAgent registered with services management configuration');
-    } else {
-      logger.error('❌ Failed to register ServicesAgent:', servicesRegistrationResult.error);
+    const servicesResult = AgentOrchestrator.registerAgentLazy(servicesAgent);
+    if (servicesResult.success) {
+      logger.info('📦 ServicesAgent registered (lazy) - will activate on demand');
     }
 
-    // Registrar EventAgent (ya viene inicializado como singleton)
-    const eventRegistrationResult = await AgentOrchestrator.registerAgent(eventAgent);
-    
-    if (eventRegistrationResult.success) {
-      logger.success('✅ Agent EventAgent registered and activated');
-      logger.info('📅 EventAgent registered with calendar and agenda management');
-    } else {
-      logger.error('❌ Failed to register EventAgent:', eventRegistrationResult.error);
+    // Registrar EventAgent (LAZY)
+    const eventResult = AgentOrchestrator.registerAgentLazy(eventAgent);
+    if (eventResult.success) {
+      logger.info('📦 EventAgent registered (lazy) - will activate on demand');
     }
 
-    // Registrar GerenteGeneral (ya viene inicializado como singleton)
+    // ========================================
+    // ✅ ACTIVAR SOLO GERENTE GENERAL
+    // ========================================
+    // GerenteGeneral es el único que debe estar activo desde el inicio
+    // Él se encargará de activar los demás según necesidad
+    
     const gerenteRegistrationResult = await AgentOrchestrator.registerAgent(gerenteGeneral);
     
     if (gerenteRegistrationResult.success) {
-      logger.success('✅ Agent GerenteGeneral registered and activated');
+      logger.success('✅ GerenteGeneral registered and ACTIVATED');
       logger.info('👔 GerenteGeneral ready to coordinate all agents');
+      logger.info('💡 Other agents will activate on demand to reduce resource usage');
+      isInitialized = true;
     } else {
       logger.error('❌ Failed to register GerenteGeneral:', gerenteRegistrationResult.error);
     }
-    
-    // Marcar sistema como inicializado si al menos un agente fue registrado
-    if (blogRegistrationResult.success || seoRegistrationResult.success || servicesRegistrationResult.success || eventRegistrationResult.success || gerenteRegistrationResult.success) {
-      logger.success('✅ Agent system initialized successfully');
-      isInitialized = true;
-    } else {
-      logger.error('❌ Failed to initialize agent system: No agents registered');
-    }
 
+    if (isInitialized) {
+      logger.success('✅ Agent system initialized successfully (Lazy Mode)');
+      logger.info(`📊 Agents registered: 5 | Active: 1 (GerenteGeneral)`);
+    }
     
   } catch (error) {
     logger.error('❌ Error initializing agents:', error);

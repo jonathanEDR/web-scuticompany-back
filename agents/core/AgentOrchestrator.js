@@ -38,7 +38,7 @@ class AgentOrchestrator extends EventEmitter {
   }
 
   /**
-   * Registrar un nuevo agente
+   * Registrar un nuevo agente (con activación automática)
    */
   async registerAgent(agent) {
     try {
@@ -81,6 +81,81 @@ class AgentOrchestrator extends EventEmitter {
 
     } catch (error) {
       logger.error('❌ Error registering agent:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 🆕 Registrar agente sin activarlo (Lazy Loading)
+   * Útil para agentes que se activarán bajo demanda
+   */
+  registerAgentLazy(agent) {
+    try {
+      if (!agent || typeof agent.processTask !== 'function') {
+        throw new Error('Invalid agent: must implement processTask method');
+      }
+
+      const agentId = agent.id || agent.name;
+      const agentName = agent.name;
+      
+      // Registrar sin activar
+      this.agents.set(agentId, agent);
+      this.agents.set(agentName, agent);
+      this.metrics.totalAgents = this.agents.size;
+
+      // Configurar listeners de eventos
+      this.setupAgentListeners(agent);
+      
+      logger.info(`📦 Agent ${agent.name} registered (lazy mode - not activated)`);
+      this.emit('agent:registered:lazy', { agentId, agentName: agent.name });
+      
+      return { success: true, message: `Agent ${agent.name} registered in lazy mode` };
+
+    } catch (error) {
+      logger.error('❌ Error registering agent (lazy):', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 🆕 Activar agente bajo demanda
+   * Solo activa si no está ya activo
+   */
+  async activateAgentOnDemand(agentNameOrId) {
+    try {
+      // Buscar el agente
+      const agent = this.agents.get(agentNameOrId);
+      
+      if (!agent) {
+        logger.warn(`⚠️ Agent ${agentNameOrId} not found for activation`);
+        return { success: false, error: 'Agent not found' };
+      }
+
+      // Verificar si ya está activo
+      if (this.activeAgents.has(agentNameOrId) || this.activeAgents.has(agent.id)) {
+        logger.debug(`Agent ${agent.name} already active`);
+        return { success: true, message: 'Agent already active', alreadyActive: true };
+      }
+
+      // Activar el agente
+      const activationResult = await agent.activate();
+      
+      if (activationResult.success) {
+        this.activeAgents.add(agent.id);
+        this.activeAgents.add(agent.name);
+        this.metrics.activeAgents = this.activeAgents.size;
+        
+        logger.success(`✅ Agent ${agent.name} activated on demand`);
+        this.emit('agent:activated:ondemand', { agentId: agent.id, agentName: agent.name });
+        
+        return { success: true, message: `Agent ${agent.name} activated successfully` };
+      } else {
+        logger.error(`❌ Failed to activate agent ${agent.name}`);
+        return { success: false, error: activationResult.error };
+      }
+
+    } catch (error) {
+      logger.error('❌ Error activating agent on demand:', error);
       return { success: false, error: error.message };
     }
   }
