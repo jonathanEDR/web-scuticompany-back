@@ -797,6 +797,13 @@ const PageSchema = new mongoose.Schema({
           background: { type: String, default: 'linear-gradient(135deg, #01c2cc 0%, #7528ee 100%)' },
           textColor: { type: String, default: '#FFFFFF' },
           borderColor: { type: String, default: 'transparent' }
+        },
+        // Botón "Ver todos los artículos" - Featured Blog
+        featuredBlogCta: {
+          text: { type: String, default: 'Ver todos los artículos' },
+          background: { type: String, default: 'linear-gradient(135deg, #8B5CF6, #06B6D4)' },
+          textColor: { type: String, default: '#FFFFFF' },
+          borderColor: { type: String, default: 'transparent' }
         }
       }
     },
@@ -837,6 +844,13 @@ const PageSchema = new mongoose.Schema({
         viewMore: {
           text: { type: String, default: 'Ver más...' },
           background: { type: String, default: 'linear-gradient(135deg, #22d3ee 0%, #a78bfa 100%)' },
+          textColor: { type: String, default: '#111827' },
+          borderColor: { type: String, default: 'transparent' }
+        },
+        // Botón "Ver todos los artículos" - Featured Blog
+        featuredBlogCta: {
+          text: { type: String, default: 'Ver todos los artículos' },
+          background: { type: String, default: 'linear-gradient(135deg, #A78BFA, #22D3EE)' },
           textColor: { type: String, default: '#111827' },
           borderColor: { type: String, default: 'transparent' }
         }

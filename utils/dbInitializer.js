@@ -322,6 +322,18 @@ const defaultHomePageData = {
           background: 'linear-gradient(90deg, #8B5CF6, #06B6D4)',
           textColor: '#FFFFFF',
           borderColor: 'transparent'
+        },
+        viewMore: {
+          text: 'Ver más...',
+          background: 'linear-gradient(135deg, #01c2cc 0%, #7528ee 100%)',
+          textColor: '#FFFFFF',
+          borderColor: 'transparent'
+        },
+        featuredBlogCta: {
+          text: 'Ver todos los artículos',
+          background: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+          textColor: '#FFFFFF',
+          borderColor: 'transparent'
         }
       }
     },
@@ -346,6 +358,18 @@ const defaultHomePageData = {
         },
         dashboard: {
           background: 'linear-gradient(90deg, #A78BFA, #22D3EE)',
+          textColor: '#111827',
+          borderColor: 'transparent'
+        },
+        viewMore: {
+          text: 'Ver más...',
+          background: 'linear-gradient(135deg, #22d3ee 0%, #a78bfa 100%)',
+          textColor: '#111827',
+          borderColor: 'transparent'
+        },
+        featuredBlogCta: {
+          text: 'Ver todos los artículos',
+          background: 'linear-gradient(135deg, #A78BFA, #22D3EE)',
           textColor: '#111827',
           borderColor: 'transparent'
         }
