@@ -126,6 +126,63 @@ const defaultHomePageData = {
         }
       ]
     },
+    featuredBlog: {
+      title: 'Webinars y blogs',
+      subtitle: 'Accede a nuestros webinars y blogs para conocer más sobre nuestras soluciones y servicios',
+      description: '',
+      limit: 3,
+      buttonText: 'Ver todos los artículos',
+      buttonLink: '/blog',
+      backgroundImage: {
+        light: '',
+        dark: ''
+      },
+      backgroundImageAlt: 'Featured blog background',
+      styles: {
+        light: {
+          titleColor: '',
+          subtitleColor: '',
+          descriptionColor: ''
+        },
+        dark: {
+          titleColor: '',
+          subtitleColor: '',
+          descriptionColor: ''
+        }
+      },
+      cardsDesign: {
+        light: {
+          background: 'rgba(255, 255, 255, 0.95)',
+          border: 'rgba(229, 231, 235, 1)',
+          borderWidth: '1px',
+          shadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          hoverBackground: 'rgba(255, 255, 255, 1)',
+          hoverShadow: '0 20px 25px -5px rgba(139, 92, 246, 0.2)',
+          titleColor: '#1f2937',
+          excerptColor: '#4b5563',
+          metaColor: '#6b7280',
+          badgeBackground: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+          badgeTextColor: '#ffffff',
+          ctaColor: '#8B5CF6',
+          ctaHoverColor: '#06B6D4'
+        },
+        dark: {
+          background: 'rgba(31, 41, 55, 0.95)',
+          border: 'rgba(55, 65, 81, 1)',
+          borderWidth: '1px',
+          shadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+          hoverBackground: 'rgba(31, 41, 55, 1)',
+          hoverShadow: '0 20px 25px -5px rgba(139, 92, 246, 0.3)',
+          titleColor: '#f9fafb',
+          excerptColor: '#d1d5db',
+          metaColor: '#9ca3af',
+          badgeBackground: 'linear-gradient(135deg, #A78BFA, #22D3EE)',
+          badgeTextColor: '#111827',
+          ctaColor: '#A78BFA',
+          ctaHoverColor: '#22D3EE'
+        }
+      }
+    },
     contact: {
       phone: '+51 973 397 306',
       email: 'corpocomunicados@gmail.com',
@@ -471,6 +528,38 @@ export const initializeDatabase = async () => {
         }
       } else {
         logger.success('✅ Configuración del chatbot completa');
+      }
+      
+      // 🆕 VERIFICACIÓN DE FEATURED BLOG SECTION
+      if (!homePage.content.featuredBlog) {
+        logger.init('⚠️  Sección featuredBlog no encontrada, agregando configuración por defecto...');
+        
+        // Crear la sección featuredBlog con la configuración por defecto
+        homePage.content.featuredBlog = defaultHomePageData.content.featuredBlog;
+        
+        // Marcar explícitamente el campo como modificado
+        homePage.markModified('content');
+        homePage.markModified('content.featuredBlog');
+        
+        homePage.lastUpdated = new Date();
+        homePage.updatedBy = 'system-auto-update';
+        
+        logger.info('💾 Guardando configuración de featuredBlog...');
+        await homePage.save();
+        
+        // Verificar que se guardó correctamente
+        const updatedPage = await Page.findOne({ pageSlug: 'home' }).lean();
+        const hasFeaturedBlog = !!updatedPage?.content?.featuredBlog;
+        
+        if (hasFeaturedBlog) {
+          logger.success('✅ Sección featuredBlog agregada exitosamente');
+          logger.success(`📝 Configuración: ${updatedPage.content.featuredBlog.title} (límite: ${updatedPage.content.featuredBlog.limit})`);
+          logger.database('UPDATE', 'pages', { slug: 'home', field: 'featuredBlog' });
+        } else {
+          logger.error('❌ ERROR: La sección featuredBlog NO se guardó en la base de datos');
+        }
+      } else {
+        logger.success('✅ Sección featuredBlog configurada');
       }
       
       logger.database('FOUND', 'pages', { slug: 'home' });

@@ -370,6 +370,66 @@ const PageSchema = new mongoose.Schema({
         enabled: { type: Boolean, default: true }
       }]
     },
+    featuredBlog: {
+      title: { type: String, default: 'Webinars y blogs' },
+      subtitle: { type: String, default: 'Accede a nuestros webinars y blogs para conocer más sobre nuestras soluciones y servicios' },
+      description: { type: String, default: '' },
+      limit: { type: Number, default: 3, min: 1, max: 12 },
+      buttonText: { type: String, default: 'Ver todos los artículos' },
+      buttonLink: { type: String, default: '/blog' },
+      // Imágenes por tema
+      backgroundImage: {
+        light: { type: String, default: '' },
+        dark: { type: String, default: '' }
+      },
+      backgroundImageAlt: { type: String, default: 'Featured blog background' },
+      // Estilos de texto por tema
+      styles: {
+        light: {
+          titleColor: { type: String, default: '' },
+          subtitleColor: { type: String, default: '' },
+          descriptionColor: { type: String, default: '' }
+        },
+        dark: {
+          titleColor: { type: String, default: '' },
+          subtitleColor: { type: String, default: '' },
+          descriptionColor: { type: String, default: '' }
+        }
+      },
+      // Diseño de tarjetas por tema
+      cardsDesign: {
+        light: {
+          background: { type: String, default: 'rgba(255, 255, 255, 0.95)' },
+          border: { type: String, default: 'rgba(229, 231, 235, 1)' },
+          borderWidth: { type: String, default: '1px' },
+          shadow: { type: String, default: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
+          hoverBackground: { type: String, default: 'rgba(255, 255, 255, 1)' },
+          hoverShadow: { type: String, default: '0 20px 25px -5px rgba(139, 92, 246, 0.2)' },
+          titleColor: { type: String, default: '#1f2937' },
+          excerptColor: { type: String, default: '#4b5563' },
+          metaColor: { type: String, default: '#6b7280' },
+          badgeBackground: { type: String, default: 'linear-gradient(135deg, #8B5CF6, #06B6D4)' },
+          badgeTextColor: { type: String, default: '#ffffff' },
+          ctaColor: { type: String, default: '#8B5CF6' },
+          ctaHoverColor: { type: String, default: '#06B6D4' }
+        },
+        dark: {
+          background: { type: String, default: 'rgba(31, 41, 55, 0.95)' },
+          border: { type: String, default: 'rgba(55, 65, 81, 1)' },
+          borderWidth: { type: String, default: '1px' },
+          shadow: { type: String, default: '0 4px 6px -1px rgba(0, 0, 0, 0.3)' },
+          hoverBackground: { type: String, default: 'rgba(55, 65, 81, 1)' },
+          hoverShadow: { type: String, default: '0 20px 25px -5px rgba(139, 92, 246, 0.3)' },
+          titleColor: { type: String, default: '#ffffff' },
+          excerptColor: { type: String, default: '#d1d5db' },
+          metaColor: { type: String, default: '#9ca3af' },
+          badgeBackground: { type: String, default: 'linear-gradient(135deg, #8B5CF6, #06B6D4)' },
+          badgeTextColor: { type: String, default: '#ffffff' },
+          ctaColor: { type: String, default: '#a78bfa' },
+          ctaHoverColor: { type: String, default: '#22d3ee' }
+        }
+      }
+    },
     contactForm: {
       // Textos principales
       title: { type: String, default: 'Contáctanos' },
