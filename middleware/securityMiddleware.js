@@ -160,13 +160,14 @@ export const writeLimiter = rateLimit({
 
 /**
  * Rate limiter para llamadas de IA
- * Permite: 5 calls/minuto por usuario o IP
+ * 🆕 OPTIMIZADO: Aumentado límite para evitar bloqueos en carga inicial
+ * Permite: 20 calls/minuto por usuario o IP
  * CRÍTICO: Cada call cuesta dinero
  */
 export const aiChatLimiter = rateLimit({
   ...baseRateLimitConfig,
   windowMs: 1 * 60 * 1000,         // 1 minuto
-  max: 5,                          // 5 calls máximo
+  max: 20,                         // 🆕 Aumentado de 5 a 20 para carga inicial
   message: {
     success: false,
     message: 'Límite de llamadas al agente alcanzado. Intenta en 1 minuto.',
@@ -176,6 +177,12 @@ export const aiChatLimiter = rateLimit({
   keyGenerator: (req) => {
     // Por usuario autenticado, sino por IP
     return req.user?.id || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+  },
+  // 🆕 Omitir rate limit para endpoints de solo lectura no costosos
+  skip: (req) => {
+    // Excluir health check y status (no consumen OpenAI)
+    const exemptPaths = ['/health', '/status'];
+    return exemptPaths.some(path => req.path.includes(path));
   },
   handler: (req, res) => {
     const identifier = req.user?.id || req.ip;
